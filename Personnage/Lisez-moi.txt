@@ -1,0 +1,26 @@
+PERSONNAGE — Sully's Mii-Bongo
+==============================
+
+Tout ce que vous ajoutez au Mii avec l'éditeur de personnage
+(réglages → carte « Extras du personnage » → ✏️ Éditeur de personnage) :
+
+  Expressions\    des visages en plus : on remplace les YEUX, la BOUCHE ou les DEUX.
+                  Images PNG avec la même disposition que la texture du visage du Mii
+                  (1024 × 1024, fond transparent, comme les images du dossier Visages).
+                  Le plus simple : dans l'éditeur, bouton « 🖌 Créer dans Paint » — une copie du
+                  visage actuel s'ouvre dans Paint, vous dessinez, vous enregistrez, puis « ↻ Recharger ».
+
+  Accessoires\    vos modèles 3D (.glb) à accrocher au Mii : sur la tête, sur le corps,
+                  à la taille ou dans une main. Chapeaux, lunettes, épée, ailes…
+                  (des formes simples sont aussi proposées sans fichier : cube, boule, pyramide…)
+
+  Personnage.json la liste de vos ajouts (créée et modifiée par l'éditeur).
+
+Chaque ajout s'active :
+  - avec son interrupteur dans les réglages (carte « Extras du personnage ») ;
+  - et/ou avec un raccourci clavier (ex. Ctrl+Maj+F1), même pendant un jeu.
+    « Appuyer » : une pression l'active, une autre le désactive.
+    « Maintenir » : actif seulement tant que la touche est enfoncée.
+
+Les raccourcis ne bloquent pas la touche : le jeu ou le logiciel au premier plan la reçoit aussi.
+Choisissez donc des combinaisons que vous n'utilisez pas ailleurs (Ctrl+Maj+F1…F12, pavé numérique…).

@@ -1,0 +1,3 @@
+Images d'expressions (PNG, même disposition que la texture du visage du Mii, fond transparent).
+Le haut de l'image donne les YEUX, le bas la BOUCHE (séparation réglable dans l'éditeur).
+« Yeux fermés.png » et « Grande bouche.png » sont des exemples (copiés du visage Défaut).

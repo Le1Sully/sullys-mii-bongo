@@ -1,0 +1,2 @@
+Déposez ici vos modèles 3D (.glb) à accrocher au Mii, puis choisissez-les dans l'éditeur de personnage.
+Le modèle est automatiquement centré et mis à l'échelle ; réglez ensuite sa position, sa rotation et sa taille.

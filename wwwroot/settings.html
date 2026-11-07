@@ -1,0 +1,868 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sully's Mii-Bongo — Réglages</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="theme-wii.css">
+<link rel="stylesheet" href="theme-carnet.css">
+<script src="theme.js"></script>
+<script src="theme-icons.js"></script>
+<style>
+  :root {
+    --bg: #17171d; --card: #212129; --card2: #2a2a34; --line: #34343f;
+    --text: #ececf1; --muted: #9b9bab; --accent: #d63a45; --accent2: #7b3aa8;
+    --ok: #3fb67f; --warn: #e0a43a;
+    --radius: 14px;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.4 "Segoe UI", system-ui, sans-serif; }
+  body { padding: 14px 18px 0; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+  [hidden] { display: none !important; }
+  #layout { flex: 1; min-height: 0; display: flex; gap: 16px; }
+  #nav { width: 196px; flex: none; display: flex; flex-direction: column; gap: 4px; overflow: auto; padding-bottom: 20px; }
+  #nav button { display: flex; align-items: center; gap: 10px; text-align: left; border: 1px solid transparent; background: transparent;
+    color: var(--text); font: inherit; padding: 9px 10px; border-radius: 11px; cursor: pointer; }
+  #nav button:hover { background: var(--card); }
+  #nav button.active { background: #3a1f26; border-color: var(--accent); }
+  #nav .ni { font-size: 19px; width: 24px; text-align: center; }
+  #nav b { display: block; font-size: 13.5px; font-weight: 600; }
+  #nav small { display: block; color: var(--muted); font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+  #nav .navfoot { margin: 14px 10px 2px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  #nav button.mini { padding: 6px 10px; font-size: 12.5px; color: #d6d6e0; }
+  main { flex: 1; min-width: 0; overflow: auto; padding: 0 4px 30px 0; }
+  .page { display: none; flex-direction: column; gap: 14px; }
+  .page.active { display: flex; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12.5px; margin: 6px 0; }
+  .themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+  .themepick { padding: 12px !important; gap: 6px !important; }
+  .themepick b { font-size: 14px !important; }
+  .prev { width: 100%; height: 132px; border-radius: 12px; display: flex; flex-direction: column; gap: 8px; justify-content: center; padding: 10px 18px; box-sizing: border-box; }
+  .prev i { font-style: normal; font-size: 12.5px; padding: 7px 10px; text-align: center; }
+  .prev-classic { background: #17171d; border: 1px solid #34343f; }
+  .prev-classic i { background: #2a2a34; border: 1px solid #3a3a48; border-radius: 9px; color: #ececf1; }
+  .prev-classic i.on { background: #d63a45; border-color: #d63a45; color: #fff; }
+  .prev-wii { background: repeating-linear-gradient(180deg, #f3f4f5 0 3px, #e9ebed 3px 6px); border: 1px solid #d3d5d8; }
+  .prev-wii i { background: linear-gradient(180deg, #fff, #f7f7f7 55%, #e9eaeb); border: 1.5px solid #c9cbcd; border-radius: 14px; color: #3b3b3b;
+    box-shadow: 0 1px 0 rgba(255,255,255,.9) inset, 0 2px 3px rgba(0,0,0,.22); font-family: "Segoe UI", system-ui, sans-serif; }
+  .prev-wii i.on { border-color: #2ab3e8; box-shadow: 0 0 0 3px rgba(42,179,232,.35), 0 2px 3px rgba(0,0,0,.22); color: #0f6f99; }
+  .prev-carnet { background-color: #f1e9d8; background-image: radial-gradient(circle at 1px 1px, rgba(70,55,35,.2) 1px, transparent 1.5px); background-size: 14px 14px;
+    border: 1.6px solid rgba(43,40,36,.7); border-radius: 16px 5px 18px 6px / 6px 17px 5px 15px; position: relative; }
+  .prev-carnet::before { content: ""; position: absolute; top: -7px; left: 22px; width: 56px; height: 14px; background: rgba(236,176,92,.65); transform: rotate(-4deg);
+    clip-path: polygon(0 12%, 5% 0, 50% 6%, 95% 0, 100% 50%, 97% 100%, 50% 92%, 3% 100%); }
+  .prev-carnet i { background: #fffbf1; border: 1.8px solid #2b2824; border-radius: 255px 14px 225px 14px / 14px 225px 14px 255px; color: #2b2824;
+    box-shadow: 2px 2.5px 0 rgba(43,40,36,.85); font-family: "Segoe UI", system-ui, sans-serif; }
+  .prev-carnet i.on { box-shadow: none; transform: translate(2px, 2.5px);
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40' preserveAspectRatio='none'%3E%3Cpath d='M5 9 Q 60 3 118 7 T 197 5 L 195 33 Q 138 38 80 33 T 3 35 Z' fill='%23ffdf5e' fill-opacity='.92'/%3E%3C/svg%3E") center / 100% 100% no-repeat, #fffbf1; }
+  .prev-carnet i .wi { vertical-align: -0.3em; }
+  .themepick .hand { font-family: "Segoe Print", "Ink Free", "Comic Sans MS", cursive; }
+  .sclist { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 6px; }
+  .scr.cur { box-shadow: 0 0 0 1.5px var(--accent) inset; }
+  .scr .nm { flex: 1; min-width: 160px; display: flex; flex-direction: column; }
+  .scr .nm small { color: var(--muted); font-size: 11.5px; }
+  .scr { display: flex; align-items: center; gap: 8px; background: var(--card2); border-radius: 10px; padding: 6px 8px 6px 12px; flex-wrap: wrap; }
+  .scr .act { flex: 1; min-width: 180px; }
+  .scr .key { min-width: 120px; text-align: center; background: #15151b; border: 1px solid #44445a; border-radius: 8px; padding: 4px 10px; font-weight: 600; font-size: 13px; }
+  .scr .key.none { color: var(--muted); font-weight: 400; }
+  .scr .key.wait { border-color: #ffd23f; color: #ffd23f; }
+  .scr .warn { color: var(--warn); font-size: 12px; width: 100%; }
+  .scr .btn { padding: 5px 9px; }
+  .scr .seg button { padding: 5px 9px; font-size: 12.5px; }
+  .capture { margin-top: 8px; border: 1px dashed #ffd23f; color: #ffd23f; border-radius: 10px; padding: 9px 12px; font-size: 13px; }
+  .capture .picker { color: var(--muted); font-size: 12.5px; margin-top: 8px; }
+  .capture .mod { display: inline-flex; align-items: center; gap: 4px; color: var(--text); background: var(--card2); border: 1px solid var(--line);
+    border-radius: 8px; padding: 5px 8px; cursor: pointer; }
+  .capture select { flex: 0 1 180px; }
+  .perf { display: grid; gap: 6px; margin-bottom: 8px; }
+  .perf .pr { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; background: var(--card2); border-radius: 9px; padding: 7px 10px; font-size: 13px; }
+  .perf .pr b { min-width: 130px; }
+  .perf .pr .fps { font-variant-numeric: tabular-nums; min-width: 64px; }
+  .perf .bad { color: var(--warn); } .perf .good { color: #bfeed6; }
+  @media (max-width: 760px) {
+    body { height: auto; overflow: auto; display: block; padding-bottom: 28px; }
+    #layout { display: block; }
+    #nav { width: auto; flex-direction: row; flex-wrap: wrap; margin-bottom: 12px; }
+    #nav small, #nav .navfoot, #nav .mini { display: none; }
+    main { overflow: visible; }
+  }
+  header { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 16px; }
+  .logo { width: 48px; height: 48px; border-radius: 12px; object-fit: contain; padding: 2px;
+          background: linear-gradient(135deg, var(--accent) 50%, var(--accent2) 50%); }
+  h1 { font-size: 20px; margin: 0; }
+  .sub { color: var(--muted); font-size: 12.5px; }
+  .grow { flex: 1; }
+  .pill { padding: 4px 10px; border-radius: 99px; background: var(--card2); color: var(--muted); font-size: 12px; }
+  .pill.on { color: #c9f3dd; background: #1f4a37; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; align-items: start; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .card.wide { grid-column: 1 / -1; }
+  .card h2 { font-size: 14px; margin: 0 0 10px; display: flex; align-items: center; gap: 8px; }
+  .card h2 .ico { font-size: 17px; }
+  .row { display: flex; align-items: center; gap: 10px; margin: 9px 0; flex-wrap: wrap; }
+  .row > label.lbl { color: var(--muted); min-width: 92px; font-size: 12.5px; }
+  .state { font-size: 12.5px; color: var(--muted); background: var(--card2); border-radius: 8px; padding: 6px 9px; }
+  .state.good { color: #bfeed6; }
+  .dim { opacity: .55; }
+
+  .seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+  .seg button, .btn { border: 1px solid var(--line); background: var(--card2); color: var(--text); border-radius: 9px;
+    padding: 7px 11px; font: inherit; cursor: pointer; transition: background .12s, border-color .12s; }
+  .seg button:hover, .btn:hover { border-color: #55556a; }
+  .seg button.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.danger { color: #ffb3b8; }
+
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; }
+  .tile { border: 1px solid var(--line); background: var(--card2); border-radius: 12px; padding: 12px; cursor: pointer;
+          text-align: left; color: var(--text); font: inherit; display: flex; gap: 10px; align-items: center; }
+  .tile .e { font-size: 26px; }
+  .tile b { display: block; font-size: 13.5px; }
+  .tile small { color: var(--muted); }
+  .tile.active { border-color: var(--accent); box-shadow: 0 0 0 2px #d63a4566 inset; background: #3a1f26; }
+
+  .sw { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 8px 0; cursor: pointer; }
+  .sw input { display: none; }
+  .sw .t { width: 40px; height: 22px; border-radius: 99px; background: #45455a; position: relative; transition: .15s; flex: none; }
+  .sw .t::after { content: ""; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: .15s; }
+  .sw input:checked + .t { background: var(--ok); }
+  .sw input:checked + .t::after { left: 21px; }
+
+  select, input[type=text] { background: var(--card2); color: var(--text); border: 1px solid var(--line); border-radius: 9px;
+    padding: 7px 9px; font: inherit; min-width: 0; flex: 1; }
+  .err { color: var(--warn); font-size: 12.5px; }
+  .pads { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 1; min-width: 0; }
+  .padpick { border: 1px solid var(--line); background: var(--card2); color: var(--text); border-radius: 11px; padding: 9px 8px;
+             font: inherit; cursor: pointer; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+  .padpick b { font-size: 12.5px; } .padpick small { color: var(--muted); font-size: 11.5px; }
+  .padpick.active { border-color: var(--accent); box-shadow: 0 0 0 2px #d63a4566 inset; background: #3a1f26; }
+  .padcustom { margin-top: 10px; padding-top: 6px; border-top: 1px dashed var(--line); }
+  .colors { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin: 8px 0; }
+  .colors label { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); }
+  .colors input[type=color] { width: 100%; height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--card2); padding: 2px; }
+  .colors small { display: flex; align-items: center; gap: 4px; font-size: 11px; }
+  .pads { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)) !important; }
+  #padPersos .padpick b { word-break: break-word; }
+  .sw3 { width: 46px; height: 22px; border-radius: 11px; background: linear-gradient(90deg, var(--a) 0 50%, var(--b) 50% 75%, var(--c) 75%); border: 1px solid #0006; }
+
+  .orbit { display: flex; gap: 16px; align-items: center; margin: 6px 0 10px; }
+  .dial { width: 118px; height: 118px; flex: none; border-radius: 50%; position: relative; cursor: grab; touch-action: none;
+          background: radial-gradient(circle, #2f2f3b 0 38%, #262631 39% 100%); border: 1px solid var(--line); }
+  .dial.dragging { cursor: grabbing; }
+  .dial .mii { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 26px; }
+  .dial .front { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); font-size: 10px; color: var(--muted); }
+  .dial .cam { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; display: grid; place-items: center;
+               border-radius: 50%; background: var(--accent); font-size: 14px; pointer-events: none; }
+  .sliders { flex: 1; display: grid; gap: 8px; min-width: 0; }
+  .sliders label { display: grid; grid-template-columns: 1fr auto; font-size: 12.5px; color: var(--muted); gap: 2px 8px; }
+  .sliders output { color: var(--text); font-variant-numeric: tabular-nums; }
+  .sliders input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+  .off .orbit, .off #orbitPresets { opacity: .45; }
+  .faces { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; }
+  .faces figure { margin: 0; text-align: center; font-size: 11px; color: var(--muted); }
+  .faces img { width: 64px; height: 64px; object-fit: cover; object-position: 50% 62%; border-radius: 9px;
+               background: #3a3a46; border: 1px solid var(--line); display: block; }
+  .plist { display: flex; flex-direction: column; gap: 2px; margin: 6px 0 8px; }
+  .plist .sw { margin: 3px 0; }
+  .plist .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .plist .k { font-size: 11px; color: #c9c9d6; background: var(--card2); border: 1px solid var(--line); border-radius: 6px; padding: 1px 6px; white-space: nowrap; }
+  .madeby { position: fixed; left: 28px; bottom: 8px; font-size: 10.5px; color: var(--muted); opacity: .7;
+            letter-spacing: .02em; pointer-events: none; }
+  #nohost { display: none; padding: 30px; text-align: center; color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="nohost">Ouvrez cette page depuis l'icône de Sully's Mii-Bongo (clic droit → « Ouvrir les réglages… »).</div>
+
+<header>
+  <img class="logo" src="icon.png" alt="">
+  <div>
+    <h1>Sully's Mii-Bongo</h1>
+    <div class="sub">Tout s'applique immédiatement, à la fenêtre du Mii comme à OBS.</div>
+  </div>
+  <div class="grow"></div>
+  <span id="pages" class="pill">…</span>
+  <button class="btn" data-act="reload" title="Recharger la fenêtre du Mii et les sources OBS">↻ Recharger</button>
+  <button class="btn danger" data-act="quit">Quitter</button>
+</header>
+
+<div id="layout">
+  <nav id="nav">
+    <button data-go="instrument"><span class="ni">🎹</span><span><b>Instrument</b><small id="navInstrument"></small></span></button>
+    <button data-go="personnage"><span class="ni">🃏</span><span><b>Personnage</b><small id="navPersonnage"></small></span></button>
+    <button data-go="affichage"><span class="ni">🪟</span><span><b>Affichage</b><small id="navAffichage"></small></span></button>
+    <button data-go="decor"><span class="ni">🏠</span><span><b>Décor &amp; scène</b><small id="navDecor"></small></span></button>
+    <button data-go="raccourcis"><span class="ni">⌨️</span><span><b>Raccourcis</b><small id="navRaccourcis"></small></span></button>
+    <button data-go="theme"><span class="ni">🎨</span><span><b>Thème</b><small id="navTheme"></small></span></button>
+    <button data-go="systeme"><span class="ni">📺</span><span><b>OBS &amp; système</b><small id="navSysteme"></small></span></button>
+    <div class="navfoot">Éditeurs</div>
+    <button class="mini" data-act="openCharEditor">🎭 Personnage…</button>
+    <button class="mini" data-act="openEditor">🧱 Scène…</button>
+    <button class="mini" data-act="openPadEditor">🎮 Manettes…</button>
+  </nav>
+
+  <main>
+  <div class="page" data-page="instrument">
+    <section class="card wide">
+      <h2><span class="ico">🎹</span>Ce que fait le Mii</h2>
+      <div class="tiles" data-set="mode">
+        <button class="tile" data-v="keyboard"><span class="e">⌨️</span><span><b>Clavier + souris</b><small>au bureau</small></span></button>
+        <button class="tile" data-v="bongo"><span class="e">🥁</span><span><b>Bongos</b><small>tambours</small></span></button>
+        <button class="tile" data-v="pad"><span class="e">🎮</span><span><b>Manette</b><small>Xbox, PS…</small></span></button>
+        <button class="tile" data-v="wheel"><span class="e">🏎️</span><span><b>Volant</b><small>Logitech G27</small></span></button>
+        <button class="tile" data-v="vr"><span class="e">🥽</span><span><b>Debout</b><small>casque VR</small></span></button>
+      </div>
+    </section>
+
+    <section class="card wide" id="cardHint">
+      <h2><span class="ico">✅</span>Rien à régler</h2>
+      <div class="sub" id="hintText"></div>
+    </section>
+
+    <section class="card wide" id="cardPad">
+      <h2><span class="ico">🎮</span>Manette</h2>
+      <div class="state" id="padState"></div>
+      <label class="sw">🧑‍🤝‍🧑 Mini Mii sur la manette : de petits Mii appuient sur les touches et poussent les sticks (au lieu du Mii qui tient la manette)<input type="checkbox" data-tog="padMinis"><span class="t"></span></label>
+      <div class="row"><label class="lbl">Modèle</label>
+        <div class="pads" data-set="padModel">
+          <button class="padpick" data-v="8bitdo"><span class="sw3" style="--a:#bfe8dc;--b:#ef5a4a;--c:#ecd6cc"></span><b>8BitDo Ultimate 2C</b><small>Mint</small></button>
+          <button class="padpick" data-v="xbox"><span class="sw3" style="--a:#2b2b2e;--b:#4a4a50;--c:#f5c518"></span><b>Xbox Series</b><small>noire</small></button>
+          <button class="padpick" data-v="xbox25"><span class="sw3" style="--a:#7ccf2c;--b:#13401a;--c:#e0332a"></span><b>Xbox 25 ans</b><small>édition anniversaire</small></button>
+        </div></div>
+      <div class="row"><label class="lbl">Vos manettes</label><div class="pads" id="padPersos"></div></div>
+      <div class="row"><button class="btn primary" data-act="openPadEditor">✏️ Éditeur de manettes</button><button class="btn" data-act="openManettes">📁 Dossier Manettes</button></div>
+      <div class="sub">Manettes lues : XInput (Xbox, 8BitDo en mode X-input…) et PlayStation branchées directement (DualShock 4, DualSense),
+        en USB ou Bluetooth. L'éditeur permet d'ajouter vos propres manettes, de délimiter leurs boutons, leurs couleurs et leur assignation.</div>
+    </section>
+
+    <section class="card wide" id="cardWheel">
+      <h2><span class="ico">🏎️</span>Volant</h2>
+      <div class="state" id="wheelState"></div>
+      <div class="row"><label class="lbl">Rotation</label>
+        <div class="seg" data-set="wheelRange" data-num><button data-v="270">270°</button><button data-v="540">540°</button><button data-v="900">900°</button></div></div>
+      <button class="btn" data-act="recalibrate">Recalibrer les pédales</button>
+    </section>
+
+    <section class="card wide" id="cardVr">
+      <h2><span class="ico">🥽</span>Casque VR</h2>
+      <div class="state" id="vrState"></div>
+      <label class="sw">Effet miroir<input type="checkbox" data-tog="vrMirror"><span class="t"></span></label>
+      <button class="btn" data-act="vrRecenter">Recentrer (regardez droit devant)</button>
+    </section>
+  </div>
+
+  <div class="page" data-page="personnage">
+    <div class="grid">
+      <section class="card">
+        <h2><span class="ico">🃏</span>Mii et visage</h2>
+        <div class="row"><label class="lbl">Mii</label><select id="model"></select>
+          <button class="btn" data-act="openModels" title="Ouvrir le dossier Mii (vos modèles .glb)">📁</button></div>
+        <div class="row"><label class="lbl">Visage</label><select id="face"></select>
+          <button class="btn" data-act="openFaces" title="Ouvrir le dossier Visages">📁</button></div>
+        <div class="faces" id="facePreview"></div>
+        <details><summary>Créer un visage</summary>
+          <div class="sub">Les visages (bouche qui parle, yeux fermés) sont communs à tous les Mii : un dossier par visage dans
+            <b>Visages</b>, avec <i>yeux fermés.png</i>, <i>bouche 1.png</i>, <i>bouche 2.png</i>… Copiez « Défaut » pour en créer un,
+            puis <i>↻ Actualiser</i>.</div></details>
+        <button class="btn" data-act="refresh">↻ Actualiser les listes</button>
+      </section>
+
+      <section class="card">
+        <h2><span class="ico">🎤</span>Voix (bouche)</h2>
+        <label class="sw">Faire parler le Mii avec le micro<input type="checkbox" data-tog="micEnabled"><span class="t"></span></label>
+        <div class="row"><label class="lbl">Sensibilité</label>
+          <div class="seg" data-set="micFloor" data-num><button data-v="-40">Faible</button><button data-v="-48">Normale</button><button data-v="-56">Haute</button></div></div>
+        <div class="row"><label class="lbl">Micro</label><select id="micDevice"></select></div>
+        <div class="err" id="micError"></div>
+      </section>
+
+      <section class="card wide" id="cardPerso">
+        <h2><span class="ico">🎭</span>Extras : expressions et objets accrochés</h2>
+        <div class="sub">Activez-les ici ou avec leur raccourci clavier (même en jeu). Créez-les dans l'éditeur de personnage.</div>
+        <div class="plist" id="persoList"></div>
+        <div class="row"><button class="btn primary" data-act="openCharEditor">✏️ Éditeur de personnage</button><button class="btn" data-act="openPerso">📁 Dossier Personnage</button></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="page" data-page="affichage">
+    <div class="grid">
+      <section class="card">
+        <h2><span class="ico">🪟</span>Fenêtre sur le bureau</h2>
+        <label class="sw">Afficher la fenêtre<input type="checkbox" data-tog="showWindow"><span class="t"></span></label>
+        <label class="sw">Toujours au premier plan<input type="checkbox" data-tog="topMost"><span class="t"></span></label>
+        <label class="sw">Verrouiller (clics traversants)<input type="checkbox" data-tog="clickThrough"><span class="t"></span></label>
+        <div class="row"><label class="lbl">Taille</label>
+          <div class="seg" data-set="size" data-num>
+            <button data-v="260">Petite</button><button data-v="420">Moyenne</button><button data-v="640">Grande</button><button data-v="900">Très grande</button>
+          </div></div>
+        <div class="row"><label class="lbl">Fond</label>
+          <div class="seg" data-set="background"><button data-v="transparent">Transparent</button><button data-v="green">Vert (chroma)</button><button data-v="dark">Sombre</button></div></div>
+        <div class="row"><label class="lbl">Fluidité</label>
+          <div class="seg" data-set="fluidite">
+            <button data-v="60" title="Toujours 60 images par seconde">🚀 Fluide</button>
+            <button data-v="auto" title="60 images/s quand vous jouez, tapez ou parlez ; 30 au repos">⚡ Auto</button>
+            <button data-v="30" title="30 images/s et rendu sans suréchantillonnage : le plus léger">🍃 Économe</button>
+          </div></div>
+        <div class="sub">S'applique aussi à OBS. <b>Auto</b> divise par deux le travail quand le Mii est au repos ; <b>Économe</b> est le plus léger (portables, gros jeux).</div>
+      </section>
+
+      <section class="card" id="cardOrbit">
+        <h2><span class="ico">🎥</span>Caméra</h2>
+        <div class="row"><label class="lbl">Cadrage</label>
+          <div class="seg" data-set="view"><button data-v="bust">Buste</button><button data-v="full">Corps entier</button></div></div>
+        <label class="sw">Vue orbitale : choisir librement d'où on voit le Mii<input type="checkbox" id="orbitOn"><span class="t"></span></label>
+        <div class="orbit">
+          <div class="dial" id="dial" title="Glissez pour tourner autour du Mii (vu de dessus)">
+            <div class="mii">🃏</div><div class="front">avant</div><div class="cam" id="dialCam">🎥</div>
+          </div>
+          <div class="sliders">
+            <label>Tourner <output id="azOut"></output><input type="range" id="az" min="-180" max="180" step="1"></label>
+            <label>Hauteur <output id="elOut"></output><input type="range" id="el" min="-10" max="85" step="1"></label>
+            <label>Zoom <output id="zoomOut"></output><input type="range" id="zoom" min="50" max="300" step="5"></label>
+          </div>
+        </div>
+        <div class="seg" id="orbitPresets">
+          <button data-az="0" data-el="12">Face</button><button data-az="90" data-el="15">Côté gauche</button>
+          <button data-az="-90" data-el="15">Côté droit</button><button data-az="180" data-el="20">Dos</button>
+          <button data-az="25" data-el="80">Dessus</button><button data-reset="1">↺ Par défaut</button>
+        </div>
+        <div class="sub">Dans la fenêtre du Mii : <b>clic droit + glisser</b> pour tourner, <b>Ctrl + molette</b> pour zoomer. OBS suit en direct.</div>
+      </section>
+    </div>
+  </div>
+
+  <div class="page" data-page="decor">
+    <div class="grid">
+      <section class="card">
+        <h2><span class="ico">🏠</span>Décor</h2>
+        <label class="sw">Activer le décor (estrade + vue de côté)<input type="checkbox" data-tog="decor"><span class="t"></span></label>
+        <div id="decorBody">
+          <div class="row"><label class="lbl">Vue</label>
+            <div class="seg" data-set="decorView">
+              <button data-v="back">Iso. arrière-gauche</button><button data-v="back2">Iso. arrière-droite</button>
+              <button data-v="front">Iso. avant-droite</button>
+              <button data-v="tri">Trimétrique gauche</button><button data-v="tri2">Trimétrique droite</button>
+            </div></div>
+          <div class="row"><label class="lbl">Décorations</label>
+            <div class="seg" id="decos">
+              <button data-deco="screens">🖥️ Deux écrans en direct</button>
+              <button data-deco="chair">🪑 Chaise de bureau</button>
+              <button data-deco="cinema" title="Grand écran (votre écran principal), le Mii presque allongé dans un fauteuil avec une tablette. Remplace la chaise et les deux écrans.">🎬 Cinéma</button>
+            </div></div>
+          <div class="row"><label class="lbl">Sol</label>
+            <div class="seg" data-set="floor">
+              <button data-v="classic">Classique</button><button data-v="wood">🪵 Plancher</button><button data-v="tiles">♟️ Carrelage</button>
+              <button data-v="carpet">🟦 Moquette</button><button data-v="grass">🌿 Gazon</button>
+            </div></div>
+        </div>
+        <div class="sub" id="decorHint">Activez le décor pour choisir la vue, les décorations et le sol.</div>
+      </section>
+
+      <section class="card">
+        <h2><span class="ico">🖥️</span>Écrans en direct</h2>
+        <div class="sub" style="margin-bottom:6px">Ce que montrent les écrans 3D (décor, cinéma, objets « Écran » de la scène).</div>
+        <div class="row"><label class="lbl">Fluidité</label>
+          <div class="seg" data-set="screenFps" data-num><button data-v="0">🚫 Désactivé</button><button data-v="2">Économe</button><button data-v="5">Normale</button><button data-v="10">Fluide</button></div></div>
+        <div class="state" id="screensState"></div>
+      </section>
+
+      <section class="card wide">
+        <h2><span class="ico">🧱</span>Éditeur de scène</h2>
+        <div class="sub" style="margin-bottom:8px">Murs, cubes, sols, colonnes, escaliers, images ou vos propres modèles 3D, avec leurs textures,
+          placés où vous voulez autour du Mii. Importer / exporter des scènes, ou en faire créer une par une IA (bouton 🤖).</div>
+        <div class="row"><button class="btn primary" data-act="openEditor">✏️ Ouvrir l'éditeur</button><span class="state" id="sceneState"></span></div>
+        <label class="sw">Afficher mes objets (fenêtre et OBS)<input type="checkbox" data-tog="showObjects"><span class="t"></span></label>
+        <label class="sw">Rendre invisibles les objets qui cachent le Mii<input type="checkbox" data-tog="hideOccluders"><span class="t"></span></label>
+        <div class="row"><button class="btn" data-act="openTextures">📁 Mes images</button><button class="btn" data-act="openObjets">📁 Mes objets 3D</button><button class="btn" data-act="openScenes">📁 Mes scènes</button></div>
+      </section>
+
+      <section class="card wide">
+        <h2><span class="ico">💾</span>Préréglages de scène</h2>
+        <div class="sub" style="margin-bottom:8px">Des scènes complètes (objets, table, écrans du décor) gardées sous un nom : changez de scène d'un clic,
+          depuis le menu de l'icône, ou avec un raccourci (⌨️ Raccourcis → « Scène : … »). Chaque préréglage est un fichier du dossier Scènes.</div>
+        <div class="sclist" id="presetList"></div>
+        <div class="row"><input type="text" id="presetName" maxlength="80" placeholder="Nom du nouveau préréglage (ex. Chambre, Cinéma, Jardin)">
+          <button class="btn primary" id="presetSave">💾 Enregistrer la scène actuelle</button></div>
+      </section>
+    </div>
+  </div>
+
+  <div class="page" data-page="raccourcis">
+    <section class="card wide">
+      <h2><span class="ico">⌨️</span>Raccourcis clavier</h2>
+      <label class="sw">Raccourcis activés (coupez-les le temps d'une partie si l'un d'eux vous gêne)<input type="checkbox" data-tog="shortcutsEnabled"><span class="t"></span></label>
+      <div class="sub">Ils marchent partout, même quand un jeu est au premier plan, et ne bloquent pas la touche : le jeu la reçoit aussi.
+        Choisissez des combinaisons libres (Ctrl + Maj + F1…F12, pavé numérique…). AltGr est reconnu à part (AltGr + 2 pour « ~ » ne déclenche rien).</div>
+    </section>
+
+    <section class="card wide">
+      <h2><span class="ico">➕</span>Nouveau raccourci</h2>
+      <div class="row"><label class="lbl">Action</label><select id="scAction"></select>
+        <button class="btn primary" id="scAdd">⌨ Choisir la touche…</button></div>
+      <div class="capture" id="scWait" hidden>
+        <div id="scWaitText"></div>
+        <div class="picker">… ou choisissez la touche dans la liste (utile pour F13 à F24, les touches macro, les boutons de souris) :
+          <div class="row">
+            <label class="mod"><input type="checkbox" data-mod="Ctrl">Ctrl</label><label class="mod"><input type="checkbox" data-mod="Alt">Alt</label>
+            <label class="mod"><input type="checkbox" data-mod="Maj">Maj</label><label class="mod"><input type="checkbox" data-mod="Win">Win</label>
+            <select id="scKey"></select><button class="btn primary" id="scPick">Valider</button>
+          </div></div>
+      </div>
+      <div class="row"><button class="btn" id="scExamples" title="Ctrl+Maj+F9 : instrument suivant · Ctrl+Maj+F10 : afficher / masquer la fenêtre · Ctrl+Maj+F11 : désactiver tous les extras">✨ Ajouter des exemples</button></div>
+    </section>
+
+    <section class="card wide">
+      <h2><span class="ico">⚙️</span>Vos raccourcis</h2>
+      <div class="sclist" id="scList"></div>
+    </section>
+
+    <section class="card wide">
+      <h2><span class="ico">🎭</span>Extras du personnage</h2>
+      <div class="sub">Chaque expression ou objet accroché a son propre raccourci : <b>👆 Appuyer</b> l'active puis le désactive,
+        <b>⏬ Maintenir</b> ne l'active que tant que la touche est enfoncée.</div>
+      <div class="sclist" id="scPerso"></div>
+      <div class="row"><button class="btn" data-act="openCharEditor">✏️ Éditeur de personnage</button></div>
+    </section>
+  </div>
+
+  <div class="page" data-page="theme">
+    <section class="card wide">
+      <h2><span class="ico">🎨</span>Thème de l'interface</h2>
+      <div class="sub" style="margin-bottom:10px">Change l'apparence de cette fenêtre, des trois éditeurs (scène, personnage, manettes) et du menu de l'icône.
+        Le Mii, sa fenêtre et OBS ne changent pas.</div>
+      <div class="themes" data-set="theme">
+        <button class="padpick themepick" data-v="classique">
+          <span class="prev prev-classic"><i>✏️ Ouvrir l'éditeur</i><i class="on">🎮 Manette</i><i>⚙️ Réglages</i></span>
+          <b>Classique</b><small>sombre, touches rouges</small></button>
+        <button class="padpick themepick" data-v="wii">
+          <span class="prev prev-wii" data-wii-icons><i>🙂 Créer un Mii</i><i class="on">🔧 Paramètres</i><i>🏠 Accueil</i></span>
+          <b>Wii</b><small>clair, boutons blancs arrondis</small></button>
+        <button class="padpick themepick" data-v="carnet">
+          <span class="prev prev-carnet icons-carnet" data-wii-icons><i>✏️ Mes notes</i><i class="on">🎨 Dessins</i><i>📁 Ranger</i></span>
+          <b class="hand">Carnet</b><small>papier, encre, traits à main levée</small></button>
+      </div>
+    </section>
+  </div>
+
+  <div class="page" data-page="systeme">
+    <div class="grid">
+      <section class="card">
+        <h2><span class="ico">📺</span>OBS</h2>
+        <div class="row"><input type="text" id="obsUrl" readonly><button class="btn primary" data-act="copyObs">Copier</button></div>
+        <div class="sub">OBS → Sources → + → Navigateur. La source suit ces réglages toute seule.</div>
+        <div class="row"><button class="btn" data-act="openBrowser">Ouvrir dans le navigateur</button></div>
+      </section>
+
+      <section class="card">
+        <h2><span class="ico">⚙️</span>Système</h2>
+        <label class="sw">Lancer au démarrage de Windows<input type="checkbox" data-tog="startup"><span class="t"></span></label>
+        <div class="row"><button class="btn" id="menuFull" title="Revenir à l'ancien menu contextuel complet (clic droit sur l'icône)">☰ Menu contextuel classique</button></div>
+        <div class="sub">Clic droit sur l'icône de l'appli (barre des tâches) : raccourcis vers les éditeurs et Quitter.</div>
+      </section>
+
+      <section class="card wide">
+        <h2><span class="ico">⚡</span>Performances</h2>
+        <div class="perf" id="perfList"><div class="sub">Mesure en cours…</div></div>
+        <div class="sub">Images par seconde de chaque page qui affiche le Mii (fenêtre, OBS…) et saccades (images de plus de 50 ms),
+          mesurées sur les 5 dernières secondes. Pour alléger : fluidité <i>Auto</i> ou <i>Économe</i> (page Affichage), taille
+          de fenêtre plus petite, écrans en direct « Économe » ou désactivés, fenêtre masquée si vous n'utilisez que OBS.</div>
+      </section>
+    </div>
+  </div>
+  </main>
+</div>
+
+<script>
+  const host = window.chrome?.webview;
+  if (!host) { document.getElementById('nohost').style.display = 'block'; document.querySelector('header').remove(); document.getElementById('layout').remove(); }
+  const post = m => host?.postMessage(m);
+  const set = (key, value) => post({ type: 'set', key, value });
+  const $ = s => document.querySelector(s);
+  let state = null;
+
+  function go(page) {
+    if (!document.querySelector(`.page[data-page="${page}"]`)) page = 'instrument';
+    document.querySelectorAll('.page').forEach(p => p.classList.toggle('active', p.dataset.page === page));
+    document.querySelectorAll('#nav [data-go]').forEach(b => b.classList.toggle('active', b.dataset.go === page));
+    try { localStorage.setItem('page', page); } catch { }
+    if (page === 'systeme') refreshPerf();
+  }
+  document.querySelectorAll('#nav [data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+  document.querySelector('[data-set="theme"]').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) window.setUiTheme?.(b.dataset.v); });
+
+  async function refreshPerf() {
+    const page = document.querySelector('.page[data-page="systeme"]');
+    if (!page || !page.classList.contains('active') || document.hidden) return;
+    try {
+      const st = await fetch('./api/status', { cache: 'no-store' }).then(r => r.json());
+      const rows = (st.fluidite || []).map(f => {
+        const ok = f.fps >= 28 && !f.saccades;
+        const where = f.src === 'fenêtre' ? '🪟 Fenêtre du Mii' : '📺 ' + (f.src || 'page');
+        const hiddenTxt = f.visible && f.visible !== 'visible' ? ' · cachée' : '';
+        return `<div class="pr"><b>${where}</b><span class="fps ${ok ? 'good' : 'bad'}">${f.fps} img/s</span>`
+          + `<span class="sub">image ${f.mediane} ms · pire ${f.max} ms · ${f.saccades} saccade${f.saccades > 1 ? 's' : ''}${hiddenTxt}</span></div>`;
+      });
+      document.getElementById('perfList').innerHTML = rows.join('') || "<div class=\"sub\">Le Mii n'est affiché nulle part : rien ne tourne.</div>";
+    } catch { document.getElementById('perfList').innerHTML = '<div class="sub">Mesure indisponible.</div>'; }
+  }
+  setInterval(refreshPerf, 2000);
+
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+  function actionGroups(s) {
+    const pads = [['pad:8bitdo', 'Manette : 8BitDo Ultimate 2C'], ['pad:xbox', 'Manette : Xbox Series'], ['pad:xbox25', 'Manette : Xbox 25 ans'],
+      ...(s?.pads || []).map(p => [`pad:${p.id}`, 'Manette : ' + p.nom])];
+    return [
+      ['🎹 Instrument', [['mode:next', 'Instrument suivant'], ['mode:keyboard', 'Instrument : clavier + souris'], ['mode:bongo', 'Instrument : bongos'],
+        ['mode:pad', 'Instrument : manette'], ['mode:wheel', 'Instrument : volant'], ['mode:vr', 'Instrument : debout (VR)']]],
+      ['🪟 Fenêtre et caméra', [['window', 'Afficher / masquer la fenêtre du Mii'], ['lock', 'Verrouiller / déverrouiller la fenêtre'],
+        ['view', 'Cadrage : buste ↔ corps entier'], ['orbit', 'Vue orbitale : oui / non']]],
+      ['🏠 Décor et scène', [['decor', 'Décor : oui / non'], ['objects', 'Objets de la scène : oui / non'],
+        ['scene:next', 'Scène : préréglage suivant'], ['scene:prev', 'Scène : préréglage précédent'],
+        ...(s?.scenePresets || []).map(p => [`scene:${p.file}`, 'Scène : ' + p.nom])]],
+      ['🃏 Personnage', [['mic', 'Micro (bouche) : oui / non'], ['extras:off', 'Désactiver tous les extras']]],
+      ['🎮 Manette', [['minis', 'Mini Mii sur la manette : oui / non'], ...pads]],
+      ['⚡ Divers', [['fluidite:next', 'Fluidité suivante (Fluide → Auto → Économe)'], ['fluidite:60', 'Fluidité : Fluide'], ['fluidite:auto', 'Fluidité : Auto'],
+        ['fluidite:30', 'Fluidité : Économe'], ['reload', 'Recharger le Mii et OBS']]],
+    ];
+  }
+  const actionLabel = (s, a) => {
+    for (const [, items] of actionGroups(s)) for (const [v, t] of items) if (v === a) return t;
+    if (String(a).startsWith('scene:')) return 'Scène : ' + a.slice(6).replace(/\.json$/i, '') + ' (préréglage introuvable)';
+    return a;
+  };
+
+  function renderPresets(s) {
+    const list = s.scenePresets || [], cur = (s.settings.ScenePreset || '').toLowerCase();
+    const sig = JSON.stringify([list, cur]);
+    const box = $('#presetList');
+    if (box.dataset.sig === sig) return;
+    box.dataset.sig = sig;
+    box.innerHTML = list.length ? list.map(p => {
+      const on = p.file.toLowerCase() === cur;
+      const info = p.objets < 0 ? '⚠ fichier à vérifier dans l\'éditeur' : `${p.objets} objet${p.objets > 1 ? 's' : ''}` + (on ? ' · dernier chargé' : '');
+      return `<div class="scr${on ? ' cur' : ''}"><span class="nm"><b>${esc(p.nom)}</b><small>${esc(info)}${p.description ? ' · ' + esc(p.description) : ''}</small></span>
+        <button class="btn${on ? '' : ' primary'}" data-pre="load" data-f="${esc(p.file)}">${on ? '↺ Recharger' : '▶ Charger'}</button>
+        <button class="btn" data-pre="ren" data-f="${esc(p.file)}" title="Renommer">✏️</button>
+        <button class="btn danger" data-pre="del" data-f="${esc(p.file)}" title="Supprimer (va dans la Corbeille)">🗑</button></div>`;
+    }).join('') : '<div class="sub">Aucun préréglage pour l\'instant : donnez un nom ci-dessous pour garder la scène actuelle.</div>';
+  }
+  $('#presetList').addEventListener('click', e => {
+    const b = e.target.closest('[data-pre]'); if (!b) return;
+    const p = (state?.scenePresets || []).find(x => x.file === b.dataset.f); if (!p) return;
+    if (b.dataset.pre === 'load') set('scenePreset', p.file);
+    if (b.dataset.pre === 'ren') {
+      const name = prompt(`Nouveau nom pour « ${p.nom} » :`, p.nom);
+      if (name && name.trim() && name.trim() !== p.nom) set('scenePresetRename', { file: p.file, name: name.trim() });
+    }
+    if (b.dataset.pre === 'del' && confirm(`Supprimer le préréglage « ${p.nom} » ?\nLe fichier va dans la Corbeille. Votre scène actuelle ne change pas.`)) set('scenePresetDelete', p.file);
+  });
+  function savePreset() {
+    const name = $('#presetName').value.trim();
+    if (!name) { $('#presetName').focus(); return; }
+    const same = (state?.scenePresets || []).find(p => p.nom.toLowerCase() === name.toLowerCase());
+    if (same && !confirm(`Le préréglage « ${same.nom} » existe déjà. Le remplacer par la scène actuelle ?`)) return;
+    set('scenePresetSave', name);
+    $('#presetName').value = '';
+  }
+  $('#presetSave').addEventListener('click', savePreset);
+  $('#presetName').addEventListener('keydown', e => { if (e.key === 'Enter') savePreset(); });
+  const MOD_ORDER = ['ctrl', 'alt', 'altgr', 'maj', 'win'];
+  const normKey = k => {
+    const parts = String(k || '').toLowerCase().split('+').map(x => x.trim()).filter(Boolean);
+    if (!parts.length) return '';
+    const main = parts.pop();
+    const mods = new Set(parts.map(m => ({ shift: 'maj', control: 'ctrl', ctl: 'ctrl', windows: 'win', meta: 'win' })[m] || m));
+    return [...MOD_ORDER.filter(m => mods.has(m)), main].join('+');
+  };
+
+  const PICK_KEYS = [
+    ['Touches de fonction', Array.from({ length: 24 }, (_, i) => 'F' + (i + 1))],
+    ['Souris', ['Souris4', 'Souris5', 'SourisMilieu']],
+    ['Pavé numérique', [...Array.from({ length: 10 }, (_, i) => 'Num' + i), 'Num+', 'Num-', 'Num*', 'Num/', 'Num.']],
+    ['Multimédia', ['Lecture', 'Stop', 'Suivant', 'Précédent', 'Muet', 'Volume+', 'Volume-']],
+    ['Autres', ['Pause', 'ImprÉcran', 'ArrêtDéfil', 'Inser', 'Suppr', 'Début', 'Fin', 'PgPréc', 'PgSuiv', 'Haut', 'Bas', 'Gauche', 'Droite', 'Espace', 'Entrée', 'Tab']],
+    ['Lettres et chiffres', [...'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789']],
+  ];
+  $('#scKey').innerHTML = PICK_KEYS.map(([g, keys]) => `<optgroup label="${g}">${keys.map(k => `<option>${k}</option>`).join('')}</optgroup>`).join('');
+  $('#scKey').value = 'F13';
+  $('#scPick').addEventListener('click', () => {
+    if (!capture) return;
+    const mods = [...document.querySelectorAll('[data-mod]')].filter(c => c.checked).map(c => c.dataset.mod);
+    post({ type: 'cancelCapture' });
+    onCaptured([...mods, $('#scKey').value].join('+'));
+  });
+
+  let capture = null;
+  function startCapture(c) {
+    capture = c;
+    post({ type: 'captureKey' });
+    renderShortcuts(state);
+  }
+  function stopCapture() { if (capture) post({ type: 'cancelCapture' }); capture = null; renderShortcuts(state); }
+  $('#scAdd').addEventListener('click', () => capture ? stopCapture() : startCapture({ kind: 'new', action: $('#scAction').value }));
+  $('#scExamples').addEventListener('click', () => {
+    const used = allKeys(state);
+    const ex = [['Ctrl+Maj+F9', 'mode:next'], ['Ctrl+Maj+F10', 'window'], ['Ctrl+Maj+F11', 'extras:off']].filter(([k]) => !used.has(normKey(k)));
+    for (const [touche, action] of ex) set('shortcutAdd', { action, touche });
+    if (!ex.length) alert('Ces exemples (Ctrl+Maj+F9, F10, F11) sont déjà utilisés.');
+  });
+  function allKeys(s) {
+    const m = new Map();
+    for (const r of s?.settings?.Raccourcis || []) if (r.Touche) m.set(normKey(r.Touche), [...(m.get(normKey(r.Touche)) || []), actionLabel(s, r.Action)]);
+    for (const p of s?.perso || []) if (p.touche) m.set(normKey(p.touche), [...(m.get(normKey(p.touche)) || []), p.nom]);
+    return m;
+  }
+  host?.addEventListener('message', e => {
+    const m = e.data || {};
+    if (m.type !== 'keyCaptured' || !capture) return;
+    onCaptured(m.combo);
+  });
+  function onCaptured(combo) {
+    const c = capture; capture = null;
+    const m = { combo };
+    if (m.combo) {
+      const others = (allKeys(state).get(normKey(m.combo)) || []);
+      const self = c.kind === 'edit' ? actionLabel(state, (state.settings.Raccourcis.find(r => r.Id === c.id) || {}).Action)
+        : c.kind === 'perso' ? (state.perso.find(p => p.id === c.id) || {}).nom : null;
+      const clash = others.filter(o => o !== self);
+      if (clash.length && !confirm(`${m.combo} est déjà utilisé par : ${clash.join(', ')}.\nLes deux se déclencheront ensemble. Garder quand même ?`)) { renderShortcuts(state); return; }
+      if (c.kind === 'new') set('shortcutAdd', { action: c.action, touche: m.combo });
+      if (c.kind === 'edit') set('shortcutKey', { id: c.id, touche: m.combo });
+      if (c.kind === 'perso') set('persoKey', { id: c.id, touche: m.combo });
+    }
+    renderShortcuts(state);
+  }
+  document.querySelector('.page[data-page="raccourcis"]').addEventListener('click', e => {
+    const b = e.target.closest('[data-sc]');
+    if (!b) return;
+    const id = b.dataset.id;
+    switch (b.dataset.sc) {
+      case 'edit': capture?.id === id ? stopCapture() : startCapture({ kind: 'edit', id }); break;
+      case 'del': set('shortcutDelete', id); break;
+      case 'pkey': capture?.id === id ? stopCapture() : startCapture({ kind: 'perso', id }); break;
+      case 'pclear': set('persoKey', { id, touche: '' }); break;
+      case 'pmode': set('persoKey', { id, maintien: b.dataset.v === '1' }); break;
+    }
+  });
+
+  function renderShortcuts(s) {
+    if (!s) return;
+    const c = s.settings;
+    const sel = $('#scAction');
+    const groups = actionGroups(s);
+    const sig = JSON.stringify(groups);
+    if (sel.dataset.sig !== sig && document.activeElement !== sel) {
+      const keep = sel.value;
+      sel.innerHTML = groups.map(([g, items]) => `<optgroup label="${esc(g)}">${items.map(([v, t]) => `<option value="${esc(v)}">${esc(t)}</option>`).join('')}</optgroup>`).join('');
+      sel.dataset.sig = sig;
+      if (keep) sel.value = keep;
+    }
+    const waiting = capture?.kind === 'new';
+    $('#scAdd').textContent = waiting ? 'Annuler' : '⌨ Choisir la touche…';
+    $('#scWait').hidden = !capture;
+    $('#scWaitText').textContent = capture ? '⌨ Appuyez maintenant sur la combinaison voulue (ex. Ctrl + Maj + F5, une touche macro, un bouton latéral de la souris)… Échap pour annuler.' : '';
+    const keys = allKeys(s);
+    const clashNote = k => (keys.get(normKey(k)) || []).length > 1 ? `<div class="warn">⚠ Même combinaison que : ${esc(keys.get(normKey(k)).join(', '))}</div>` : '';
+    const list = c.Raccourcis || [];
+    $('#scList').innerHTML = list.length ? list.map(r => {
+      const w = capture?.kind === 'edit' && capture.id === r.Id;
+      return `<div class="scr"><span class="act">${esc(actionLabel(s, r.Action))}</span>
+        <span class="key ${w ? 'wait' : ''}">${w ? 'Appuyez…' : esc(r.Touche)}</span>
+        <button class="btn" data-sc="edit" data-id="${esc(r.Id)}" title="Changer la combinaison">${w ? 'Annuler' : '⌨'}</button>
+        <button class="btn danger" data-sc="del" data-id="${esc(r.Id)}" title="Supprimer">✕</button>${clashNote(r.Touche)}</div>`;
+    }).join('') : '<div class="sub">Aucun pour l\'instant : choisissez une action ci-dessus puis sa touche, ou ajoutez les exemples.</div>';
+    const perso = s.perso || [];
+    $('#scPerso').innerHTML = perso.length ? perso.map(p => {
+      const w = capture?.kind === 'perso' && capture.id === p.id;
+      return `<div class="scr"><span class="act">${p.type === 'objet' ? '🎩' : '🙂'} ${esc(p.nom)}</span>
+        <span class="key ${w ? 'wait' : p.touche ? '' : 'none'}">${w ? 'Appuyez…' : esc(p.touche || 'aucun')}</span>
+        <div class="seg"><button data-sc="pmode" data-v="0" data-id="${esc(p.id)}" class="${p.maintien ? '' : 'active'}">👆 Appuyer</button><button data-sc="pmode" data-v="1" data-id="${esc(p.id)}" class="${p.maintien ? 'active' : ''}">⏬ Maintenir</button></div>
+        <button class="btn" data-sc="pkey" data-id="${esc(p.id)}" title="Changer la combinaison">${w ? 'Annuler' : '⌨'}</button>
+        ${p.touche ? `<button class="btn danger" data-sc="pclear" data-id="${esc(p.id)}" title="Supprimer le raccourci">✕</button>` : ''}${p.touche ? clashNote(p.touche) : ''}</div>`;
+    }).join('') : '<div class="sub">Aucun extra : créez-en dans l\'éditeur de personnage.</div>';
+    const n = list.filter(r => r.Touche).length + perso.filter(p => p.touche).length;
+    $('#navRaccourcis').textContent = !c.RaccourcisActifs ? 'Désactivés' : n ? `${n} raccourci${n > 1 ? 's' : ''}` : 'Aucun';
+  }
+
+  document.querySelectorAll('[data-set]').forEach(group => {
+    group.addEventListener('click', e => {
+      const b = e.target.closest('[data-v]');
+      if (!b) return;
+      const v = group.hasAttribute('data-num') ? Number(b.dataset.v) : b.dataset.v;
+      group.querySelectorAll('[data-v]').forEach(x => x.classList.toggle('active', x === b));
+      set(group.dataset.set, v);
+    });
+  });
+  document.querySelectorAll('[data-tog]').forEach(cb => cb.addEventListener('change', () => set(cb.dataset.tog, cb.checked)));
+  document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.act === 'quit' && !confirm("Quitter Sully's Mii-Bongo ?")) return;
+    post({ type: 'action', name: b.dataset.act });
+  }));
+  document.querySelectorAll('[data-deco]').forEach(b => b.addEventListener('click', () => {
+    const on = !b.classList.contains('active');
+    b.classList.toggle('active', on);
+    set('decoration', `${b.dataset.deco}:${on ? 'on' : 'off'}`);
+  }));
+  $('#menuFull').addEventListener('click', () => {
+    if (confirm("Revenir au menu contextuel complet (clic droit sur l'icône) ?\nVous pourrez revenir à cette fenêtre depuis ce menu : « Utiliser la fenêtre de réglages »."))
+      set('menuStyle', 'full');
+  });
+  const orb = { on: false, az: 30, el: 18, zoom: 1 };
+  let orbPending = null, orbTimer = null, orbTouchedAt = 0;
+  function sendOrbit(patch) {
+    Object.assign(orb, patch);
+    orbPending = { ...(orbPending || {}), ...patch };
+    orbTouchedAt = Date.now();
+    drawOrbit();
+    if (!orbTimer) orbTimer = setTimeout(() => { orbTimer = null; set('orbit', orbPending); orbPending = null; }, 66);
+  }
+  function drawOrbit() {
+    const a = orb.az * Math.PI / 180, r = 46;
+    const cam = $('#dialCam');
+    cam.style.left = (59 + Math.sin(a) * r) + 'px';
+    cam.style.top = (59 + Math.cos(a) * r) + 'px';
+    $('#az').value = orb.az; $('#el').value = orb.el; $('#zoom').value = Math.round(orb.zoom * 100);
+    $('#azOut').textContent = Math.round(orb.az) + '°';
+    $('#elOut').textContent = Math.round(orb.el) + '°';
+    $('#zoomOut').textContent = Math.round(orb.zoom * 100) + ' %';
+    $('#orbitOn').checked = orb.on;
+    $('#cardOrbit').classList.toggle('off', !orb.on);
+  }
+  $('#orbitOn').addEventListener('change', e => sendOrbit({ on: e.target.checked }));
+  $('#az').addEventListener('input', e => sendOrbit({ on: true, az: +e.target.value }));
+  $('#el').addEventListener('input', e => sendOrbit({ on: true, el: +e.target.value }));
+  $('#zoom').addEventListener('input', e => sendOrbit({ on: true, zoom: e.target.value / 100 }));
+  document.querySelectorAll('#orbitPresets button').forEach(b => b.addEventListener('click', () => {
+    if (b.dataset.reset) sendOrbit({ on: true, az: 30, el: 18, zoom: 1 });
+    else sendOrbit({ on: true, az: +b.dataset.az, el: +b.dataset.el });
+  }));
+  const dial = $('#dial');
+  const dialAt = e => {
+    const r = dial.getBoundingClientRect();
+    const x = e.clientX - r.left - r.width / 2, y = e.clientY - r.top - r.height / 2;
+    sendOrbit({ on: true, az: Math.round(Math.atan2(x, y) * 180 / Math.PI) });
+  };
+  dial.addEventListener('pointerdown', e => { dial.setPointerCapture(e.pointerId); dial.classList.add('dragging'); dialAt(e); });
+  dial.addEventListener('pointermove', e => { if (dial.hasPointerCapture(e.pointerId)) dialAt(e); });
+  dial.addEventListener('pointerup', () => dial.classList.remove('dragging'));
+
+  $('#padPersos').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) set('padModel', b.dataset.v); });
+  $('#micDevice').addEventListener('change', e => set('micDevice', e.target.value));
+  $('#model').addEventListener('change', e => set('model', e.target.value));
+  $('#face').addEventListener('change', e => set('face', e.target.value));
+  $('#persoList').addEventListener('change', e => { const cb = e.target.closest('[data-perso]'); if (cb) set('persoItem', `${cb.dataset.perso}:${cb.checked ? 'on' : 'off'}`); });
+
+  function fillSelect(sel, items, value) {
+    const sig = JSON.stringify(items);
+    if (sel.dataset.sig !== sig && document.activeElement !== sel) {
+      sel.innerHTML = '';
+      for (const it of items) { const o = document.createElement('option'); o.value = it.v; o.textContent = it.t; sel.appendChild(o); }
+      sel.dataset.sig = sig;
+    }
+    if (document.activeElement !== sel) sel.value = value ?? '';
+  }
+  const mark = (key, value) => document.querySelectorAll(`[data-set="${key}"] [data-v]`).forEach(b => b.classList.toggle('active', String(b.dataset.v) === String(value)));
+  const stateBox = (el, text, good) => { el.textContent = text; el.classList.toggle('good', !!good); };
+
+  function render(s) {
+    if (!s || s.type !== 'state') return;
+    state = s;
+    const c = s.settings;
+    mark('mode', c.Mode); mark('background', c.Background); mark('view', c.View);
+    mark('decorView', c.DecorView); mark('screenFps', c.ScreenFps); mark('micFloor', Math.round(c.MicFloorDb));
+    mark('wheelRange', c.WheelRange);
+    mark('floor', c.Floor || 'classic');
+    mark('padModel', c.PadModel || '8bitdo');
+    mark('fluidite', c.Fluidite || 'auto');
+    mark('theme', c.Theme || 'classique');
+    window.setUiTheme?.(c.Theme);
+    $('#navTheme').textContent = { wii: 'Wii', carnet: 'Carnet' }[c.Theme] || 'Classique';
+    renderPresets(s);
+    const persos = s.pads || [], hidden = c.HiddenPads || [];
+    document.querySelectorAll('#cardPad .padpick[data-v]').forEach(b => { if (['8bitdo', 'xbox', 'xbox25'].includes(b.dataset.v)) b.style.display = hidden.includes(b.dataset.v) ? 'none' : ''; });
+    const padSig = JSON.stringify(persos);
+    if ($('#padPersos').dataset.sig !== padSig) {
+      $('#padPersos').dataset.sig = padSig;
+      $('#padPersos').innerHTML = persos.length
+        ? persos.map(p => `<button class="padpick" data-v="${p.id.replace(/"/g, '&quot;')}"><span style="font-size:20px">🎮</span><b></b><small>perso</small></button>`).join('')
+        : '<div class="sub">Aucune pour l\'instant.</div>';
+      persos.forEach((p, i) => { const b = $('#padPersos').children[i]; if (b?.querySelector('b')) b.querySelector('b').textContent = p.nom; });
+    }
+    document.querySelectorAll('#padPersos [data-v]').forEach(b => b.classList.toggle('active', b.dataset.v === c.PadModel));
+    if (Date.now() - orbTouchedAt > 1500) { Object.assign(orb, { on: c.Orbit, az: c.OrbitAz, el: c.OrbitEl, zoom: c.OrbitZoom }); drawOrbit(); }
+    const sizes = [260, 420, 640, 900];
+    mark('size', sizes.reduce((a, b) => Math.abs(b - c.Size) < Math.abs(a - c.Size) ? b : a));
+    const tog = { showWindow: s.windowVisible, topMost: c.TopMost, clickThrough: c.ClickThrough, decor: c.Decor,
+                  micEnabled: c.MicEnabled, vrMirror: c.VrMirror, startup: s.startup, showObjects: c.ShowObjects, hideOccluders: c.HideOccluders,
+                  shortcutsEnabled: c.RaccourcisActifs, padMinis: c.PadMinis };
+    for (const [k, v] of Object.entries(tog)) { const cb = document.querySelector(`[data-tog="${k}"]`); if (cb) cb.checked = !!v; }
+    document.querySelectorAll('[data-deco]').forEach(b => b.classList.toggle('active', c.Decorations.includes(b.dataset.deco)));
+    $('#decorHint').style.display = c.Decor ? 'none' : '';
+    fillSelect($('#micDevice'), [{ v: '', t: 'Micro par défaut de Windows' }, ...s.micDevices.map(d => ({ v: d.id, t: d.name }))], c.MicDeviceId || '');
+    fillSelect($('#model'), s.models.map(m => ({ v: m, t: m.replace(/\.(glb|gltf)$/i, '') })), c.Model);
+    fillSelect($('#face'), [{ v: '', t: "Visage d'origine du Mii (sans animation)" }, ...s.faces.map(f => ({ v: f.name, t: f.name }))], c.Face ?? '');
+    const fs = s.faces.find(f => f.name === c.Face);
+    const items = fs ? [...(fs.blink ? [[fs.blink, 'yeux fermés']] : []), ...fs.mouths.map((m, i) => [m, 'bouche ' + (i + 1)])] : [];
+    const sig = JSON.stringify(items);
+    if ($('#facePreview').dataset.sig !== sig) {
+      $('#facePreview').dataset.sig = sig;
+      $('#facePreview').innerHTML = items.map(([src, label]) => `<figure><img src="${src}" alt=""><figcaption>${label}</figcaption></figure>`).join('');
+    }
+    const perso = s.perso || [];
+    const persoSig = JSON.stringify(perso.map(p => [p.id, p.nom, p.type, p.touche, p.maintien, p.autreMii]));
+    if ($('#persoList').dataset.sig !== persoSig) {
+      $('#persoList').dataset.sig = persoSig;
+      $('#persoList').innerHTML = perso.length ? '' : '<div class="sub">Aucun pour l\'instant : ouvrez l\'éditeur de personnage.</div>';
+      for (const p of perso) {
+        const row = document.createElement('label');
+        row.className = 'sw' + (p.autreMii ? ' dim' : '');
+        row.title = p.autreMii ? 'Réservé au Mii ' + p.autreMii : (p.maintien ? 'Raccourci : actif tant que la touche est enfoncée' : 'Raccourci : appuyer pour activer / désactiver');
+        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = (p.type === 'objet' ? '🎩 ' : '🙂 ') + p.nom;
+        row.appendChild(nm);
+        if (p.touche) { const k = document.createElement('span'); k.className = 'k'; k.textContent = (p.maintien ? '⏬ ' : '') + p.touche; row.appendChild(k); }
+        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.dataset.perso = p.id;
+        const t = document.createElement('span'); t.className = 't';
+        row.append(cb, t);
+        $('#persoList').appendChild(row);
+      }
+    }
+    for (const p of perso) { const cb = $('#persoList').querySelector(`[data-perso="${CSS.escape(p.id)}"]`); if (cb) cb.checked = !!p.on; }
+    renderShortcuts(s);
+    $('#micError').textContent = s.micError ? '⚠ ' + s.micError : '';
+    $('#obsUrl').value = s.obsUrl;
+    stateBox($('#sceneState'), s.sceneObjects > 0 ? `Scène : ${s.sceneObjects} objet${s.sceneObjects > 1 ? 's' : ''}` : "Scène vide : ouvrez l'éditeur pour ajouter des objets", s.sceneObjects > 0);
+    $('#pages').textContent = s.status.pages ? `● Affiché sur ${s.status.pages} page${s.status.pages > 1 ? 's' : ''}` : '○ Le Mii n\'est affiché nulle part';
+    $('#pages').classList.toggle('on', s.status.pages > 0);
+    stateBox($('#wheelState'), 'État : ' + s.status.wheel, /connecté/.test(s.status.wheel));
+    stateBox($('#padState'), 'État : ' + s.status.pad, /connectée/.test(s.status.pad));
+    stateBox($('#vrState'), 'État : ' + s.status.vr, /suivi|connecté/.test(s.status.vr));
+    stateBox($('#screensState'), 'Capture des écrans : ' + s.status.screens, /img\/s/.test(s.status.screens));
+    $('#cardWheel').hidden = c.Mode !== 'wheel';
+    $('#cardPad').hidden = c.Mode !== 'pad';
+    $('#cardVr').hidden = c.Mode !== 'vr';
+    $('#cardHint').hidden = !['keyboard', 'bongo'].includes(c.Mode);
+    $('#hintText').textContent = c.Mode === 'bongo'
+      ? 'Le Mii tape sur ses bongos quand vous tapez au clavier ou cliquez (gauche / droite).'
+      : 'Le Mii tape sur son clavier quand vous tapez, et sa souris suit la vôtre. Rien à brancher ni à régler.';
+    $('#decorBody').classList.toggle('dim', !c.Decor);
+    const modes = { keyboard: 'Clavier + souris', bongo: 'Bongos', pad: 'Manette', wheel: 'Volant', vr: 'Debout (VR)' };
+    const nOn = (s.perso || []).filter(p => p.on).length;
+    const sizeName = { 260: 'petite', 420: 'moyenne', 640: 'grande', 900: 'très grande' }[c.Size] || '';
+    $('#navInstrument').textContent = modes[c.Mode] || c.Mode;
+    $('#navPersonnage').textContent = (c.Model || '').replace(/\.(glb|gltf)$/i, '') + (nOn ? ` · ${nOn} extra${nOn > 1 ? 's' : ''} actif${nOn > 1 ? 's' : ''}` : '');
+    $('#navAffichage').textContent = (s.windowVisible ? ('Fenêtre ' + sizeName).trim() : 'Fenêtre masquée') + (c.Orbit ? ' · orbitale' : '');
+    const curPreset = (s.scenePresets || []).find(p => p.file.toLowerCase() === (c.ScenePreset || '').toLowerCase());
+    $('#navDecor').textContent = (c.Decor ? 'Décor activé' : 'Sans décor') + (curPreset ? ' · ' + curPreset.nom : s.sceneObjects ? ` · ${s.sceneObjects} objet${s.sceneObjects > 1 ? 's' : ''}` : '');
+    $('#navSysteme').textContent = s.status.pages ? `Mii sur ${s.status.pages} page${s.status.pages > 1 ? 's' : ''}` : 'Mii affiché nulle part';
+  }
+
+  let firstPage = 'instrument';
+  try { firstPage = localStorage.getItem('page') || firstPage; } catch { }
+  go(firstPage);
+  host?.addEventListener('message', e => render(e.data));
+  post({ type: 'ready' });
+</script>
+<div class="madeby">Made with AI</div>
+</body>
+</html>

@@ -1,0 +1,8 @@
+IMAGES — Sully's Mii-Bongo
+==========================
+
+Déposez ici vos images (PNG, JPG ou WEBP) pour les utiliser dans l'éditeur de scène :
+  - comme texture d'un mur, d'un cube, d'un sol… (elle se répète, réglez « Motif » pour sa taille) ;
+  - sur un « Panneau / image » (poster, tableau, logo…) : l'image entière est affichée.
+
+Elles apparaissent dans la liste des textures de l'éditeur (bouton ↻ pour actualiser).

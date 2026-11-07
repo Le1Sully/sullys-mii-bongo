@@ -1,0 +1,18 @@
+Sully's Mii-Bongo — crédits et licences des éléments tiers
+=========================================================
+
+Rendu 3D : three.js r160 — licence MIT — https://threejs.org
+Audio (niveau du micro) : NAudio — licence MIT — https://github.com/naudio/NAudio
+Volant : Vortice.DirectInput — licence MIT — https://github.com/amerkoleci/Vortice.Windows
+Manettes PlayStation (HID) : HidSharp — licence Apache 2.0 — https://www.zer7.com/software/hidsharp
+Casque VR : OpenVR v2.5.1 de Valve — licence BSD-3 (texte complet dans « OpenVR (Valve, BSD-3).txt »)
+Affichage web : Microsoft Edge WebView2 — https://developer.microsoft.com/microsoft-edge/webview2/
+
+Modèle de manette 8BitDo : « 8BitDo Ultimate 2C Controller — Low Poly » par Isshan
+  https://sketchfab.com/3d-models/8bitdo-ultimate-2c-controller-low-poly-ae49e071dc174f008940ed59d1eebb9c
+  licence CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/) — recoloré et découpé en pièces mobiles.
+
+Modèle de manette Xbox : « Chou1 » par hchou
+  https://sketchfab.com/3d-models/chou1-ba435f0822f645459ba87840eef254ae
+  licence CC BY 4.0 (http://creativecommons.org/licenses/by/4.0/) — redressé, texture nettoyée,
+  découpé en pièces mobiles ; la version « 25 ans » est recolorée par l'appli.

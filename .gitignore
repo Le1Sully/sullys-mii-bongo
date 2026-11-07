@@ -1,0 +1,26 @@
+bin/
+obj/
+.vs/
+.vscode/
+*.user
+*.suo
+
+Mii/*
+!Mii/Lisez-moi.txt
+!Mii/Défaut.glb
+
+Visages/*
+!Visages/Lisez-moi.txt
+!Visages/Défaut/
+
+Scènes/*
+!Scènes/Guide pour les IA.md
+!Scènes/Exemple - Petite chambre.json
+
+Personnage/Personnage.json
+
+Objets/*
+!Objets/Lisez-moi.txt
+
+Manettes/*
+!Manettes/Lisez-moi.txt

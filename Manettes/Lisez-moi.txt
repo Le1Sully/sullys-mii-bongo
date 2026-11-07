@@ -1,0 +1,14 @@
+MANETTES — Sully's Mii-Bongo
+============================
+
+Ce dossier contient :
+  - les manettes créées avec l'éditeur de manettes (fichiers .json) ;
+  - vos propres modèles 3D de manettes (fichiers .glb).
+
+Pour utiliser votre modèle : déposez le .glb ici, puis dans l'appli :
+réglages → Manette → « Éditeur de manettes » → ➕ Nouvelle → choisissez votre modèle.
+Ensuite :
+  1. onglet Modèle : tournez-le pour que les boutons regardent la flèche bleue et les gâchettes la flèche orange ;
+  2. « ＋ Ajouter une pièce » puis cliquez sur chaque bouton (le contour est trouvé tout seul) ;
+  3. onglet Boutons : vérifiez l'assignation en appuyant sur les boutons de votre vraie manette ;
+  4. ✓ Utiliser.

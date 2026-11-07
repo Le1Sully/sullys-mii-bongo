@@ -1,0 +1,26 @@
+VISAGES — Sully's Mii-Bongo
+===========================
+
+Chaque sous-dossier ici est un « visage » : il peut être utilisé par n'importe lequel de vos Mii.
+On le choisit dans les réglages de l'appli (section Personnage → Visage).
+
+Contenu d'un dossier de visage (images PNG, 1024 × 1024, fond transparent,
+même disposition que la texture du visage de vos Mii) :
+
+  yeux fermés.png   → on en prend les YEUX pour le clignement
+  bouche 1.png      → bouche un peu ouverte (on n'en prend que la BOUCHE)
+  bouche 2.png      → bouche plus ouverte
+  bouche 3.png      → bouche grande ouverte
+  …                 → autant de bouches que vous voulez : bouche 4.png, bouche 5.png…
+
+Quand le Mii ne parle pas, il garde la bouche d'origine de son modèle.
+Plus vous parlez fort, plus le numéro de bouche utilisé est grand.
+
+Pour créer un nouveau visage : copiez le dossier « Défaut », renommez-le
+(ex. « Sully »), puis remplacez les images. Il apparaît tout seul dans la liste
+de l'appli (bouton « Actualiser » ou en rouvrant les réglages).
+
+Réglage avancé (facultatif) : un fichier visage.json dans le dossier, par ex.
+  { "separation": 0.586, "materiau": "Mask" }
+  - separation : hauteur (0 = haut, 1 = bas) qui sépare les yeux (au-dessus) de la bouche (en dessous)
+  - materiau   : nom du matériau du visage dans le modèle .glb (« Mask » pour les Mii)

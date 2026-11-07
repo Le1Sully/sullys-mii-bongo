@@ -1,0 +1,125 @@
+:root[data-theme="wii"] {
+  --wii-bg: #eceef0;
+  --wii-panel: #fbfbfb;
+  --wii-line: #c9cbcd;
+  --wii-text: #3b3b3b;
+  --wii-muted: #7c7f83;
+  --wii-blue: #2ab3e8;
+  --wii-blue-deep: #1592c7;
+  --wii-blue-soft: #e3f5fd;
+  --wii-green: #3fae5a;
+  --wii-red: #d8473f;
+  --wii-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 -2px 0 rgba(0, 0, 0, .06) inset, 0 2px 3px rgba(0, 0, 0, .22);
+  --wii-shadow-in: 0 1px 3px rgba(0, 0, 0, .18) inset;
+  --bg: var(--wii-bg); --card: var(--wii-panel); --card2: #ffffff; --line: var(--wii-line);
+  --text: var(--wii-text); --muted: var(--wii-muted); --accent: var(--wii-blue); --accent2: var(--wii-blue-deep);
+  --ok: var(--wii-blue); --warn: #c77a12;
+  color-scheme: light;
+}
+
+:root[data-theme="wii"] body {
+  background: repeating-linear-gradient(180deg, #f3f4f5 0 3px, #e9ebed 3px 6px) !important;
+  color: var(--wii-text) !important;
+  font-family: "Rodin NTLG", "FOT-Rodin Pro", "Segoe UI", system-ui, sans-serif;
+}
+
+:root[data-theme="wii"] :is(.btn, .seg button, .tile, .padpick, #nav button, .scr .btn, .capture .mod,
+  .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button) {
+  background: linear-gradient(180deg, #ffffff 0%, #f7f7f7 55%, #e9eaeb 100%) !important;
+  border: 1.5px solid var(--wii-line) !important;
+  border-radius: 14px !important;
+  color: var(--wii-text) !important;
+  box-shadow: var(--wii-shadow) !important;
+  text-shadow: none !important;
+  transition: border-color .12s, box-shadow .12s, transform .06s;
+}
+:root[data-theme="wii"] :is(.btn, .seg button, .tile, .padpick, #nav button, .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button):hover {
+  border-color: #8fd3f0 !important;
+}
+:root[data-theme="wii"] :is(.btn, .seg button, .tile, .padpick, #nav button, .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button):active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .2) !important;
+}
+:root[data-theme="wii"] :is(.seg button.active, .tile.active, .padpick.active, #nav button.active,
+  .ed button.on, .ce button.on, .panel button.on, .list button.on, .it.sel):not(.tex button, .texgrid button, .imgs button, button.sw) {
+  background: linear-gradient(180deg, #ffffff 0%, #eef9fe 60%, #d7f0fb 100%) !important;
+  border-color: var(--wii-blue) !important;
+  color: #0f6f99 !important;
+  box-shadow: 0 0 0 3px rgba(42, 179, 232, .35), var(--wii-shadow) !important;
+}
+:root[data-theme="wii"] :is(.btn.primary, .ed button.primary, .ce button.primary, .panel button.primary, .modal button.primary) {
+  color: var(--wii-blue-deep) !important;
+  font-weight: 600;
+  border-color: #9ad8f2 !important;
+}
+:root[data-theme="wii"] :is(.btn.danger, .danger) { color: var(--wii-red) !important; }
+:root[data-theme="wii"] :is(button:disabled) { opacity: .45; }
+
+:root[data-theme="wii"] :is(.card, .ed.panel, .ed .panel, .ce.panel, .panel, .modal .box) {
+  background: var(--wii-panel) !important;
+  border: 1.5px solid #d3d5d8 !important;
+  border-radius: 18px !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .12) !important;
+  color: var(--wii-text) !important;
+}
+:root[data-theme="wii"] :is(.card h2, .ed h3, .ce h3, .panel h3, h3) { color: #5f6368 !important; }
+:root[data-theme="wii"] :is(.sub, .muted, .row > label, .row > label.lbl, .sliders label, .sl, .map label, .trio div, .duo div, small) { color: var(--wii-muted) !important; }
+:root[data-theme="wii"] :is(.warn, .err) { color: #c77a12 !important; }
+
+:root[data-theme="wii"] :is(select, input[type=text], input[type=number], textarea, .ed select, .ce select, .panel select) {
+  background: #ffffff !important;
+  color: var(--wii-text) !important;
+  border: 1.5px solid #b9bcbf !important;
+  border-radius: 12px !important;
+  box-shadow: var(--wii-shadow-in) !important;
+}
+:root[data-theme="wii"] :is(select, input, textarea):focus { outline: none; border-color: var(--wii-blue) !important; box-shadow: 0 0 0 3px rgba(42, 179, 232, .3) !important; }
+:root[data-theme="wii"] input[type=range] { accent-color: var(--wii-blue) !important; }
+:root[data-theme="wii"] option, :root[data-theme="wii"] optgroup { background: #fff; color: var(--wii-text); }
+
+:root[data-theme="wii"] .sw .t { background: #cfd2d5 !important; box-shadow: var(--wii-shadow-in); }
+:root[data-theme="wii"] .sw input:checked + .t { background: var(--wii-blue) !important; }
+:root[data-theme="wii"] .sw .t::after, :root[data-theme="wii"] button.sw::after { box-shadow: 0 1px 2px rgba(0, 0, 0, .35); }
+:root[data-theme="wii"] :is(.ce, .ed, .panel, body) button.sw { background: #cfd2d5 !important; border: 0 !important; border-radius: 99px !important; box-shadow: var(--wii-shadow-in) !important; }
+:root[data-theme="wii"] :is(.ce, .ed, .panel, body) button.sw.on { background: var(--wii-blue) !important; }
+
+:root[data-theme="wii"] .logo { background: linear-gradient(180deg, #ffffff, #e6e7e8) !important; border: 1.5px solid var(--wii-line); box-shadow: var(--wii-shadow); }
+:root[data-theme="wii"] h1 { color: #4a4d50; }
+:root[data-theme="wii"] .pill { background: #fff; border: 1.5px solid var(--wii-line); color: var(--wii-muted); box-shadow: var(--wii-shadow); }
+:root[data-theme="wii"] .pill.on { color: #0f6f99; border-color: #9ad8f2; background: var(--wii-blue-soft); }
+:root[data-theme="wii"] .state { background: #f0f1f2 !important; color: var(--wii-muted) !important; border: 1px solid #e0e2e4; }
+:root[data-theme="wii"] .state.good { background: #e8f7fd !important; color: #0f6f99 !important; border-color: #b9e6f8; }
+:root[data-theme="wii"] #nav b { color: var(--wii-text); }
+:root[data-theme="wii"] #nav button { margin-bottom: 4px; }
+:root[data-theme="wii"] #nav button.mini { border-radius: 12px !important; }
+:root[data-theme="wii"] #nav .navfoot { color: var(--wii-muted); }
+:root[data-theme="wii"] .tile.active, :root[data-theme="wii"] .padpick.active { background: linear-gradient(180deg, #ffffff, #e3f5fd) !important; }
+:root[data-theme="wii"] .faces img { background: #e8e9ea !important; border-color: var(--wii-line) !important; }
+:root[data-theme="wii"] .plist .k, :root[data-theme="wii"] .it .k { background: #fff !important; color: var(--wii-text) !important; border: 1px solid var(--wii-line) !important; }
+:root[data-theme="wii"] .scr, :root[data-theme="wii"] .perf .pr { background: #f3f4f5 !important; border: 1px solid #e0e2e4; }
+:root[data-theme="wii"] :is(.scr .key, .ce .key) { background: #fff !important; color: var(--wii-text) !important; border: 1.5px solid var(--wii-line) !important; box-shadow: var(--wii-shadow-in); }
+:root[data-theme="wii"] :is(.scr .key.wait, .ce .key.wait) { border-color: var(--wii-blue) !important; color: var(--wii-blue-deep) !important; }
+:root[data-theme="wii"] .capture { border-color: var(--wii-blue) !important; color: var(--wii-blue-deep) !important; background: var(--wii-blue-soft); }
+:root[data-theme="wii"] .perf .good { color: #2c8a47 !important; }
+:root[data-theme="wii"] .dial { background: radial-gradient(circle, #ffffff 0 38%, #eef0f2 39% 100%) !important; border: 1.5px solid var(--wii-line) !important; box-shadow: var(--wii-shadow-in); }
+:root[data-theme="wii"] .dial .cam { background: var(--wii-blue) !important; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); }
+:root[data-theme="wii"] details summary { color: var(--wii-muted); }
+:root[data-theme="wii"] .madeby { color: #9a9da1; }
+:root[data-theme="wii"] #nohost { color: var(--wii-muted); }
+
+:root[data-theme="wii"] :is(.ed, .ce) { color: var(--wii-text) !important; }
+:root[data-theme="wii"] :is(#edHelp, #ceHelp, #help) { color: #4a4d50 !important; text-shadow: 0 1px 0 rgba(255, 255, 255, .9) !important; }
+:root[data-theme="wii"] :is(#edHelp kbd) { background: #fff !important; border-color: var(--wii-line) !important; color: var(--wii-text); }
+:root[data-theme="wii"] :is(#edTop .st, #ceTop .st, .st) { color: var(--wii-muted) !important; }
+:root[data-theme="wii"] .list button { box-shadow: none !important; background: transparent !important; border-color: transparent !important; }
+:root[data-theme="wii"] .list button.on { box-shadow: 0 0 0 2px rgba(42, 179, 232, .3) !important; background: #eef9fe !important; }
+:root[data-theme="wii"] .it:hover { background: #f1f3f4 !important; }
+:root[data-theme="wii"] .it.sel { border-radius: 12px; }
+:root[data-theme="wii"] :is(.tex button, .texgrid button, .imgs button) { box-shadow: 0 1px 3px rgba(0, 0, 0, .25) !important; border-radius: 10px !important; }
+:root[data-theme="wii"] :is(.tex button.on, .texgrid button.on, .imgs button.on) { border-color: var(--wii-blue) !important; box-shadow: 0 0 0 3px rgba(42, 179, 232, .4) !important; }
+:root[data-theme="wii"] :is(.tex button, .texgrid button) { background-color: #fff !important; }
+:root[data-theme="wii"] .src button.on { background: var(--wii-blue-soft) !important; border-color: var(--wii-blue) !important; color: #0f6f99 !important; }
+:root[data-theme="wii"] .edModal, :root[data-theme="wii"] .modal { background: rgba(230, 232, 235, .7) !important; }
+:root[data-theme="wii"] .edModal textarea { background: #fff !important; color: var(--wii-text) !important; }
+:root[data-theme="wii"] .pressed span { background: var(--wii-blue-soft) !important; color: #0f6f99 !important; border: 1px solid #b9e6f8; }
+:root[data-theme="wii"] .map label.lit { color: var(--wii-blue-deep) !important; }

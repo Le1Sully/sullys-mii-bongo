@@ -1,0 +1,11 @@
+MII — Sully's Mii-Bongo
+=======================
+
+Déposez ici vos Mii en 3D (fichiers .glb), puis choisissez-les dans les réglages de l'appli
+(section Personnage → Mii).
+
+Les modèles doivent avoir un squelette de Mii (os Arm_1_L/R, Arm_2_L/R, Wrist_L/R, Head, Spine_1),
+comme ceux exportés depuis Miitopia / Tomodachi.
+
+Les visages animés (bouche qui parle, clignement des yeux) sont dans le dossier « Visages » :
+ils sont communs à tous les Mii.

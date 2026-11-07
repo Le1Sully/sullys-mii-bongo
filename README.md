@@ -1,0 +1,573 @@
+# Sully's Mii-Bongo
+
+Application Windows dans l'esprit de *Bongobs Cat* (version clavier + souris) : votre Mii 3D (`Défaut.glb`)
+est assis à un bureau, tape sur son clavier quand vous tapez, tient une souris qui suit la vôtre,
+**parle quand vous parlez** (bouche animée par le micro) et **cligne des yeux**. La tête suit le curseur.
+
+Elle fonctionne de deux façons en même temps :
+
+1. **Fenêtre overlay** sur le bureau : transparente, toujours au premier plan, déplaçable.
+2. **Source OBS** : l'appli sert la scène sur `http://localhost:7878/`, à ajouter comme *Source navigateur*.
+
+## Lancer
+
+Double-cliquez sur **`Sully's Mii-Bongo.exe`** (dossier `D:\Mii\Sully's Mii-Bongo`, ou le raccourci
+`Sully's Mii-Bongo` dans `D:\Mii`).
+Il faut le *.NET 10 Desktop Runtime* et *WebView2* (déjà présent sur Windows 11).
+
+Le dossier de l'appli ne contient que l'essentiel :
+
+| Élément | Contenu |
+|---|---|
+| `Sully's Mii-Bongo.exe` | l'application (les pages 3D, les manettes 3D et l'icône sont intégrées dedans) |
+| `Mii\` | **vos Mii** (fichiers `.glb`) |
+| `Visages\` | **les visages** (bouche qui parle, yeux fermés), communs à tous les Mii : un sous-dossier par visage |
+| `Images\` | vos images pour l'éditeur de scène (textures, posters) |
+| `Objets\` | vos modèles 3D (`.glb`) à placer avec l'éditeur de scène |
+| `Manettes\` | vos manettes créées avec l'**éditeur de manettes** (`.json`) et vos modèles 3D de manettes (`.glb`) |
+| `Scènes\` | vos **préréglages de scène** et scènes exportées (`.json`), un exemple, et le **Guide pour les IA** (pour faire créer des scènes par une IA) |
+| `Personnage\` | l'**éditeur de personnage** : `Expressions\` (visages en plus), `Accessoires\` (modèles 3D à accrocher au Mii), `Personnage.json` |
+| `Lisez-moi.md` | ce mode d'emploi |
+| `Licences\` | crédits et licences des éléments tiers |
+
+Vos réglages sont enregistrés dans `%APPDATA%\Sully's Mii-Bongo\settings.json` (ceux de l'ancienne version
+« Mii Bongo » sont repris au premier lancement, ainsi que le lancement au démarrage de Windows).
+
+Une icône de bouffon apparaît dans la zone de notification.
+
+**Double-cliquez sur l'icône** (ou clic droit → *Ouvrir les réglages de Sully's Mii-Bongo…*) pour ouvrir la
+**fenêtre de réglages**. À gauche, 5 pages (sous chacune, un résumé de vos réglages actuels) et des raccourcis
+vers les trois éditeurs ; la page ouverte la dernière fois est rouverte :
+
+| Page | Contenu |
+|---|---|
+| 🎹 Instrument | Clavier + souris, Bongos, Manette, Volant, Debout (casque VR) — puis **seulement** les réglages de l'instrument choisi : modèle de manette et vos manettes, rotation du volant et pédales, miroir et recentrage VR, état en direct |
+| 🃏 Personnage | Mii et visage (avec aperçu), voix (micro, sensibilité), **extras** : un interrupteur par expression / objet accroché (avec son raccourci) et l'**éditeur de personnage** |
+| 🪟 Affichage | fenêtre sur le bureau (afficher, premier plan, verrouiller, taille, fond, **fluidité** : Fluide 60 img/s, **Auto** 60 pendant l'activité et 30 au repos, Économe 30 img/s) ; caméra (cadrage, vue orbitale) |
+| 🏠 Décor & scène | décor (vue, décorations, sol), écrans en direct (fluidité), éditeur de scène et vos objets |
+| ⌨️ Raccourcis | **tous les raccourcis clavier** au même endroit : en créer pour les réglages (changer d'instrument, instrument suivant, afficher / masquer ou verrouiller la fenêtre, cadrage, vue orbitale, décor, objets, micro, désactiver les extras, modèle de manette, fluidité, recharger), changer ou supprimer ceux des extras (avec *Appuyer* / *Maintenir*), interrupteur général, alerte si une combinaison sert deux fois |
+| 🎨 Thème | **Classique** (sombre), **Wii** (clair, boutons blancs arrondis, sélection bleue) ou **Carnet** (papier, encre, traits à main levée) : réglages, trois éditeurs et menu de l'icône |
+| 📺 OBS & système | URL pour OBS, démarrage avec Windows, ancien menu complet, **⚡ Performances** (images par seconde et saccades de chaque page qui affiche le Mii) |
+
+Relancer `Sully's Mii-Bongo.exe` alors qu'il tourne déjà ouvre aussi la fenêtre de réglages.
+Le clic droit sur l'icône garde l'essentiel : *Afficher la fenêtre*, *Copier l'URL pour OBS*, les trois éditeurs, *Recharger*, *Quitter*.
+
+Vous préférez l'ancien menu ? Bouton **☰ Menu contextuel classique** en haut de la fenêtre de réglages : le clic droit
+redevient le menu complet (et le double-clic affiche le Mii). Pour revenir à la fenêtre : menu complet →
+**Utiliser la fenêtre de réglages**.
+
+La fenêtre de réglages dialogue avec l'appli par le canal interne de WebView2 : aucun site web ouvert
+dans votre navigateur ne peut modifier vos réglages.
+
+Dans la fenêtre : **glisser** pour la déplacer, **molette** pour la redimensionner,
+**clic droit + glisser** pour tourner autour du Mii (vue orbitale), **Ctrl + molette** pour zoomer.
+
+## Éditeur de scène
+
+Pour construire un décor à votre goût autour du Mii : réglages → **Éditeur de scène → ✏️ Ouvrir l'éditeur**
+(ou clic droit sur l'icône → *Éditeur de scène…*, ou `"Sully's Mii-Bongo.exe" --editor`).
+L'éditeur s'ouvre dans sa propre fenêtre, avec votre Mii et vos réglages actuels.
+
+**Ajouter** (panneau de gauche) : 🧊 Cube, 🧱 Mur, ⬜ Plaque / sol, 🏛️ Colonne, ⚪ Boule, 🔺 Pyramide,
+🪜 Escalier, 🖼️ Panneau / image, 🖥️ **Écran**, et 📦 vos **objets 3D** (fichiers `.glb` du dossier `Objets`).
+Le nouvel objet apparaît au sol, au milieu de la vue. La liste *Dans la scène* permet de le resélectionner.
+
+**Placer** :
+
+| Action | Effet |
+|---|---|
+| clic | sélectionner (cadre jaune) |
+| glisser un objet | le déplacer sur le sol |
+| `Maj` + glisser | le monter / descendre |
+| clic droit + glisser | tourner autour de la scène |
+| clic molette (ou `Maj` + clic droit) + glisser | déplacer la vue |
+| molette | zoomer |
+| `Q` / `E` | pivoter de 15° |
+| flèches, `Page↑` / `Page↓` | ajuster la position (avec `Alt` : tout petit pas) |
+| `Ctrl`+`D`, `Suppr`, `Ctrl`+`Z` / `Ctrl`+`Y` | dupliquer, supprimer, annuler / rétablir |
+| `F` | centrer la vue sur l'objet |
+
+**Réglages de l'objet** (panneau de droite) : nom, position, rotation (pivoter, incliner), taille (largeur, hauteur,
+profondeur ; une seule taille pour un objet 3D), **texture**, **couleur** (teinte la texture) et taille du **motif**.
+Boutons *Au sol*, *Dupliquer*, *Supprimer*.
+
+**Écrans** : un objet *Écran* affiche ce que vous choisissez en un clic dans **Affiche** : *Écran 1 (principal)*,
+*Écran 2*… (vos vrais écrans, en direct), *Éteint*, ou une de vos images. Options : *Pied jusqu'au sol*, couleur du
+cadre, bouton *16:9*. Ajoutez-en autant que vous voulez ; un nouvel écran se tourne tout seul vers le Mii, et le Mii
+regarde l'écran où se trouve votre souris. La capture de vos écrans démarre toute seule quand un objet *Écran* en a
+besoin (réglages → Décor → *Écrans* : fluidité, ou *Désactivé*).
+
+**Éléments de base** (liste à gauche) : ce qui fait partie de la configuration, modifiable aussi :
+
+| Élément | Réglages |
+|---|---|
+| 🧍 Le Mii (sa place) | **avancer / reculer** (plus près ou plus loin du bureau, de la manette, du volant…) et décaler à gauche / droite, avec des curseurs ou en le faisant glisser dans la vue ; seul le Mii bouge, avec sa chaise : l'instrument reste en place et ses bras le suivent |
+| 🪑 Table du bureau (mode clavier + souris) | texture et couleur du plateau, taille du motif, **largeur** et **profondeur**, couleur des pieds et du tapis de souris, *Masquer la table*, *Table d'origine* (le clavier et la souris restent en place) |
+| 🖥️ Écrans 1 et 2 du décor (décor + « Deux écrans ») | **ce qu'ils affichent**, position (glisser comme un objet), rotation, taille, couleur du cadre, *Masquer*, *Remettre à sa place d'origine* |
+
+**Textures** : Uni, Bois, Brique, Béton, Pierre, Carrelage, Damier, Moquette, Gazon, Métal, Marbre, Papier peint,
+Verre (transparent), et **vos images** (dossier `Images` : PNG, JPG ou WEBP). Sur un *Panneau / image*, l'image est
+affichée en entier (poster, tableau, logo) ; sur les autres formes, elle se répète comme un motif.
+
+En haut : *Annuler*, *Rétablir*, **🧲 Aimant** (pas de 0,05 et angles de 15°), *Masquer le Mii* (pour placer des objets
+derrière lui), *Tout voir*.
+
+- Unités : **1 = la hauteur du Mii** (la scène suit sa taille si vous changez de Mii). La hauteur 0 est le sol.
+- Chaque modification est **enregistrée toute seule** (`%APPDATA%\Sully's Mii-Bongo\scene.json`) et apparaît
+  aussitôt dans la fenêtre du Mii et dans OBS, sans recharger.
+- Vos objets s'affichent dans toutes les vues (avec ou sans décor). Pour les masquer : réglages → *Afficher mes objets*.
+- **Un objet qui cache le Mii devient invisible** (en fondu), puis réapparaît quand il ne le cache plus — dans toutes
+  les vues, y compris la vue orbitale et OBS. Désactivable : réglages → Éditeur de scène →
+  *Rendre invisibles les objets qui cachent le Mii*. (Dans l'éditeur, tout reste visible pour pouvoir travailler.)
+
+### Préréglages de scène
+
+Gardez plusieurs scènes complètes (objets, table, écrans du décor) sous un nom et passez de l'une à l'autre d'un clic :
+
+- **dans l'éditeur**, section **💾 Préréglages** : *Enregistrer la scène…* (même nom = remplace), un clic sur un nom pour le
+  charger (annulable avec `Ctrl`+`Z`), ✏️ pour renommer, 🗑 pour supprimer (le fichier va dans la Corbeille). Celui qui est
+  chargé est surligné, avec « modifiée depuis » si vous l'avez changé sans le réenregistrer ;
+- **dans les réglages**, page *Décor & scène* → **Préréglages de scène** : charger, renommer, supprimer, ou enregistrer la
+  scène actuelle sous un nouveau nom ;
+- **depuis le menu de l'icône** (menu complet) : *Préréglages de scène* ;
+- **avec un raccourci** (page *Raccourcis*) : *Scène : <nom>*, *Scène : préréglage suivant* ou *précédent*.
+
+Chaque préréglage est un fichier `.json` du dossier `Scènes` : les scènes exportées, celles écrites par une IA ou déposées à
+la main y apparaissent aussi. Une scène chargée depuis les réglages ou un raccourci s'affiche aussitôt dans la fenêtre du Mii,
+dans OBS et dans l'éditeur s'il est ouvert.
+
+### Importer, exporter, faire créer une scène par une IA
+
+En haut à gauche de l'éditeur, section **Scène** :
+
+- **📤 Exporter** : nom + description, puis *Enregistrer le fichier…* (dossier `Scènes` par défaut), ou
+  *Copier le texte*. Le fichier `.json` se partage tel quel.
+- **📥 Importer** : choisissez un fichier de scène. L'éditeur montre ce qu'il contient (nombre d'objets, remarques
+  s'il a dû corriger des choses) puis propose **Remplacer ma scène** ou **Ajouter à ma scène** (annulable avec `Ctrl`+`Z`).
+- **📋 Coller** : collez une scène copiée ou **la réponse d'une IA** : le texte autour du JSON, les balises de code, les
+  virgules en trop ou les commentaires sont ignorés, et les noms en français ou en anglais sont compris
+  (« mur », « wall », « brique », « brick »…).
+- **🤖 Avec une IA** : *Copier le guide*, collez-le dans ChatGPT, Claude, Gemini… puis décrivez la scène voulue
+  (« une chambre de gamer avec des néons violets »), copiez la réponse et faites **📋 Coller**.
+  *Copier aussi ma scène actuelle* permet de demander à l'IA de **modifier** votre scène.
+
+Le guide (format, repère, tailles conseillées, exemple complet) est aussi dans `Scènes\Guide pour les IA.md`, avec une
+scène d'exemple : `Scènes\Exemple - Petite chambre.json`.
+- Le cadrage automatique ne tient pas compte de vos objets : utilisez la vue orbitale pour cadrer large.
+
+## Éditeur de manettes
+
+Réglages → **Manette → ✏️ Éditeur de manettes** (ou clic droit sur l'icône → *Éditeur de manettes…*,
+ou `"Sully's Mii-Bongo.exe" --manettes`). L'éditeur s'ouvre dans sa propre fenêtre.
+
+**Les manettes** (à gauche) : les 3 intégrées (8BitDo, Xbox, Xbox 25 ans) et les vôtres.
+
+| Bouton | Effet |
+|---|---|
+| ➕ Nouvelle | à partir d'un modèle intégré ou de **votre propre modèle** (`.glb` déposé dans le dossier `Manettes`) |
+| ⧉ Dupliquer | copie modifiable (d'une intégrée : la Xbox arrive avec toutes ses pièces déjà délimitées) |
+| ✓ Utiliser | le Mii tient cette manette (aussi dans les réglages, *Vos manettes*) |
+| 🗑 Supprimer / 🙈 Masquer | une manette à vous part dans la corbeille de Windows ; une intégrée est masquée des listes |
+
+**Onglet Modèle** : tournez le modèle (boutons ↻ / ↺ X, Y, Z, ou au degré près) pour que ses boutons regardent la
+**flèche bleue** et ses gâchettes la **flèche orange** ; puis sa taille, sa hauteur et son inclinaison dans les mains du
+Mii, et la couleur de la lumière d'un bouton pressé. Orientez le modèle **avant** de délimiter les pièces.
+
+**Texture du modèle** (onglet Modèle) : **🖌 Modifier dans Paint** enregistre la vraie texture de la manette dans le
+dossier `Manettes` (une copie, l'original n'est jamais touché) et l'ouvre dans Paint ; dessinez, enregistrez, puis
+**↻ Recharger**. *Utilisée* permet de choisir une autre image du dossier `Manettes`, ou de revenir à la texture
+d'origine. (Une image exportée n'écrase jamais un fichier existant.)
+
+**Onglet Pièces** (la délimitation) : **＋ Ajouter une pièce**, puis cliquez sur le bouton dans l'aperçu. L'éditeur
+**trouve tout seul son contour** (le sillon autour du bouton, ou le bord du capuchon d'un stick) ; sinon, réglez-le :
+forme (*Cercle*, *Pilule*, *Rectangle* arrondi), vue (*de face*, *de dessus* pour les gâchettes et bumpers, *de dos*,
+*de côté*), centre, taille, coins, **profondeur** (ce qui est au-dessus appartient à la pièce). Le contour jaune montre
+la zone ; **🎨 Repérer les pièces** colore chaque pièce. *📐 Ajuster au contour*, *⇋ Copie miroir* (crée la pièce
+symétrique : stick droit, gâchette droite… avec le bon bouton), *▲ Monter* (priorité là où deux pièces se touchent).
+La *Coque* est tout le reste. Chaque pièce (et la coque) a son **apparence** : *D'origine*, *Couleur* ou *Motif*
+(*Fumée*, *Camouflage*, *Dégradé*, avec deux couleurs), **Texture** (bois, métal, marbre, papier peint… ou une de
+vos images du dossier `Images`, projetée sur la pièce : ça marche sur n'importe quel modèle ; teinte et taille du
+motif), finition *Mate* ou *Brillante*.
+
+**Croix directionnelle** : une croix d'une seule pièce (Xbox, 8BitDo) → forme *Cercle* ou *Croix +*, bouton
+*Croix (les 4 directions)* : elle bascule. Une **croix classique en 4 boutons** (PS4, PS5, Switch…) → sélectionnez la
+pièce de la croix puis **✚ Croix en 4 flèches séparées** : 4 pièces *Flèche haut / bas / gauche / droite*, chacune
+assignée à sa direction, qui s'enfoncent séparément.
+
+**Onglet Formes** : ajoutez un **cylindre**, une **boîte**, une **boule** ou un **cône** — par exemple pour boucher le
+trou sous un stick transparent ou un bouton qui laisse voir le vide. Position, rotation, taille, couleur ; **attachée à
+une pièce**, la forme bouge avec elle.
+
+**Onglet Boutons** (l'assignation) : pour chaque entrée de la manette (A, B, X, Y, LB, RB, LT, RT, sticks + clic, croix
+entière ou chaque direction, View, Menu, Xbox), la pièce qui bouge. *🎯 A B X Y auto* assigne le losange de 4 boutons
+(disposition Xbox : A en bas) ; *🔁 A↔B, X↔Y* passe en disposition Nintendo. **Testez avec votre vraie manette** : les
+entrées pressées s'allument et les pièces s'enfoncent dans l'aperçu (la manette est lue tant que l'éditeur est ouvert).
+
+Les noms des boutons sont donnés pour Xbox et PlayStation (A · ✕, B · ○, X · □, Y · △, LB · L1, LT · L2, View · Share,
+Menu · Options, Xbox · PS).
+
+Mouvements : un bouton s'enfonce, un stick pivote (et s'enfonce au clic), la croix bascule vers la direction pressée,
+une gâchette pivote sur sa charnière. Tout est enregistré tout seul dans `Manettes\<nom>.json` ; si le Mii tient cette
+manette, il la recharge quelques secondes après la dernière modification.
+
+## Vue orbitale
+
+Choisissez librement d'où l'on voit le Mii, avec ou sans décor :
+
+- dans la fenêtre du Mii : **clic droit (ou clic molette) + glisser** pour tourner autour de lui
+  (gauche / droite = faire le tour, haut / bas = hauteur), **Ctrl + molette** pour zoomer ;
+- ou dans la fenêtre de réglages, section **Vue orbitale** : cadran vu de dessus (glissez la caméra autour du Mii),
+  curseurs *Tourner* (−180° à 180°), *Hauteur* (−10° à 85°) et *Zoom* (50 à 300 %), et vues toutes prêtes
+  (Face, Côté gauche, Côté droit, Dos, Dessus, Par défaut).
+
+La vue orbitale remplace le cadrage (sans décor) ou la vue isométrique / trimétrique (avec décor) tant qu'elle est
+activée ; désactivez-la pour revenir à la vue choisie avant. Elle s'applique **en direct**, y compris dans OBS,
+sans recharger la page. Elle est enregistrée, et retrouvée au prochain lancement.
+
+## OBS
+
+1. Laissez Sully's Mii-Bongo tourner.
+2. OBS → Sources → **+** → **Navigateur**.
+3. URL : `http://localhost:7878/?follow=1&bg=transparent` (c'est ce que copie « Copier l'URL pour OBS »).
+4. Largeur/hauteur : par ex. 600 × 600.
+
+Avec `follow=1`, la source OBS **suit le menu de l'appli** : changez d'instrument, de cadrage,
+de modèle, de manette ou l'effet miroir depuis l'icône du bouffon, et la source OBS se met à jour toute seule
+(elle se recharge en une seconde ; la vue orbitale, elle, suit en direct sans recharger). Elle n'affiche aucun texte d'état, pour ne rien montrer au stream.
+Le fond reste celui de l'URL (`bg=transparent`).
+
+Sans `follow=1`, la source garde les réglages écrits dans son URL, avec les options ci-dessous
+(pensez alors à choisir le même instrument dans le menu de l'appli, sinon l'appareil n'est pas lu).
+
+Options d'URL :
+
+| Paramètre | Valeurs |
+|---|---|
+| `follow=1` | suit les réglages du menu de l'appli (remplace `mode`, `view`, `model`, `mirror`) |
+| `model` | nom du fichier dans le dossier `Mii` (défaut `Défaut.glb`) |
+| `face` | nom du visage dans le dossier `Visages` (défaut `Défaut` ; vide = visage d'origine du modèle) |
+| `objs=0` | masque les objets de l'éditeur de scène |
+| `occ=0` | les objets qui cachent le Mii restent visibles |
+| `pad=perso:Nom.json` | une manette créée avec l'éditeur de manettes (fichier du dossier `Manettes`) |
+| `mode` | `keyboard` (clavier + souris, défaut), `bongo`, `vr` (debout, casque VR), `wheel` (volant) ou `pad` (manette) |
+| `bg` | `transparent`, `green`, `dark` ou une couleur hex sans `#` (ex. `ff00ff`) |
+| `view` | `bust` (buste) ou `full` (corps entier) |
+| `mirror=1` | mode VR : effet miroir |
+| `blink=0` | pas de clignement des yeux |
+| `notes=0` | pas de notes de musique (mode bongo) |
+| `look=0` | la tête ne suit plus la souris |
+| `pad` | modèle de manette : `8bitdo` (défaut), `xbox` ou `xbox25` |
+| `orbit=1&oaz=…&oel=…&oz=…` | vue orbitale : azimut et hauteur en degrés (0 = de face, 90 = côté gauche du Mii), zoom (1 = normal) |
+
+Exemple : `http://localhost:7878/?bg=green&view=full`
+
+## Décor (vue isométrique + décorations)
+
+Menu *Décor → Activer le décor* : le Mii garde son instrument et sa configuration actuels, mais la
+scène passe en **vue isométrique côté droit**, posée sur une petite estrade avec un tapis.
+
+- *Vues isométriques arrière-gauche* (par défaut) *et arrière-droite* : on voit le Mii de 3/4 dos et ce qu'il y a devant lui.
+- *Vue avant-droite* : on voit son visage, mais les décorations placées devant lui sont vues de dos.
+- *Vues trimétriques* (côté gauche ou côté droit) : plus de côté et plus basses, cadrées sur tout le setup
+  (Mii, bureau ou instrument, chaise, écrans) sans l'estrade :
+  on voit le setup de plus près et le profil du Mii.
+
+Avec la décoration « Deux écrans », **le Mii regarde l'écran où se trouve votre souris**, à l'endroit exact du
+curseur (en haut, en bas, à gauche…). Si la souris est sur un 3e écran, il reprend son comportement normal.
+
+Dans toutes les vues (avec ou sans décor), son bureau est disposé comme
+le vôtre : clavier en face de sa main gauche, souris à sa droite.
+Dans toutes les vues, sa souris bouge **comme la vôtre en vrai** : vous la tirez vers vous (vers le bas) → il la
+ramène vers lui ; vous la poussez (vers le haut) → il la pousse vers le fond. De face, sa souris (main droite)
+est donc vue à gauche de l'image quand il vous fait face.
+
+**Décorations** (menu *Décor → Décorations*) — elles n'apparaissent que quand le décor est activé :
+
+| Décoration | Description |
+|---|---|
+| Deux écrans | deux moniteurs qui affichent **en direct** vos écrans : votre écran **principal en face du Mii**, le secondaire à côté (du même côté que sur votre bureau), incliné vers lui |
+| Cinéma | votre **écran principal devient un grand écran de cinéma** (rideaux rouges, lambrequin doré), l'écran secondaire disparaît ; en modes Clavier et Manette, le Mii est **presque allongé dans un fauteuil de cinéma** (repose-pieds sorti, pot de pop-corn) avec une petite tablette pour le clavier et la souris. Remplace la chaise et les deux écrans |
+| Chaise de bureau | dossier haut en maille, appui-tête, accoudoirs, piètement chromé à roulettes : **le Mii s'assoit dessus** (son instrument est abaissé d'autant). Sans effet en mode Volant (il a déjà son baquet) et en mode casque VR (debout) |
+
+**Sols** (fenêtre de réglages, section Décor) : Classique (estrade crème), 🪵 Plancher, ♟️ Carrelage damier,
+🟦 Moquette (bleu nuit, bordure dorée) ou 🌿 Gazon. Ils sont dessinés par l'appli (aucune image à télécharger).
+
+*Écrans* (fenêtre de réglages, section Décor) : **Désactivé** (écrans 3D éteints, aucune capture de vos écrans),
+Économe (2 images/s), Normale (5, défaut) ou Fluide (10). La capture tourne en arrière-plan
+(basse priorité, environ 15 % d'un cœur à 5 img/s) et seulement quand le décor, la décoration
+« Deux écrans » et l'affichage du Mii sont actifs. Les images ne passent que par le canal réservé à la
+page de l'appli (fenêtre ou source OBS), jamais par une adresse web publique.
+Les jeux en plein écran « exclusif » peuvent apparaître noirs : utilisez le mode fenêtré sans bordure.
+
+## Commandes
+
+**Mode clavier + souris**
+- Chaque touche fait taper la main gauche (côté écran) **à l'endroit de la touche** sur le clavier 3D,
+  qui s'allume en rouge (position physique : marche en AZERTY comme en QWERTY).
+- La souris 3D suit votre curseur ; les boutons s'allument et la main appuie quand vous cliquez.
+
+**Mode bongos**
+- Moitié gauche du clavier → bongo de gauche ; le reste → bongo de droite ; Espace alterne.
+- Clic gauche → bongo de droite · clic droit → bongo de gauche · clic molette → les deux.
+
+**Mode debout — casque VR (Quest 3)**
+
+Le Mii est debout, porte un casque VR blanc et tient deux manettes. Sa tête suit votre casque
+et ses bras suivent vos manettes (la gâchette s'allume en rouge quand vous appuyez).
+
+1. Connectez le Quest 3 au PC avec **SteamVR** : Quest Link / Air Link (puis lancez SteamVR),
+   ou Virtual Desktop en mode SteamVR.
+2. Menu *Instrument → Debout — casque VR (SteamVR)*.
+3. Regardez droit devant vous et cliquez *Casque VR → Recentrer*.
+
+- L'appli se connecte à SteamVR en **arrière-plan** : rien ne s'affiche dans le casque, elle ne lance
+  jamais SteamVR elle-même, et elle se reconnecte toute seule si SteamVR redémarre.
+- Le corps du Mii reste face à la caméra : si vous vous tournez, il suit doucement ; la tête, elle,
+  suit le casque immédiatement. Pencher la tête fait pencher le buste.
+- Par défaut, votre main gauche est la main gauche du Mii (donc à droite de l'écran, comme une
+  caméra). *Effet miroir* inverse, comme dans un miroir.
+- Sans SteamVR, le Mii attend, manettes en main, et regarde la souris.
+- Le jeu VR en cours (Beat Saber, VRChat…) continue normalement : l'appli ne fait que lire les positions.
+
+Fonctionne aussi avec d'autres casques SteamVR (Index, Vive, Pico…) ; le Mii porte toujours le même casque blanc.
+
+**Mode manette (8BitDo Ultimate 2C, Xbox…)**
+
+Le Mii tient une grande manette, tournée vers lui comme un vrai joueur, un peu en avant du corps.
+Le modèle se choisit dans la fenêtre de réglages (section **Manette**) :
+
+| Modèle | Aspect |
+|---|---|
+| 8BitDo Ultimate 2C (défaut) | coloris Mint : dessus vert d'eau, dessous rose-beige, sticks / croix / A B X Y corail, gâchettes et bumpers vert-gris |
+| Xbox Series | noire, d'après un scan 3D réel ; texture nettoyée (reflets verts et bleus du scan retirés, noirs relevés, coutures réparées, plus nette, 4096 px), lettres A B X Y colorées, bouton Xbox éclairé |
+| Xbox édition 25 ans | même manette, coque **verte translucide traversée de volutes vert sombre**, A B X Y pleins aux couleurs d'origine (vert, rouge, bleu, jaune), bouton Xbox vert à logo clair, sticks et croix noirs, inscription « XBOX 25 » sur la poignée droite |
+| **Vos manettes** | créées avec l'**éditeur de manettes** (voir ci-dessous) : votre propre modèle 3D, vos couleurs, votre disposition des boutons |
+
+Toutes les pièces bougent : sticks, croix, A B X Y, View / Menu / Xbox, bumpers et gâchettes (qui pivotent sur leur charnière). Sa main gauche gère la partie
+gauche (stick gauche, croix, LB/LT, −), sa main droite la partie droite (A B X Y, stick droit,
+RB/RT, +, Home). Chaque main va sur le dernier bouton pressé de son côté et l'enfonce (il s'allume),
+revient sur son stick sinon ; les sticks s'inclinent comme les vôtres, la croix bascule, et pour les
+gâchettes la main agrippe le bord de la manette. Le Mii regarde droit devant lui (vers la caméra).
+
+Si le modèle d'une manette ne peut pas être chargé, une manette simplifiée est utilisée à la place.
+
+1. Allumez la manette en mode **X-input** (mode par défaut de la 8BitDo Ultimate 2C sur PC).
+2. Menu *Instrument → Manette (8BitDo / Xbox)*.
+
+- Lue via XInput, en arrière-plan : ça marche pendant que le jeu a le focus.
+- **Manettes PlayStation** (DualShock 4 de PS4, DualSense de PS5) : lues directement, en USB ou en Bluetooth, sans
+  logiciel en plus (✕ = A, ○ = B, □ = X, △ = Y, L1/R1 = LB/RB, L2/R2 = gâchettes, Share = View, Options = Menu,
+  PS = Xbox). Si une manette XInput est aussi branchée (ou DS4Windows), c'est elle qui est lue.
+- La manette n'est lue qu'en mode Manette **et** quand le Mii est affiché ; elle est cherchée au branchement
+  et par une vérification légère toutes les 5 s (une manette sans fil qui s'allume ne prévient pas toujours Windows).
+- Toute manette XInput marche (Xbox, 8BitDo, PowerA…). Les manettes en mode DirectInput/Switch
+  ne sont pas lues : repassez-les en X-input.
+
+**Mode volant (Logitech G27)**
+
+Le Mii est assis dans un baquet, les mains sur un volant qui tourne exactement comme le vôtre.
+Quand vous passez un rapport avec la boîte en H, sa main droite va sur le levier, qui se place
+dans la bonne case (1 à 6, marche arrière), puis revient sur le volant. Ses pieds appuient sur les
+3 pédales (embrayage, frein, accélérateur). Il se penche au freinage, se colle au dossier en
+accélérant, subit la force centrifuge dans les virages et regarde dans la direction du virage.
+Les palettes s'allument quand vous les tirez.
+
+1. Branchez le G27 (G Hub ou Logitech Gaming Software lancé).
+2. Menu *Instrument → Volant (Logitech G27)*.
+3. Menu *Volant → Rotation* : choisissez le même angle que dans G Hub (900° par défaut).
+4. Touchez le volant ou une pédale une fois : le G27 n'envoie ses valeurs qu'au premier mouvement
+   (avant, le Mii garde les pédales relâchées).
+
+- Le volant est lu en arrière-plan : ça marche pendant que le jeu de course a le focus.
+- Le volant n'est cherché qu'en mode Volant **et** quand le Mii est affiché (fenêtre de l'appli ou source OBS) :
+  une fois au démarrage, puis seulement quand Windows signale un branchement. Rien ne tourne sinon.
+- Les pédales doivent être en mode « axes séparés » (réglage par défaut de G Hub) : accélérateur = axe Y,
+  frein = axe RZ, embrayage détecté automatiquement (axe S1 sur le G27). Relâchée = 65535, enfoncée = 0.
+- Marche avec d'autres volants Logitech/Thrustmaster/Fanatec, mais la boîte en H et les palettes
+  peuvent utiliser d'autres numéros de boutons. Diagnostic : `"Sully's Mii-Bongo.exe" --wheel-test volant.txt`
+  enregistre 8 s d'axes et de boutons (bougez tout pendant ce temps).
+- Sans volant branché, le Mii attend, mains sur le volant, et regarde la souris.
+- Cadrage *Corps entier* pour voir le baquet, les pieds et le pédalier.
+
+**Partout**
+- **Micro** → la bouche s'ouvre selon le volume de votre voix (4 niveaux), la tête hoche un peu.
+- Le Mii **cligne des yeux** toutes les 2 à 6 secondes (parfois deux fois de suite).
+- **Molette** → petit hochement de tête. **Souris** → la tête suit le curseur.
+
+### Le micro ne fait pas bouger la bouche ?
+
+- Menu *Micro (bouche)* → choisissez votre vrai micro (ex. *fifine*) au lieu du micro par défaut.
+- Passez la sensibilité sur **haute** si vous parlez doucement, **faible** si la bouche bouge avec le bruit de fond.
+- Diagnostic : `"Sully's Mii-Bongo.exe" --mic-test niveaux.txt` mesure chaque micro pendant 2 s et écrit les niveaux en dB.
+
+Seul le volume est mesuré : aucun son n'est enregistré ni envoyé.
+
+## Visages (bouche et yeux) — communs à tous les Mii
+
+Les visages sont dans le dossier **`Visages`** de l'appli, **un sous-dossier par visage**, et chaque Mii peut
+utiliser n'importe lequel. On le choisit dans les réglages (section **Personnage → Visage**, avec un aperçu des
+images), ou *Visage d'origine du Mii* pour garder le visage du modèle sans animation.
+
+Un dossier de visage contient des PNG aux noms simples :
+
+| Fichier | Rôle |
+|---|---|
+| `yeux fermés.png` | on en prend **les yeux** pour le clignement |
+| `bouche 1.png` | bouche un peu ouverte (on n'en prend que **la bouche**) |
+| `bouche 2.png`, `bouche 3.png`… | bouches de plus en plus ouvertes, autant que vous voulez |
+
+- Les images ont la même disposition que la texture du visage des Mii (1024 × 1024, fond transparent).
+- En silence, le Mii garde la bouche d'origine de son modèle ; plus vous parlez fort, plus le numéro de bouche est grand.
+- Pour créer un visage : copiez le dossier `Défaut`, renommez-le, remplacez les images, puis *↻ Actualiser les listes*.
+- Facultatif, `visage.json` dans le dossier : `{ "separation": 0.586, "materiau": "Mask" }` (hauteur qui sépare
+  les yeux de la bouche, et nom du matériau du visage dans le `.glb`).
+
+Le fichier `Visages\Lisez-moi.txt` rappelle tout ça.
+
+## Éditeur de personnage (expressions et objets accrochés)
+
+Réglages → carte **Extras du personnage** → **✏️ Éditeur de personnage** (ou clic droit sur l'icône →
+*Éditeur de personnage…*). La fenêtre montre votre Mii tel qu'il est (instrument, manette…) ; l'ajout sélectionné
+y est toujours visible. Glisser : tourner autour · clic droit + glisser : déplacer la vue · molette : zoom.
+
+**Expressions** (🙂 + Expression) : un visage en plus qui remplace **les yeux**, **la bouche** ou **les deux**.
+
+- **🖌 Créer dans Paint** : une copie du visage actuel du Mii est enregistrée dans `Personnage\Expressions` et
+  s'ouvre dans Paint. Dessinez, enregistrez (Ctrl+S), revenez dans l'éditeur : l'image est rechargée toute seule
+  (sinon **↻ Recharger**). **✏️ Modifier dans Paint** rouvre l'image choisie.
+- Ou déposez vos PNG dans `Personnage\Expressions` (même disposition que les images du dossier `Visages`).
+- *Quand vous parlez* : **🗣 La bouche parle** (la bouche animée par le micro passe devant) ou **🔒 Garder cette
+  bouche** (ex. une grande bouche ouverte qui ne bouge pas).
+- Si deux expressions actives touchent la même partie du visage, la dernière activée l'emporte. Une expression
+  qui change les yeux remplace le clignement.
+
+**Objets accrochés** (🎩 + Objet 3D) : vos modèles `.glb` du dossier `Personnage\Accessoires` (chapeau, lunettes,
+épée, ailes…) ou une forme simple (cube, boule, pyramide, colonne…, avec couleur et texture).
+
+- **Accroché à** : tête, corps, taille, main gauche ou main droite — l'objet suit la tête qui tourne, les mains qui tapent…
+- Position (gauche/droite, bas/haut, arrière/avant), rotation et taille : curseurs. Le modèle est centré et mis à
+  l'échelle tout seul ; un objet accroché à la tête commence posé dessus.
+
+**Activation** de chaque ajout :
+
+- son **interrupteur** (réglages, menu complet de l'icône, ou dans l'éditeur) ;
+- et/ou un **raccourci clavier** : **⌨ Choisir…** puis appuyez sur la combinaison (Échap pour annuler).
+  - *👆 Appuyer* : une pression active, une autre désactive.
+  - *⏬ Maintenir* : actif seulement tant que la touche est enfoncée.
+  - Les raccourcis marchent partout, même en jeu, et ne bloquent pas la touche : choisissez des combinaisons libres
+    (Ctrl+Maj+F1…F12, pavé numérique…). AltGr est reconnu à part (AltGr+2 pour « ~ » ne déclenche rien).
+- *Mii* : un ajout peut être réservé à un seul de vos Mii.
+
+Exemples fournis (désactivés) : *Yeux fermés* (Ctrl+Maj+F1), *Grande bouche* (maintenir Ctrl+Maj+F2),
+*Chapeau pointu* (Ctrl+Maj+F3). Tout est enregistré dans `Personnage\Personnage.json` ; la fenêtre du Mii et OBS
+suivent en direct.
+
+## Mini Mii sur la manette
+
+Réglages → **🎹 Instrument** → *Manette* → **🧑‍🤝‍🧑 Mini Mii sur la manette**. Au lieu du Mii qui tient la manette,
+la manette se présente comme vous voyez la vôtre et six petites copies de votre Mii se tiennent dessus :
+
+- une sur **chaque stick** : elle penche avec lui en écartant les bras, et s'accroupit quand vous cliquez le stick (L3 / R3) ;
+- une sur **A B X Y**, une sur la **croix** : elles sautent sur la touche que vous appuyez et s'accroupissent pour l'enfoncer ;
+- une sur **chaque gâchette** (LB / LT, RB / RT) ;
+- les autres boutons (Vue, Menu, Accueil…) sont pris par le mini le plus proche.
+
+Elles parlent et clignent des yeux avec le Mii, avec les mêmes expressions. Marche avec toutes les manettes, y compris
+celles de l'éditeur de manettes. Un raccourci peut l'activer / le désactiver (page Raccourcis → *Mini Mii sur la manette*).
+
+## Thème de l'interface
+
+Réglages → **🎨 Thème** :
+
+- **Classique** : l'apparence sombre d'origine ;
+- **Wii** : fond gris clair rayé, panneaux blancs, gros boutons blancs bombés aux coins arrondis, champs de saisie comme la
+  recherche de la Wii, sélection entourée de bleu, fond clair dans la vue 3D des éditeurs ;
+  les emojis sont remplacés par des **icônes grises au trait épais et arrondi** (dessins originaux de l'appli, dans
+  l'esprit des menus de la console : dossier, maison, clé, manette, crayon, corbeille…) ;
+- **Carnet** : comme un carnet tenu à la main. Papier crème à petits points, encre brun-noir, boutons découpés au contour
+  tracé à main levée avec une petite ombre décalée, coup de surligneur jaune sur ce qui est choisi, titres écrits à la main
+  et soulignés au crayon rouge, bouts de ruban adhésif sur les cartes, champs « sur la ligne », pense-bêtes pour les états,
+  et les mêmes icônes repassées au crayon. Le menu de l'icône passe aussi en papier et surligneur.
+
+Il s'applique à la fenêtre de réglages, aux trois éditeurs (scène, personnage, manettes) et au menu du clic droit sur l'icône,
+tout de suite, y compris aux fenêtres déjà ouvertes. Le Mii, sa fenêtre et OBS ne changent pas.
+
+## Raccourcis clavier
+
+Réglages → page **⌨️ Raccourcis** : tous les raccourcis de l'appli au même endroit.
+
+- **Nouveau raccourci** : choisissez une action (*Instrument suivant*, *Instrument : manette*, *Afficher / masquer la fenêtre du Mii*,
+  *Cadrage buste ↔ corps entier*, *Vue orbitale*, *Décor*, *Scène : préréglage suivant / précédent / <nom>*, *Micro*,
+  *Désactiver tous les extras*, *Manette : …*, *Fluidité…*,
+  *Recharger*…), cliquez sur **⌨ Choisir la touche…** puis appuyez sur la combinaison (Échap pour annuler).
+- **Touches qu'on ne peut pas appuyer** (F13 à F24 des claviers macro / Stream Deck, etc.) : pendant le choix de la touche,
+  cochez Ctrl / Alt / Maj / Win et choisissez-la dans la liste (F1…F24, boutons de souris, pavé numérique, touches multimédia…).
+- **Boutons de la souris** : les boutons latéraux (*Souris4*, *Souris5*) et le clic molette (*SourisMilieu*) marchent aussi.
+- **✨ Ajouter des exemples** : Ctrl+Maj+F9 (instrument suivant), Ctrl+Maj+F10 (afficher / masquer la fenêtre),
+  Ctrl+Maj+F11 (désactiver tous les extras).
+- Les raccourcis des **extras du personnage** sont aussi listés : changer la combinaison, la supprimer, choisir *Appuyer* ou *Maintenir*.
+- Une combinaison utilisée deux fois est signalée (⚠) : les deux actions se déclencheraient ensemble.
+- **Raccourcis activés** : un interrupteur pour tous les couper, par exemple le temps d'une partie.
+
+Les raccourcis marchent même quand un jeu est au premier plan et ne bloquent pas la touche. Ils sont enregistrés dans
+`settings.json` (ceux des extras dans `Personnage\Personnage.json`).
+
+## Ajouter d'autres Mii
+
+Déposez vos `.glb` dans le dossier **`Mii`** (bouton 📁 de la section Personnage), puis *↻ Actualiser les listes*.
+Le script attend un squelette de type Mii (os `Arm_1_L/R`, `Arm_2_L/R`, `Wrist_L/R`, `Head`, `Spine_1`),
+comme les modèles exportés depuis Miitopia / Tomodachi.
+
+## Confidentialité
+
+- Le serveur n'écoute que sur `localhost`, et le flux d'événements n'accepte que la page de l'appli
+  (un site web ouvert dans votre navigateur ne peut pas s'y connecter).
+- L'appli transmet la *position* approximative des touches (pour animer la main), jamais les caractères.
+- Les raccourcis du personnage sont reconnus dans l'appli elle-même : les pages ne reçoivent que la liste des ajouts actifs.
+
+## Développement
+
+`http://localhost:7878/api/status` indique le mode, le nombre de pages qui affichent le Mii et
+l'état du volant, de la manette et du casque.
+
+Sources : `D:\Mii\Code source` (projet `SullysMiiBongo.csproj`).
+
+```
+dotnet build
+"bin\Debug\net10.0-windows\Sully's Mii-Bongo.exe" --root wwwroot
+```
+
+`--root` sert les fichiers web directement depuis les sources (et prend les dossiers `Mii` et `Visages` des
+sources) : modifiez `wwwroot/app.js`, puis *Recharger*. Sans `--root`, les pages intégrées au .exe sont utilisées.
+Le port se change dans `%APPDATA%\Sully's Mii-Bongo\settings.json`.
+
+Pages : `wwwroot/app.js` (scène, Mii), `wwwroot/scene-objects.js` (formes et textures de l'éditeur, partagées),
+`wwwroot/editor.js` (interface de l'éditeur, chargée avec `?editor=1`), `wwwroot/pad-profile.js` (manettes
+personnalisées : chargement, découpe en pièces, formes, mouvements) et `wwwroot/manettes.html` + `pad-editor.js`
+(éditeur de manettes).
+
+Publier l'appli (un seul .exe + `Mii`, `Visages`, `Images`, `Objets`, `Lisez-moi.md`, `Licences`) :
+
+```
+dotnet publish -c Release -r win-x64 --self-contained false -o "D:\Mii\Sully%27s Mii-Bongo"
+```
+
+(`%27` = l'apostrophe : MSBuild ne l'accepte pas telle quelle dans le dossier de sortie.)
+
+Icône : `assets/MiiBongo.ico` (16 à 256 px), rendue depuis le modèle 3D du Mii (`assets/mii-icon-1024.png`).
+Rendu 3D : [three.js](https://threejs.org) r160 (licence MIT, inclus dans `wwwroot/vendor`).
+Audio : [NAudio](https://github.com/naudio/NAudio) (licence MIT).
+VR : [OpenVR](https://github.com/ValveSoftware/openvr) v2.5.1 de Valve (licence BSD-3, dans `OpenVR/`).
+
+Pour tester le mode VR sans casque : ouvrez `http://localhost:7878/?mode=vr&bg=dark`,
+puis tapez `mii.simVR()` dans la console du navigateur (F12).
+Même principe pour le volant : `?mode=wheel` puis `mii.simWheel()`, et pour la manette : `?mode=pad` puis `mii.simPad()`.
+Modèle de manette : [« 8BitDo Ultimate 2C Controller — Low Poly »](https://sketchfab.com/3d-models/8bitdo-ultimate-2c-controller-low-poly-ae49e071dc174f008940ed59d1eebb9c)
+par [Isshan](https://sketchfab.com/isshanmarwah), licence [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) —
+recoloré et découpé en pièces mobiles au chargement.
+Modèle de manette Xbox : [« Chou1 »](https://sketchfab.com/3d-models/chou1-ba435f0822f645459ba87840eef254ae)
+par [hchou](https://sketchfab.com/hchou), licence [CC BY 4.0](http://creativecommons.org/licenses/by/4.0/) —
+redressé, texture nettoyée et réduite (`wwwroot/props/manette_xbox.glb`), découpé en pièces mobiles au chargement ;
+la version 25 ans est recolorée par l'appli (aucune image ajoutée).
+Manettes PlayStation lues avec [HidSharp](https://www.zer7.com/software/hidsharp) (licence Apache 2.0).
+Volant lu avec [Vortice.DirectInput](https://github.com/amerkoleci/Vortice.Windows) (licence MIT).

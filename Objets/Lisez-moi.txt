@@ -1,0 +1,8 @@
+OBJETS 3D — Sully's Mii-Bongo
+=============================
+
+Déposez ici vos modèles 3D (fichiers .glb) pour les placer avec l'éditeur de scène :
+section « Objets 3D » à gauche de l'éditeur (bouton ↻ pour actualiser la liste).
+
+Ils gardent leurs propres couleurs et textures ; dans l'éditeur on règle leur position,
+leur rotation et leur taille (la plus grande dimension).

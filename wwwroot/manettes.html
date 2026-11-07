@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sully's Mii-Bongo — Éditeur de manettes</title>
+<link rel="icon" href="icon.png">
+<link rel="stylesheet" href="theme-wii.css">
+<link rel="stylesheet" href="theme-carnet.css">
+<script src="theme.js"></script>
+<script src="theme-icons.js"></script>
+<script type="importmap">{ "imports": { "three": "./vendor/three/build/three.module.min.js" } }</script>
+<style>
+  :root { --bg: #17171d; --card: rgba(26,26,34,.94); --card2: #2a2a34; --line: #3a3a48; --text: #ececf1; --muted: #9b9bab; --accent: #d63a45; --ok: #3fb67f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #1e1f26; color: var(--text); font: 13px/1.35 "Segoe UI", system-ui, sans-serif; user-select: none; }
+  canvas { display: block; }
+  .panel { position: fixed; background: var(--card); border: 1px solid #34343f; border-radius: 12px; padding: 10px 12px; box-shadow: 0 6px 22px #0006; z-index: 5; overflow: hidden auto; }
+  #left { top: 10px; left: 10px; width: 250px; bottom: 10px; }
+  #right { top: 10px; right: 10px; width: 330px; bottom: 10px; }
+  #top { top: 10px; left: 272px; right: 352px; display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; padding: 7px 10px; }
+  h3 { margin: 10px 0 7px; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; }
+  h3:first-child { margin-top: 2px; }
+  button, select, input, textarea { font: inherit; color: inherit; }
+  button { background: var(--card2); border: 1px solid var(--line); border-radius: 8px; padding: 6px 9px; cursor: pointer; }
+  button:hover { border-color: #5a5a70; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.on, button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+  .list { display: flex; flex-direction: column; gap: 3px; }
+  .list button { text-align: left; background: transparent; border-color: transparent; padding: 5px 7px; display: flex; align-items: center; gap: 6px; }
+  .list button.on { background: #3a1f26; border-color: var(--accent); color: #fff; }
+  .list button small { margin-left: auto; color: var(--muted); }
+  .list button .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-bottom: 8px; }
+  .tabs button { padding: 6px 4px; }
+  .row { display: flex; gap: 6px; align-items: center; margin: 7px 0; }
+  .row > label { color: var(--muted); min-width: 74px; font-size: 12px; }
+  select, input[type=text] { background: var(--card2); border: 1px solid var(--line); border-radius: 8px; padding: 5px 7px; flex: 1; min-width: 0; }
+  input[type=number] { background: var(--card2); border: 1px solid var(--line); border-radius: 7px; padding: 4px 5px; width: 100%; min-width: 0; }
+  input[type=range] { flex: 1; accent-color: var(--accent); min-width: 0; }
+  input[type=color] { flex: 1; height: 28px; background: none; border: 0; padding: 0; min-width: 0; }
+  .trio { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; flex: 1; }
+  .duo { display: grid; grid-template-columns: repeat(2, 1fr); gap: 5px; flex: 1; }
+  .trio div, .duo div { display: flex; flex-direction: column; font-size: 10.5px; color: var(--muted); }
+  .seg { display: flex; flex-wrap: wrap; gap: 4px; flex: 1; }
+  .seg button { padding: 4px 8px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .warn { color: #e0b070; font-size: 12px; }
+  .st { color: var(--muted); font-size: 12px; min-width: 110px; }
+  .pressed { display: flex; flex-wrap: wrap; gap: 4px; min-height: 24px; }
+  .pressed span { background: #1f4a37; color: #c9f3dd; border-radius: 6px; padding: 2px 7px; font-size: 12px; }
+  .map { display: grid; grid-template-columns: 1fr 1.3fr; gap: 5px 8px; align-items: center; }
+  .map label { font-size: 12px; color: var(--muted); }
+  .map label.lit { color: #c9f3dd; font-weight: 600; }
+  #help { position: fixed; left: 272px; right: 352px; bottom: 8px; text-align: center; font-size: 11.5px; color: #c8c8d4; text-shadow: 0 1px 2px #000; pointer-events: none; z-index: 4; }
+  .modal { position: fixed; inset: 0; background: #0009; display: grid; place-items: center; z-index: 20; }
+  .modal .box { width: min(560px, calc(100vw - 40px)); position: static; max-height: calc(100vh - 60px); }
+  .modal h2 { margin: 0 0 8px; font-size: 16px; }
+  .btns { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap; }
+  .texgrid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 6px; }
+  .texgrid button { padding: 0; aspect-ratio: 1; border-radius: 7px; overflow: hidden; background-size: cover; background-position: center; border: 2px solid transparent; position: relative; }
+  .texgrid button.on { border-color: #ffd23f; }
+  .texgrid button i { position: absolute; left: 0; right: 0; bottom: 0; font-style: normal; font-size: 8.5px; background: #000a; color: #fff; text-align: center; white-space: nowrap; overflow: hidden; }
+  .madeby { position: fixed; right: 360px; bottom: 6px; font-size: 10.5px; color: var(--muted); opacity: .7; pointer-events: none; z-index: 4; }
+</style>
+</head>
+<body>
+<script type="module" src="./pad-editor.js"></script>
+</body>
+</html>
