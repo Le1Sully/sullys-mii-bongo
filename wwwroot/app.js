@@ -303,7 +303,7 @@ function updateNotes(dt) {
 const rig = { root: null, bones: {}, rest: new Map(), arms: {}, drums: {}, unit: 1, bodyBase: new THREE.Vector3(), props: [] };
 
 const state = {
-  mouse: { x: 0.5, y: 0.5 }, look: { x: 0, y: 0 },
+  mouse: { x: 0.5, y: 0.5 }, look: { x: 0, y: 0 }, game: false, nudge: { x: 0, y: 0 },
   hands: {
     L: { held: 0, downUntil: 0, h: 0, wasDown: false },
     R: { held: 0, downUntil: 0, h: 0, wasDown: false },
@@ -2602,7 +2602,8 @@ const sceneScreenCtx = {
 function screenLookTarget() {
   const s = rig.screens[state.mouse.s];
   if (!s) return null;
-  const local = V((state.mouse.x - 0.5) * s.w * 0.35, (0.5 - state.mouse.y) * s.h * 0.5, 0);
+  const mx = state.game ? state.nudge.x : state.mouse.x - 0.5, my = state.game ? state.nudge.y : state.mouse.y - 0.5;
+  const local = V(mx * s.w * 0.35, -my * s.h * 0.5, 0);
   return s.display.localToWorld(local);
 }
 
@@ -2625,8 +2626,9 @@ function lookAtPoint(target, dt) {
     ? THREE.MathUtils.clamp(pitchWorld + RECLINE * 0.45, -0.35, 0.35)
     : THREE.MathUtils.clamp(pitchWorld * 0.8, -0.35, 0.35);
   const g = rig.gaze ||= { yaw, pitch };
-  g.yaw = damp(g.yaw, yaw, 9, dt);
-  g.pitch = damp(g.pitch, pitch, 9, dt);
+  const speed = state.game ? 3 : 9;
+  g.yaw = damp(g.yaw, yaw, speed, dt);
+  g.pitch = damp(g.pitch, pitch, speed, dt);
   const rest = rig.cinema ? qAxis(AX, -RECLINE * 0.45).multiply(rig.headRestWorldQ) : rig.headRestWorldQ;
   const wanted = qAxis(AY, g.yaw).multiply(qAxis(AX, g.pitch + face.talk * Math.sin(clock.elapsedTime * 14) * 0.03)).multiply(rest);
   head.quaternion.copy(head.parent.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(wanted));
@@ -2753,7 +2755,7 @@ function release(side) {
 }
 
 let lastActivity = 0;
-const PASSIVE_EVENTS = new Set(['cfg', 'pads', 'drvs', 'vrs', 'scene', 'perso', 'persoOn', 'vrc']);
+const PASSIVE_EVENTS = new Set(['cfg', 'pads', 'drvs', 'vrs', 'scene', 'perso', 'persoOn', 'vrc', 'game']);
 function onEvent(ev) {
   if (!PASSIVE_EVENTS.has(ev.t)) lastActivity = performance.now();
   switch (ev.t) {
@@ -2785,7 +2787,15 @@ function onEvent(ev) {
       if (KEYBOARD) { state.click[ev.b] = 0; release('R'); }
       else if (ev.b === 'M') { release('L'); release('R'); } else release(sideSwap(ev.b === 'L' ? 'R' : 'L'));
       break;
-    case 'mm': state.mouse.x = ev.x; state.mouse.y = ev.y; state.mouse.s = ev.s ?? -1; break;
+    case 'mm':
+      if (state.game && state.mouse.s === (ev.s ?? -1)) {
+        const push = (d, v) => THREE.MathUtils.clamp(v + THREE.MathUtils.clamp(d * 0.3, -0.03, 0.03), -0.07, 0.07);
+        state.nudge.x = push(ev.x - state.mouse.x, state.nudge.x);
+        state.nudge.y = push(ev.y - state.mouse.y, state.nudge.y);
+      }
+      state.mouse.x = ev.x; state.mouse.y = ev.y; state.mouse.s = ev.s ?? -1;
+      break;
+    case 'game': state.game = !!ev.on; break;
     case 'wh': state.wheel = THREE.MathUtils.clamp(state.wheel + ev.d * 0.5, -1, 1); break;
     case 'mic': state.mic = ev.v; state.micAt = performance.now(); break;
     case 'vr': Object.assign(state.vr, { h: ev.h, l: ev.l, r: ev.r, tl: ev.tl, tr: ev.tr, at: performance.now() }); break;
@@ -3058,9 +3068,13 @@ function animate() {
     for (const [bone, q] of rig.rest) bone.quaternion.copy(q);
     rig.root.updateMatrixWorld(true);
 
-    const mxl = CFG.look ? state.mouse.x - 0.5 : 0, myl = CFG.look ? state.mouse.y - 0.5 : 0;
-    state.look.x = damp(state.look.x, mxl, 7, dt);
-    state.look.y = damp(state.look.y, myl, 7, dt);
+    state.nudge.x = damp(state.nudge.x, 0, 2.5, dt);
+    state.nudge.y = damp(state.nudge.y, 0, 2.5, dt);
+    const mxl = !CFG.look ? 0 : state.game ? state.nudge.x : state.mouse.x - 0.5;
+    const myl = !CFG.look ? 0 : state.game ? state.nudge.y : state.mouse.y - 0.5;
+    const lookSpeed = state.game ? 3 : 7;
+    state.look.x = damp(state.look.x, mxl, lookSpeed, dt);
+    state.look.y = damp(state.look.y, myl, lookSpeed, dt);
 
     if (VR || WHEEL || PAD) {
       rig.root.position.y = rig.bodyBase.y + Math.sin(t * 2.2) * 0.003;

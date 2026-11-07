@@ -33,6 +33,8 @@ sealed class Settings
     public string PadModel { get; set; } = "8bitdo";
     public List<string> HiddenPads { get; set; } = new();
     public bool PadMinis { get; set; } = false;
+    public bool TeteCalmeJeux { get; set; } = true;
+    public List<string> Jeux { get; set; } = new();
     public string Theme { get; set; } = "classique";
     public string ScenePreset { get; set; } = "";
     public List<string> PersoOn { get; set; } = new();

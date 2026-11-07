@@ -99,6 +99,8 @@ sealed class SullysMiiBongoContext : ApplicationContext
 
     readonly string? _root;
     Point _lastCursor = new(int.MinValue, int.MinValue);
+    volatile string? _game;
+    string? _lastGame;
 
     public SullysMiiBongoContext(string? root)
     {
@@ -135,8 +137,10 @@ sealed class SullysMiiBongoContext : ApplicationContext
 
         new Thread(() =>
         {
+            int tick = 0;
             while (!_closing)
             {
+                if (tick++ % 15 == 0) try { CheckGame(tick); } catch { }
                 long now = Environment.TickCount64;
                 if (_lastMouseTick != 0) _maxMouseGap = Math.Max(_maxMouseGap, now - _lastMouseTick);
                 _lastMouseTick = now;
@@ -195,8 +199,24 @@ sealed class SullysMiiBongoContext : ApplicationContext
         if (Program.StartWithPadEditor) ui?.Post(_ => OpenPadEditor(), null);
     }
 
+    void CheckGame(int tick)
+    {
+        var g = _settings.TeteCalmeJeux && MiiDisplayed ? GameDetector.Detect(_settings.Jeux) : null;
+        if (g != _game)
+        {
+            _game = g;
+            if (g != null) _lastGame = g;
+            _server.Publish(GameJson());
+            try { _overlay?.BeginInvoke(PushState); } catch { }
+        }
+        else if (g != null && tick % 120 == 1) _server.Publish(GameJson());
+    }
+
+    string GameJson() => System.Text.Json.JsonSerializer.Serialize(new { t = "game", on = _game != null });
+
     void PublishCursor()
     {
+        if (!MiiDisplayed) { _lastCursor = new(int.MinValue, int.MinValue); return; }
         var p = Cursor.Position;
         if (p == _lastCursor) return;
         _lastCursor = p;
@@ -620,6 +640,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
             case "decor": ApplySetting("decor", !_settings.Decor); break;
             case "objects": ApplySetting("showObjects", !_settings.ShowObjects); break;
             case "minis": ApplySetting("padMinis", !_settings.PadMinis); break;
+            case "calm": ApplySetting("calmGames", !_settings.TeteCalmeJeux); break;
             case "mic": ApplySetting("micEnabled", !_settings.MicEnabled); break;
             case "extras":
                 _settings.PersoOn.Clear(); _persoHeld.Clear(); SaveSoon(); PublishPersoOn();
@@ -863,6 +884,8 @@ sealed class SullysMiiBongoContext : ApplicationContext
             faces = _facesCache.Select(f => new { name = f.Name, blink = f.Blink, mouths = f.Mouths }),
             appName = AppPaths.Name,
             sceneObjects = SceneObjectCount(),
+            jeu = _game,
+            dernierJeu = _lastGame,
             scenePresets = Presets().Select(p => new { file = p.File, nom = p.Nom, objets = p.Objets, description = p.Description }),
             pads = (_padsCache ??= AppPaths.PadProfiles()).Select(p => new { id = "perso:" + p.File, nom = p.Nom.Length > 0 ? p.Nom : p.File }),
             perso = _persoItems.Select(i => new
@@ -910,6 +933,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
                 DoAction(msg.GetProperty("name").GetString()!, msg.TryGetProperty("arg", out var a) ? a.ToString() : null);
             else if (type == "captureKey") { _captureKey = true; _captureFor = _settingsForm; }
             else if (type == "cancelCapture") { _captureKey = false; _captureFor = null; }
+            else if (type == "listApps") _settingsForm?.Post(System.Text.Json.JsonSerializer.Serialize(new { type = "apps", list = GameDetector.OpenApps() }));
         }
         catch { }
         PushState();
@@ -994,6 +1018,14 @@ sealed class SullysMiiBongoContext : ApplicationContext
                 break;
             case "showObjects": _settings.ShowObjects = B(); PageSettingsChanged(); UpdateVrTracker(); break;
             case "padMinis": _settings.PadMinis = B(); PageSettingsChanged(); break;
+            case "calmGames": _settings.TeteCalmeJeux = B(); break;
+            case "gameAdd":
+                if (S() is { Length: > 0 and < 120 } ga && !_settings.Jeux.Contains(ga, StringComparer.OrdinalIgnoreCase))
+                    _settings.Jeux = _settings.Jeux.Append(ga).ToList();
+                break;
+            case "gameRemove":
+                if (S() is { } gr) _settings.Jeux = _settings.Jeux.Where(j => !string.Equals(j, gr, StringComparison.OrdinalIgnoreCase)).ToList();
+                break;
             case "scenePreset":
                 if (S() is { } spf) ApplyPreset(spf);
                 return;

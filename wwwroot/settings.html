@@ -329,6 +329,18 @@
         </div>
         <div class="sub">Dans la fenêtre du Mii : <b>clic droit + glisser</b> pour tourner, <b>Ctrl + molette</b> pour zoomer. OBS suit en direct.</div>
       </section>
+
+      <section class="card">
+        <h2><span class="ico">🎮</span>Pendant les jeux</h2>
+        <label class="sw">Tête calme : elle bouge à peine avec la souris et revient d'elle-même au centre<input type="checkbox" data-tog="calmGames"><span class="t"></span></label>
+        <div class="sub">Un jeu est reconnu tout seul quand il est au premier plan <b>en plein écran</b> ou qu'il <b>bloque la souris</b> dans sa fenêtre.
+          Pour un jeu en fenêtre qui laisse la souris libre, ajoutez-le ici (lancez-le d'abord pour qu'il soit dans la liste).</div>
+        <div class="state" id="gameState" style="margin:8px 0"></div>
+        <div class="plist" id="gameList"></div>
+        <div class="row"><select id="gameApps"><option value="">Choisir un programme ouvert…</option></select>
+          <button class="btn" id="gameAppsRefresh" title="Relire la liste des programmes ouverts">↻</button>
+          <button class="btn" id="gameAdd">➕ Ajouter</button></div>
+      </section>
     </div>
   </div>
 
@@ -487,6 +499,7 @@
     document.querySelectorAll('#nav [data-go]').forEach(b => b.classList.toggle('active', b.dataset.go === page));
     try { localStorage.setItem('page', page); } catch { }
     if (page === 'systeme') refreshPerf();
+    if (page === 'affichage') post({ type: 'listApps' });
   }
   document.querySelectorAll('#nav [data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
   document.querySelector('[data-set="theme"]').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) window.setUiTheme?.(b.dataset.v); });
@@ -516,7 +529,7 @@
       ['🎹 Instrument', [['mode:next', 'Instrument suivant'], ['mode:keyboard', 'Instrument : clavier + souris'], ['mode:bongo', 'Instrument : bongos'],
         ['mode:pad', 'Instrument : manette'], ['mode:wheel', 'Instrument : volant'], ['mode:vr', 'Instrument : debout (VR)']]],
       ['🪟 Fenêtre et caméra', [['window', 'Afficher / masquer la fenêtre du Mii'], ['lock', 'Verrouiller / déverrouiller la fenêtre'],
-        ['view', 'Cadrage : buste ↔ corps entier'], ['orbit', 'Vue orbitale : oui / non']]],
+        ['view', 'Cadrage : buste ↔ corps entier'], ['orbit', 'Vue orbitale : oui / non'], ['calm', 'Tête calme pendant les jeux : oui / non']]],
       ['🏠 Décor et scène', [['decor', 'Décor : oui / non'], ['objects', 'Objets de la scène : oui / non'],
         ['scene:next', 'Scène : préréglage suivant'], ['scene:prev', 'Scène : préréglage précédent'],
         ...(s?.scenePresets || []).map(p => [`scene:${p.file}`, 'Scène : ' + p.nom])]],
@@ -556,6 +569,30 @@
       if (name && name.trim() && name.trim() !== p.nom) set('scenePresetRename', { file: p.file, name: name.trim() });
     }
     if (b.dataset.pre === 'del' && confirm(`Supprimer le préréglage « ${p.nom} » ?\nLe fichier va dans la Corbeille. Votre scène actuelle ne change pas.`)) set('scenePresetDelete', p.file);
+  });
+  function renderGames(s) {
+    const c = s.settings, list = c.Jeux || [];
+    stateBox($('#gameState'), !c.TeteCalmeJeux ? 'Désactivé : la tête suit toujours la souris'
+      : s.jeu ? '🎮 Jeu au premier plan : ' + s.jeu + ' (tête calme)'
+      : s.dernierJeu ? 'Aucun jeu au premier plan · dernier reconnu : ' + s.dernierJeu : 'Aucun jeu au premier plan pour l\'instant', !!s.jeu && c.TeteCalmeJeux);
+    const sig = JSON.stringify(list);
+    if ($('#gameList').dataset.sig === sig) return;
+    $('#gameList').dataset.sig = sig;
+    $('#gameList').innerHTML = list.length
+      ? list.map(g => `<div class="sw"><span class="nm">🎮 ${esc(g)}</span><button class="btn danger" data-game-del="${esc(g)}" title="Retirer">✕</button></div>`).join('')
+      : '<div class="sub">Aucun jeu ajouté à la main.</div>';
+  }
+  $('#gameList').addEventListener('click', e => { const b = e.target.closest('[data-game-del]'); if (b) set('gameRemove', b.dataset.gameDel); });
+  const listApps = () => post({ type: 'listApps' });
+  $('#gameAppsRefresh').addEventListener('click', listApps);
+  $('#gameApps').addEventListener('focus', listApps);
+  $('#gameAdd').addEventListener('click', () => { const v = $('#gameApps').value; if (v) set('gameAdd', v); });
+  host?.addEventListener('message', e => {
+    const m = e.data || {};
+    if (m.type !== 'apps') return;
+    const sel = $('#gameApps'), keep = sel.value;
+    sel.innerHTML = '<option value="">Choisir un programme ouvert…</option>' + (m.list || []).map(n => `<option>${esc(n)}</option>`).join('');
+    sel.value = keep;
   });
   function savePreset() {
     const name = $('#presetName').value.trim();
@@ -779,6 +816,7 @@
     window.setUiTheme?.(c.Theme);
     $('#navTheme').textContent = { wii: 'Wii', carnet: 'Carnet' }[c.Theme] || 'Classique';
     renderPresets(s);
+    renderGames(s);
     const persos = s.pads || [], hidden = c.HiddenPads || [];
     document.querySelectorAll('#cardPad .padpick[data-v]').forEach(b => { if (['8bitdo', 'xbox', 'xbox25'].includes(b.dataset.v)) b.style.display = hidden.includes(b.dataset.v) ? 'none' : ''; });
     const padSig = JSON.stringify(persos);
@@ -795,7 +833,7 @@
     mark('size', sizes.reduce((a, b) => Math.abs(b - c.Size) < Math.abs(a - c.Size) ? b : a));
     const tog = { showWindow: s.windowVisible, topMost: c.TopMost, clickThrough: c.ClickThrough, decor: c.Decor,
                   micEnabled: c.MicEnabled, vrMirror: c.VrMirror, startup: s.startup, showObjects: c.ShowObjects, hideOccluders: c.HideOccluders,
-                  shortcutsEnabled: c.RaccourcisActifs, padMinis: c.PadMinis };
+                  shortcutsEnabled: c.RaccourcisActifs, padMinis: c.PadMinis, calmGames: c.TeteCalmeJeux };
     for (const [k, v] of Object.entries(tog)) { const cb = document.querySelector(`[data-tog="${k}"]`); if (cb) cb.checked = !!v; }
     document.querySelectorAll('[data-deco]').forEach(b => b.classList.toggle('active', c.Decorations.includes(b.dataset.deco)));
     $('#decorHint').style.display = c.Decor ? 'none' : '';

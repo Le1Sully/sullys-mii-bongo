@@ -210,6 +210,17 @@ Mouvements : un bouton s'enfonce, un stick pivote (et s'enfonce au clic), la cro
 une gâchette pivote sur sa charnière. Tout est enregistré tout seul dans `Manettes\<nom>.json` ; si le Mii tient cette
 manette, il la recharge quelques secondes après la dernière modification.
 
+## Pendant les jeux : tête calme
+
+Quand un jeu est au premier plan, la tête du Mii ne suit plus le curseur : chaque mouvement de souris la fait
+**bouger à peine**, puis elle **revient d'elle-même au centre**. Hors des jeux, elle suit la souris comme avant.
+
+Un jeu est reconnu tout seul quand sa fenêtre est **en plein écran** (ou plein écran fenêtré) ou qu'il **bloque la
+souris** dans sa fenêtre (jeux de tir, caméra à la souris…). Pour un jeu en fenêtre qui laisse la souris libre :
+Réglages → *Affichage* → **Pendant les jeux** → choisissez-le dans la liste des programmes ouverts → *➕ Ajouter*.
+La carte indique aussi le jeu reconnu en ce moment. L'interrupteur *Tête calme* (et le raccourci *Tête calme pendant
+les jeux : oui / non*) désactive tout ça.
+
 ## Vue orbitale
 
 Choisissez librement d'où l'on voit le Mii, avec ou sans décor :

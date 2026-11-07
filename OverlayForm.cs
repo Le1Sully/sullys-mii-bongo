@@ -63,9 +63,21 @@ sealed class OverlayForm : Form
         Navigate();
     }
 
+    bool _unloaded;
+
+    protected override void OnVisibleChanged(EventArgs e)
+    {
+        base.OnVisibleChanged(e);
+        if (_web.CoreWebView2 == null) return;
+        if (!Visible && !_unloaded) { _unloaded = true; _web.CoreWebView2.Navigate("about:blank"); }
+        else if (Visible && _unloaded) Navigate();
+    }
+
     public void Navigate()
     {
         if (_web.CoreWebView2 == null) return;
+        if (!Visible) { if (!_unloaded) { _unloaded = true; _web.CoreWebView2.Navigate("about:blank"); } return; }
+        _unloaded = false;
         var bg = _settings.Background == "transparent" ? "transparent" : _settings.Background;
         var url = $"{_baseUrl}?app=1&{_settings.Query(bg)}";
         _web.CoreWebView2.Navigate(url);
@@ -137,7 +149,7 @@ sealed class OverlayForm : Form
 
     protected override void OnFormClosing(FormClosingEventArgs e)
     {
-        if (e.CloseReason == CloseReason.UserClosing)
+        if (e.CloseReason is not (CloseReason.WindowsShutDown or CloseReason.ApplicationExitCall))
         {
             e.Cancel = true;
             Hide();
