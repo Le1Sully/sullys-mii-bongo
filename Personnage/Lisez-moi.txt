@@ -14,7 +14,8 @@ Tout ce que vous ajoutez au Mii avec l'éditeur de personnage
                   à la taille ou dans une main. Chapeaux, lunettes, épée, ailes…
                   (des formes simples sont aussi proposées sans fichier : cube, boule, pyramide…)
 
-  Personnage.json la liste de vos ajouts (créée et modifiée par l'éditeur).
+  Personnage.json la liste de vos ajouts (créée et modifiée par l'éditeur), y compris
+                  les parties qui ballottent (onglet « 🎈 Physique » : pompons, mèches, antennes…).
 
 Chaque ajout s'active :
   - avec son interrupteur dans les réglages (carte « Extras du personnage ») ;

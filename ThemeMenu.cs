@@ -9,24 +9,110 @@ static class ThemeMenu
 
     public static void Apply(ToolStrip menu, string theme)
     {
-        if (theme is not ("wii" or "carnet")) { menu.RenderMode = ToolStripRenderMode.ManagerRenderMode; return; }
-        bool carnet = theme == "carnet";
-        menu.Renderer = carnet ? new CarnetRenderer() : new WiiRenderer();
-        menu.BackColor = carnet ? Carnet.Paper : Back;
-        menu.ForeColor = carnet ? Carnet.Ink : Text;
-        menu.Padding = new Padding(4);
-        foreach (ToolStripItem it in menu.Items) Style(it, carnet);
+        if (theme is not ("wii" or "carnet" or "notice")) { menu.RenderMode = ToolStripRenderMode.ManagerRenderMode; return; }
+        menu.Renderer = MakeRenderer(theme);
+        menu.BackColor = BackOf(theme);
+        menu.ForeColor = InkOf(theme);
+        menu.Padding = new Padding(theme == "notice" ? 2 : 4);
+        if (theme == "notice") menu.Font = Notice.Font;
+        foreach (ToolStripItem it in menu.Items) Style(it, theme);
     }
 
-    static void Style(ToolStripItem it, bool carnet)
+    static ToolStripRenderer MakeRenderer(string theme) => theme switch
     {
-        it.ForeColor = carnet ? Carnet.Ink : Text;
+        "carnet" => new CarnetRenderer(),
+        "notice" => new NoticeRenderer(),
+        _ => new WiiRenderer(),
+    };
+
+    static Color BackOf(string theme) => theme switch { "carnet" => Carnet.Paper, "notice" => Notice.Paper, _ => Back };
+    static Color InkOf(string theme) => theme switch { "carnet" => Carnet.Ink, "notice" => Notice.Ink, _ => Text };
+
+    static void Style(ToolStripItem it, string theme)
+    {
+        it.ForeColor = InkOf(theme);
+        if (theme == "notice") it.Font = Notice.Font;
         if (it is ToolStripMenuItem mi)
         {
-            mi.Padding = new Padding(4, 5, 4, 5);
-            mi.DropDown.Renderer = carnet ? new CarnetRenderer() : new WiiRenderer();
-            mi.DropDown.BackColor = carnet ? Carnet.Paper : Back;
-            mi.DropDownOpening += (_, _) => { foreach (ToolStripItem sub in mi.DropDownItems) Style(sub, carnet); };
+            mi.Padding = theme == "notice" ? new Padding(2, 4, 2, 4) : new Padding(4, 5, 4, 5);
+            mi.DropDown.Renderer = MakeRenderer(theme);
+            mi.DropDown.BackColor = BackOf(theme);
+            if (theme == "notice") mi.DropDown.Font = Notice.Font;
+            mi.DropDownOpening += (_, _) => { foreach (ToolStripItem sub in mi.DropDownItems) Style(sub, theme); };
+        }
+    }
+
+    static class Notice
+    {
+        public static readonly Color Paper = Color.FromArgb(243, 240, 232), Ink = Color.FromArgb(27, 27, 25),
+            Faint = Color.FromArgb(213, 207, 193), Red = Color.FromArgb(212, 68, 28), Muted = Color.FromArgb(150, 146, 136);
+        public static readonly Font Font = new("Bahnschrift", 10f, FontStyle.Regular, GraphicsUnit.Point);
+    }
+
+    sealed class NoticeColors : ProfessionalColorTable
+    {
+        public override Color ToolStripDropDownBackground => Notice.Paper;
+        public override Color ImageMarginGradientBegin => Notice.Paper;
+        public override Color ImageMarginGradientMiddle => Notice.Paper;
+        public override Color ImageMarginGradientEnd => Notice.Paper;
+        public override Color MenuBorder => Notice.Ink;
+        public override Color SeparatorDark => Notice.Faint;
+        public override Color SeparatorLight => Notice.Paper;
+        public override Color MenuItemBorder => Notice.Ink;
+        public override Color MenuItemSelected => Notice.Ink;
+        public override Color CheckBackground => Notice.Paper;
+        public override Color CheckSelectedBackground => Notice.Ink;
+        public override Color CheckPressedBackground => Notice.Ink;
+    }
+
+    sealed class NoticeRenderer : ToolStripProfessionalRenderer
+    {
+        public NoticeRenderer() : base(new NoticeColors()) { RoundedEdges = false; }
+
+        protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+        {
+            if (!e.Item.Selected || !e.Item.Enabled) return;
+            using var fill = new SolidBrush(Notice.Ink);
+            e.Graphics.FillRectangle(fill, 1, 0, e.Item.Width - 2, e.Item.Height);
+            using var mark = new SolidBrush(Notice.Red);
+            e.Graphics.FillRectangle(mark, 1, 0, 3, e.Item.Height);
+        }
+
+        protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+        {
+            e.TextColor = !e.Item.Enabled ? Notice.Muted : e.Item.Selected ? Notice.Paper : Notice.Ink;
+            base.OnRenderItemText(e);
+        }
+
+        protected override void OnRenderArrow(ToolStripArrowRenderEventArgs e)
+        {
+            e.ArrowColor = e.Item?.Selected == true ? Notice.Paper : Notice.Ink;
+            base.OnRenderArrow(e);
+        }
+
+        protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e)
+        {
+            var r = e.ImageRectangle;
+            var box = new Rectangle(r.X + r.Width / 2 - 6, r.Y + r.Height / 2 - 6, 12, 12);
+            bool sel = e.Item.Selected;
+            using var fill = new SolidBrush(sel ? Notice.Paper : Notice.Ink);
+            e.Graphics.FillRectangle(fill, box);
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            using var pen = new Pen(sel ? Notice.Ink : Notice.Paper, 1.8f);
+            e.Graphics.DrawLines(pen, new[] { new PointF(box.X + 2.5f, box.Y + 6), new PointF(box.X + 5, box.Y + 8.7f), new PointF(box.X + 9.6f, box.Y + 3.4f) });
+        }
+
+        protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
+        {
+            int y = e.Item.Height / 2;
+            using var pen = new Pen(Notice.Faint, 1f);
+            e.Graphics.DrawLine(pen, 4, y, e.Item.Width - 4, y);
+        }
+
+        protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+        {
+            using var pen = new Pen(Notice.Ink, 1f);
+            e.Graphics.DrawRectangle(pen, 0, 0, e.AffectedBounds.Width - 1, e.AffectedBounds.Height - 1);
         }
     }
 

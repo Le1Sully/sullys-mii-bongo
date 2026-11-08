@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { SHAPES, TEXTURES } from './scene-objects.js';
 import { Gizmo } from './gizmo.js';
+import { PHYS_PRESETS, normalizeZone, decodePaint, encodePaint, sphereWeights } from './physics.js';
+import { pageTabs, onLeavePage } from './editor-pages.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -90,14 +92,18 @@ export async function startCharEditor(mii) {
   let selected = data.items.find(i => i.type !== 'animation')?.id || null;
   const sel = () => data.items.find(i => i.id === selected) || null;
   let saveTimer = null;
+  let savePending = false;
   const save = () => {
     mii.applyCharacter(data);
     clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => { host?.postMessage({ type: 'savePerso', data }); setStatus('✓ Enregistré'); }, 300);
+    savePending = true;
+    saveTimer = setTimeout(() => { savePending = false; host?.postMessage({ type: 'savePerso', data }); setStatus('✓ Enregistré'); }, 300);
   };
+  onLeavePage(() => { if (savePending) { clearTimeout(saveTimer); savePending = false; host?.postMessage({ type: 'savePerso', data }); } });
   let tab = 'apparence', akey = 0, playStart = 0;
   const isAnim = it => it?.type === 'animation';
   const setPreview = () => {
+    if (tab === 'physique') { char.preview = null; char.animPreview = null; return; }
     const it = sel();
     char.preview = isAnim(it) ? null : selected;
     if (!isAnim(it) || tab !== 'animations') char.animPreview = null;
@@ -208,16 +214,447 @@ export async function startCharEditor(mii) {
     gz.setTarget(() => handFrame(side));
     return gz;
   });
-  const gizmos = [objGizmo, ...handGizmos];
+  data.physique = Array.isArray(data.physique) ? data.physique : [];
+  let physSel = data.physique.find(z => z.cible !== 'mii' || z.mii === lists.mii)?.id || null;
+  let picking = null, pStart = null, lastPreset = 'pompon';
+  let tool = null, brush = 0.03, stroke = null;
+  const paintW = new Map(), paintUndo = [];
+  const zsel = () => data.physique.find(z => z.id === physSel) || null;
+  const zoneBall = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 10),
+    new THREE.MeshBasicMaterial({ color: 0xffd23f, wireframe: true, transparent: true, opacity: 0.35, depthTest: false }));
+  zoneBall.renderOrder = 998;
+  zoneBall.userData.noPhys = true;
+  zoneBall.visible = false;
+  scene.add(zoneBall);
+  const brushBall = new THREE.Mesh(new THREE.SphereGeometry(1, 20, 12),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.5, depthTest: false }));
+  brushBall.renderOrder = 999;
+  brushBall.userData.noPhys = true;
+  brushBall.visible = false;
+  scene.add(brushBall);
+  const painting = () => tab === 'physique' && !!tool && zsel()?.forme === 'peinte';
+  const zoneFrame = () => {
+    const z = zsel();
+    if (tab !== 'physique' || !z || picking || z.forme === 'peinte') return null;
+    return mii.jiggle.zoneWorld(z.id, H);
+  };
+  (function tickZone() {
+    const w = zoneFrame();
+    zoneBall.visible = !!w;
+    if (w) { zoneBall.position.copy(w.center); zoneBall.scale.setScalar(w.radius); }
+    mii.jiggle.show = tab === 'physique' ? physSel : null;
+    mii.jiggle.showAll = tab === 'physique';
+    if (!painting()) brushBall.visible = false;
+    requestAnimationFrame(tickZone);
+  })();
+  const r5 = v => Math.round(v * 100000) / 100000;
+  const physGizmo = new Gizmo({
+    scene, camera, canvas,
+    onStart: () => {
+      const z = zsel(), w = zoneFrame();
+      pStart = z && w && { centre: z.centre.slice(), rayon: z.rayon, inv: new THREE.Matrix3().setFromMatrix4(w.mesh.matrixWorld).invert() };
+    },
+    onChange: ev => {
+      const z = zsel();
+      if (!z || !pStart) return;
+      if (ev.kind === 'move') {
+        const d = ev.delta.clone().applyMatrix3(pStart.inv);
+        z.centre = pStart.centre.map((v, k) => r5(v + [d.x, d.y, d.z][k]));
+      } else if (ev.kind === 'scale') z.rayon = r3(Math.min(0.3, Math.max(0.005, pStart.rayon * ev.factor)));
+      mii.jiggle.setDefs(data.physique);
+      syncPhysFields(z);
+    },
+    onEnd: () => { pStart = null; save(); },
+  });
+  physGizmo.setModes({ rotate: false, center: false });
+  physGizmo.setTarget(() => { const w = zoneFrame(); return w && { position: w.center, quaternion: new THREE.Quaternion(), scale: 0.6 }; });
+  const gizmos = [objGizmo, ...handGizmos, physGizmo];
+
+  const ray = new THREE.Raycaster();
+  function castAt(e, only) {
+    const r = canvas.getBoundingClientRect();
+    ray.setFromCamera(new THREE.Vector2((e.clientX - r.left) / r.width * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+    let targets = mii.physTargets();
+    if (only) targets = targets.filter(t => t.mesh === only);
+    const hits = ray.intersectObjects(targets.map(t => t.mesh), false);
+    const matOf = h => Array.isArray(h.object.material) ? h.object.material[h.face?.materialIndex || 0] : h.object.material;
+    const solid = h => { const m = matOf(h); return m && m.visible !== false && !m.transparent && !(m.alphaTest > 0); };
+    const hit = only ? hits[0] : hits.find(solid) || hits[0];
+    return hit ? { hit, t: targets.find(x => x.mesh === hit.object) } : null;
+  }
+  function restPoint(hit) {
+    const mesh = hit.object;
+    const local = mesh.worldToLocal(hit.point.clone());
+    if (!mesh.isSkinnedMesh || !hit.face) return local;
+    const pa = mesh.getVertexPosition(hit.face.a, V()), pb = mesh.getVertexPosition(hit.face.b, V()), pc = mesh.getVertexPosition(hit.face.c, V());
+    const bc = new THREE.Triangle(pa, pb, pc).getBarycoord(local, V());
+    const pos = mesh.geometry.attributes.position;
+    const ra = V().fromBufferAttribute(pos, hit.face.a), rb = V().fromBufferAttribute(pos, hit.face.b), rc = V().fromBufferAttribute(pos, hit.face.c);
+    return ra.multiplyScalar(bc.x).addScaledVector(rb, bc.y).addScaledVector(rc, bc.z);
+  }
+  const targetOf = t => ({ cible: t.cible, mii: t.cible === 'mii' ? lists.mii : '', mesh: t.index, meshNom: t.mesh.name || '' });
+  function physPick(e) {
+    if (!picking) return false;
+    const c = castAt(e);
+    if (!c) { setStatus('Rien ici : cliquez sur le Mii ou sur un objet accroché'); return true; }
+    const place = { ...targetOf(c.t), centre: restPoint(c.hit).toArray().map(r5) };
+    const mode = picking.mode, src = data.physique.find(z => z.id === picking.id);
+    picking = null;
+    canvas.style.cursor = '';
+    let z;
+    if (mode === 'move' && src) z = Object.assign(src, place);
+    else {
+      const p = PHYS_PRESETS[lastPreset] || PHYS_PRESETS.pompon;
+      const base = mode === 'dup' && src ? src : { ...p, rayon: 0.045 };
+      const n = data.physique.length + 1;
+      const nom = (mode === 'dup' && src ? src.nom.replace(/\s*\d+$/, '') : p.nom) + ' ' + n;
+      z = { id: newId(), nom, forme: 'boule', rayon: base.rayon, souplesse: base.souplesse, rebond: base.rebond, ampleur: base.ampleur, actif: true, ...place };
+      data.physique.push(z);
+    }
+    physSel = z.id;
+    save();
+    setTimeout(() => mii.jiggle.kick(z.id), 150);
+    setStatus('✓ Placé : ajustez la taille de la boule, puis 🫨 Secouer');
+    renderLeft(); renderRight();
+    return true;
+  }
+
+  const zoneMesh = z => (z.forme === 'peinte' && !z.cible) ? null : mii.jiggle.meshOf(z);
+  function weightsOf(z, mesh) {
+    const n = mesh.geometry.attributes.position.count;
+    let w = paintW.get(z.id);
+    if (w && w.length === n) return w;
+    const def = normalizeZone(z);
+    w = def.forme === 'peinte' ? decodePaint(def, n)
+      : sphereWeights(mesh.geometry, def.centre, (def.rayon * H) / (mesh.matrixWorld.getMaxScaleOnAxis() || 1));
+    paintW.set(z.id, w);
+    return w;
+  }
+  function commitPaint(z, mesh, final) {
+    const w = paintW.get(z.id);
+    if (!w) return;
+    if (!final) { mii.jiggle.setLiveWeights(z.id, w); return; }
+    const pos = mesh.geometry.attributes.position;
+    let sx = 0, sy = 0, sz = 0, s = 0;
+    for (let i = 0; i < w.length; i++) if (w[i] > 0) { sx += pos.getX(i) * w[i]; sy += pos.getY(i) * w[i]; sz += pos.getZ(i) * w[i]; s += w[i]; }
+    if (s > 0) z.centre = [sx / s, sy / s, sz / s].map(r5);
+    z.peint = encodePaint(w);
+    z.nv = w.length;
+    mii.jiggle.setLiveWeights(z.id, null);
+    mii.jiggle.setDefs(data.physique);
+    save();
+  }
+  function pushUndo(z) {
+    const w = paintW.get(z.id);
+    paintUndo.push({ id: z.id, w: w ? w.slice() : null, target: { cible: z.cible, mii: z.mii, mesh: z.mesh, meshNom: z.meshNom } });
+    if (paintUndo.length > 30) paintUndo.shift();
+  }
+  function undoPaint() {
+    const u = paintUndo.pop(), z = u && data.physique.find(x => x.id === u.id);
+    if (!z) return;
+    Object.assign(z, u.target);
+    if (u.w) paintW.set(z.id, u.w); else paintW.delete(z.id);
+    const mesh = zoneMesh(z);
+    if (mesh && u.w) commitPaint(z, mesh, true);
+    else { z.peint = []; z.nv = 0; mii.jiggle.setLiveWeights(z.id, null); mii.jiggle.setDefs(data.physique); save(); }
+    setStatus('↶ Annulé');
+    renderRight();
+  }
+  function brushAt(z, mesh, rest, erase) {
+    const w = weightsOf(z, mesh), pos = mesh.geometry.attributes.position;
+    const r = (brush * H) / (mesh.matrixWorld.getMaxScaleOnAxis() || 1), r0 = r * 0.5;
+    for (let i = 0; i < w.length; i++) {
+      const d = Math.hypot(pos.getX(i) - rest.x, pos.getY(i) - rest.y, pos.getZ(i) - rest.z);
+      if (d >= r) continue;
+      const f = d <= r0 ? 1 : 1 - THREE.MathUtils.smoothstep(d, r0, r);
+      w[i] = erase ? Math.min(w[i], 1 - f) : Math.max(w[i], f);
+    }
+  }
+  const islandCache = new WeakMap();
+  function islandsOf(geo) {
+    if (islandCache.has(geo)) return islandCache.get(geo);
+    const pos = geo.attributes.position, n = pos.count;
+    const rep = new Int32Array(n), seen = new Map();
+    for (let i = 0; i < n; i++) {
+      const k = Math.round(pos.getX(i) * 1e4) + ',' + Math.round(pos.getY(i) * 1e4) + ',' + Math.round(pos.getZ(i) * 1e4);
+      if (!seen.has(k)) seen.set(k, i);
+      rep[i] = seen.get(k);
+    }
+    const par = Int32Array.from({ length: n }, (_, i) => i);
+    const find = i => { while (par[i] !== i) { par[i] = par[par[i]]; i = par[i]; } return i; };
+    const join = (a, b) => { a = find(rep[a]); b = find(rep[b]); if (a !== b) par[a] = b; };
+    const idx = geo.index;
+    const tri = idx ? idx.count / 3 : n / 3;
+    for (let t = 0; t < tri; t++) {
+      const a = idx ? idx.getX(t * 3) : t * 3, b = idx ? idx.getX(t * 3 + 1) : t * 3 + 1, c = idx ? idx.getX(t * 3 + 2) : t * 3 + 2;
+      join(a, b); join(b, c);
+    }
+    const label = new Int32Array(n);
+    for (let i = 0; i < n; i++) label[i] = find(rep[i]);
+    islandCache.set(geo, label);
+    return label;
+  }
+  function fillAt(z, mesh, hit, erase) {
+    const w = weightsOf(z, mesh), label = islandsOf(mesh.geometry);
+    const id = label[hit.face ? hit.face.a : 0];
+    const pos = mesh.geometry.attributes.position;
+    let count = 0, cx = 0, cy = 0, cz = 0;
+    for (let i = 0; i < w.length; i++) if (label[i] === id) { w[i] = erase ? 0 : 1; count++; cx += pos.getX(i); cy += pos.getY(i); cz += pos.getZ(i); }
+    if (erase || !count) return count;
+    cx /= count; cy /= count; cz /= count;
+    let R = 0;
+    for (let i = 0; i < w.length; i++) if (label[i] === id) R = Math.max(R, Math.hypot(pos.getX(i) - cx, pos.getY(i) - cy, pos.getZ(i) - cz));
+    for (let i = 0; i < w.length; i++) {
+      if (label[i] === id) continue;
+      const d = Math.hypot(pos.getX(i) - cx, pos.getY(i) - cy, pos.getZ(i) - cz);
+      if (d < R * 2.4) w[i] = Math.max(w[i], 1 - THREE.MathUtils.smoothstep(d, R * 0.9, R * 2.4));
+    }
+    return count;
+  }
+  function moveBrush(e) {
+    if (!painting()) return null;
+    const z = zsel(), mesh = zoneMesh(z);
+    const c = castAt(e, mesh);
+    brushBall.visible = !!c && tool !== 'remplir';
+    if (c) { brushBall.position.copy(c.hit.point); brushBall.scale.setScalar(brush * H); }
+    return c;
+  }
+  function physPaintDown(e) {
+    if (e.button !== 0 || !painting()) return false;
+    const z = zsel();
+    let mesh = zoneMesh(z);
+    const c = castAt(e, mesh);
+    if (!c) return false;
+    pushUndo(z);
+    if (!mesh) {
+      Object.assign(z, targetOf(c.t));
+      mesh = c.hit.object;
+      paintW.delete(z.id);
+      renderRight();
+    }
+    const erase = tool === 'gomme' || e.shiftKey;
+    if (tool === 'remplir') {
+      const n = fillAt(z, mesh, c.hit, erase);
+      commitPaint(z, mesh, true);
+      setStatus(erase ? '🪣 Pièce effacée' : `🪣 Pièce coloriée (${n} points)`);
+      setTimeout(() => mii.jiggle.kick(z.id), 120);
+      renderRight();
+      return true;
+    }
+    brushAt(z, mesh, restPoint(c.hit), erase);
+    commitPaint(z, mesh, false);
+    stroke = { z, mesh, erase };
+    return true;
+  }
+  function physPaintMove(e) {
+    const c = moveBrush(e);
+    if (!stroke) return false;
+    if (c) { brushAt(stroke.z, stroke.mesh, restPoint(c.hit), stroke.erase || e.shiftKey); commitPaint(stroke.z, stroke.mesh, false); }
+    return true;
+  }
+  function physPaintUp() {
+    if (!stroke) return;
+    const { z, mesh } = stroke;
+    stroke = null;
+    commitPaint(z, mesh, true);
+    setStatus('✓ Colorié : 🫨 Secouer pour voir');
+    renderRight();
+  }
+  function setForme(z, forme) {
+    if (z.forme === forme || (forme === 'boule' && !z.forme)) return;
+    const mesh = zoneMesh(z);
+    if (forme === 'peinte') {
+      z.forme = 'peinte';
+      if (mesh) {
+        const def = normalizeZone({ ...z, forme: 'boule' });
+        paintW.set(z.id, sphereWeights(mesh.geometry, def.centre, (def.rayon * H) / (mesh.matrixWorld.getMaxScaleOnAxis() || 1)));
+        commitPaint(z, mesh, true);
+      } else { z.peint = []; z.nv = 0; }
+      tool = 'pinceau';
+    } else {
+      z.forme = 'boule';
+      tool = null;
+      if (!z.cible) Object.assign(z, { cible: 'mii', mii: lists.mii });
+    }
+    paintW.delete(z.id);
+    mii.jiggle.setDefs(data.physique);
+    save();
+  }
+  function newPaintedZone(from) {
+    const p = from || PHYS_PRESETS[lastPreset] || PHYS_PRESETS.pompon;
+    const n = data.physique.length + 1;
+    const z = { id: newId(), nom: (from ? from.nom.replace(/\s*\d+$/, '') : p.nom) + ' ' + n, forme: 'peinte', cible: '', mii: '', mesh: 0, meshNom: '',
+      centre: [0, 0, 0], rayon: 0.045, peint: [], nv: 0, souplesse: p.souplesse, rebond: p.rebond, ampleur: p.ampleur, actif: true };
+    data.physique.push(z);
+    physSel = z.id; tool = 'pinceau';
+    save();
+    setStatus('🖌 Coloriez la partie qui doit bouger');
+    renderLeft(); renderRight();
+  }
+
+  function startPick(mode, id) {
+    picking = { mode, id };
+    tool = null;
+    canvas.style.cursor = 'crosshair';
+    setStatus(mode === 'move' ? 'Cliquez sur le nouvel endroit' : 'Cliquez sur la partie qui doit bouger (ex. un pompon)');
+    renderRight();
+  }
+  function stopPick() { picking = null; canvas.style.cursor = ''; setStatus(''); }
+  function syncPhysFields(z) {
+    for (const inp of right.querySelectorAll('[data-pf]')) {
+      if (inp.dataset.pf === 'nom') continue;
+      const v = +z[inp.dataset.pf];
+      inp.value = inp.type === 'number' ? fmt(v) : v;
+    }
+  }
+  const physOfMii = z => z.cible !== 'mii' || !z.mii || z.mii === lists.mii;
+  const zoneTarget = z => {
+    if (!z.cible) return 'pas encore coloriée';
+    if (z.cible === 'mii') return `${lists.mii.replace(/\.(glb|gltf|fbx|obj|dae|3mf|stl|ply|zip)$/i, '')}${z.meshNom ? ' · pièce « ' + z.meshNom + ' »' : ''}`;
+    const o = data.items.find(i => i.id === z.cible);
+    return o ? '🎩 ' + (o.nom || 'Objet') : '⚠ objet supprimé';
+  };
+  function physLeft() {
+    const zones = data.physique.filter(physOfMii);
+    const other = data.physique.length - zones.length;
+    left.innerHTML = `<h3>Ajouter de la physique</h3>
+      <div class="row"><label>Genre</label><select id="cePhysType">${Object.entries(PHYS_PRESETS).map(([k, p]) => `<option value="${k}" ${k === lastPreset ? 'selected' : ''}>${esc(p.nom)}</option>`).join('')}</select></div>
+      <div class="grid2"><button data-padd class="primary" title="Cliquez ensuite sur la partie qui doit bouger : une boule délimite la zone">🎈 Boule</button><button data-paint class="primary" title="Coloriez ensuite la partie qui doit bouger, comme les pièces des manettes">🖌 À colorier</button></div>
+      <p class="muted"><b>🎈 Boule</b> : un clic sur la partie qui doit bouger (un pompon, une antenne…). <b>🖌 À colorier</b> : vous coloriez exactement ce qui bouge, au pinceau ou d'un coup avec 🪣.</p>
+      <h3>Parties qui bougent</h3>
+      <div class="items">${zones.map(z => `<div class="it ${z.id === physSel ? 'sel' : ''}" data-pid="${esc(z.id)}"><span>${z.forme === 'peinte' ? '🖌' : '🎈'}</span><span class="n">${esc(z.nom)}</span>
+        <button class="sw ${z.actif !== false ? 'on' : ''}" data-pon="${esc(z.id)}" title="Activer / désactiver"></button></div>`).join('') || '<div class="muted">Aucune pour l\'instant.</div>'}</div>
+      ${zones.length ? '<button data-pkick style="width:100%;margin-top:8px">🫨 Tout secouer</button>' : ''}
+      ${other ? `<p class="muted">${other} autre${other > 1 ? 's' : ''} pour d'autres Mii.</p>` : ''}
+      <p class="muted">En jaune sur le modèle : ce que la partie choisie fait bouger ; en bleu : les autres. Pour un objet accroché, activez-le d'abord ou cliquez 👁 Tout montrer.</p>`;
+  }
+  function physRight() {
+    const z = zsel();
+    if (picking) {
+      right.innerHTML = `<h3>🎈 Physique</h3><p class="warn">👆 ${picking.mode === 'move' ? 'Cliquez sur le nouvel endroit, sur le Mii ou un objet accroché.' : 'Cliquez sur la partie qui doit bouger, sur le Mii ou un objet accroché.'}</p>
+        <p class="muted">Glissez à côté du Mii pour tourner autour si besoin. Échap : annuler.</p><button data-px="cancel">Annuler</button>`;
+      return;
+    }
+    if (!z || !physOfMii(z)) {
+      right.innerHTML = `<h3>🎈 Physique</h3><p class="muted">Choisissez le genre à gauche (Pompon, Tissu…), puis <b>🎈 Boule</b> (un clic sur la partie) ou <b>🖌 À colorier</b> (vous coloriez ce qui bouge).</p>`;
+      return;
+    }
+    const sl = (lbl, f, min, max, step) => `<div class="sl"><span>${lbl}</span><input type="range" data-pf="${f}" min="${min}" max="${max}" step="${step}" value="${+z[f]}"><input type="number" data-pf="${f}" min="${min}" max="${max}" step="${step}" value="${fmt(+z[f])}"></div>`;
+    const cur = Object.entries(PHYS_PRESETS).find(([, p]) => p.souplesse === z.souplesse && p.rebond === z.rebond && p.ampleur === z.ampleur)?.[0];
+    const peinte = z.forme === 'peinte';
+    const tools = { pinceau: '🖌 Pinceau', gomme: '🧽 Gomme', remplir: '🪣 Remplir une pièce' };
+    const zone = peinte ? `
+      <div class="seg" data-ptool>${Object.entries(tools).map(([k, t]) => `<button data-v="${k}" class="${tool === k ? 'on' : ''}">${t}</button>`).join('')}</div>
+      <div class="sl"><span>Pinceau</span><input type="range" data-pb min="0.005" max="0.15" step="0.005" value="${brush}"><input type="number" data-pb min="0.005" max="0.15" step="0.005" value="${fmt(brush)}"></div>
+      <div class="grid2"><button data-px="pundo" ${paintUndo.some(u => u.id === z.id) ? '' : 'disabled'} title="Ctrl+Z">↶ Annuler</button><button data-px="pclear" ${z.peint?.length ? '' : 'disabled'}>🗑 Tout effacer</button></div>
+      ${z.cible ? '' : '<p class="warn">👆 Coloriez sur le Mii ou sur un objet accroché : la première touche choisit la pièce.</p>'}
+      <p class="muted">Clic gauche : colorier ce qui doit bouger (en jaune). <b>Maj</b> + clic ou 🧽 : gommer. <b>🪣</b> colorie d'un coup une pièce détachée (un pompon séparé du chapeau…), avec un fondu sur ce qui la tient. Clic droit + glisser : tourner autour du Mii, molette : zoom.</p>
+      <p class="muted">Une zone par partie (un pompon chacun : ⧉ Dupliquer) pour qu'elles bougent chacune de leur côté.</p>`
+      : `${sl('Taille', 'rayon', 0.005, 0.3, 0.005)}
+      <p class="muted">La boule délimite la zone : son cœur bouge d'un bloc, le bord se déforme en douceur. Flèches : la déplacer · boules : la grossir.</p>`;
+    right.innerHTML = `<h3>🎈 Physique</h3>
+      <div class="row"><label>Nom</label><input type="text" data-pf="nom" value="${esc(z.nom)}" maxlength="60"></div>
+      <div class="row"><label>Sur</label><span>${esc(zoneTarget(z))}</span></div>
+      <div class="grid2"><button data-px="kick" class="primary">🫨 Secouer</button>${peinte ? `<button data-px="look" class="${tool ? '' : 'on'}" title="Arrêter de colorier pour tourner librement">✋ Regarder</button>` : '<button data-px="move">📍 Replacer</button>'}</div>
+      <h3>Zone qui bouge</h3>
+      <div class="seg" data-pforme><button data-v="boule" class="${peinte ? '' : 'on'}">⚪ Boule</button><button data-v="peinte" class="${peinte ? 'on' : ''}">🖌 Coloriée</button></div>
+      ${zone}
+      <h3>Comportement</h3>
+      <div class="seg" data-pseg>${Object.entries(PHYS_PRESETS).map(([k, p]) => `<button data-v="${k}" class="${cur === k ? 'on' : ''}">${esc(p.nom)}</button>`).join('')}</div>
+      ${sl('Souplesse', 'souplesse', 0, 1, 0.01)}
+      ${sl('Rebond', 'rebond', 0, 1, 0.01)}
+      ${sl('Ampleur', 'ampleur', 0.005, 0.2, 0.005)}
+      <p class="muted"><b>Souplesse</b> : raide à gauche, mou à droite. <b>Rebond</b> : s'arrête vite à gauche, ballotte longtemps à droite. <b>Ampleur</b> : jusqu'où ça peut partir.</p>
+      <div class="row"><label>Activée</label><button class="sw ${z.actif !== false ? 'on' : ''}" data-pon="${esc(z.id)}"></button><span class="muted">fenêtre du Mii et OBS</span></div>
+      <div class="grid2" style="margin-top:12px"><button data-px="dup" title="Mêmes réglages pour une autre partie (l'autre pompon…)">⧉ Dupliquer${peinte ? '' : ' et placer'}</button><button data-px="del" class="danger">🗑 Supprimer</button></div>`;
+  }
+  function physTogg(id) {
+    const z = data.physique.find(x => x.id === id);
+    if (!z) return;
+    z.actif = z.actif === false;
+    save(); renderLeft(); renderRight();
+  }
+  function onPhysLeft(e) {
+    const on = e.target.closest('[data-pon]');
+    if (on) { physTogg(on.dataset.pon); return; }
+    if (e.target.closest('[data-padd]')) { lastPreset = left.querySelector('#cePhysType')?.value || lastPreset; startPick('new'); return; }
+    if (e.target.closest('[data-paint]')) { lastPreset = left.querySelector('#cePhysType')?.value || lastPreset; stopPick(); newPaintedZone(); return; }
+    if (e.target.closest('[data-pkick]')) { mii.jiggle.kick(null); return; }
+    const row = e.target.closest('[data-pid]');
+    if (row) {
+      physSel = row.dataset.pid; stopPick();
+      tool = zsel()?.forme === 'peinte' ? tool || 'pinceau' : null;
+      renderLeft(); renderRight();
+    }
+  }
+  function onPhysRight(e) {
+    const z = zsel();
+    const on = e.target.closest('[data-pon]');
+    if (on) { physTogg(on.dataset.pon); return; }
+    const pv = e.target.closest('[data-pseg] [data-v]');
+    if (pv && z) {
+      const p = PHYS_PRESETS[pv.dataset.v];
+      Object.assign(z, { souplesse: p.souplesse, rebond: p.rebond, ampleur: p.ampleur });
+      save(); renderRight(); setTimeout(() => mii.jiggle.kick(z.id), 50);
+      return;
+    }
+    const pf = e.target.closest('[data-pforme] [data-v]');
+    if (pf && z) { setForme(z, pf.dataset.v); renderLeft(); renderRight(); return; }
+    const pt = e.target.closest('[data-ptool] [data-v]');
+    if (pt && z) { tool = pt.dataset.v; renderRight(); return; }
+    const x = e.target.closest('[data-px]')?.dataset.px;
+    if (x === 'cancel') { stopPick(); renderRight(); }
+    if (!z) return;
+    if (x === 'kick') mii.jiggle.kick(z.id);
+    if (x === 'move') startPick('move', z.id);
+    if (x === 'look') { tool = tool ? null : 'pinceau'; renderRight(); }
+    if (x === 'pundo') undoPaint();
+    if (x === 'pclear' && confirm(`Effacer tout le coloriage de « ${z.nom} » ?`)) {
+      pushUndo(z);
+      const mesh = zoneMesh(z);
+      if (mesh) { weightsOf(z, mesh).fill(0); commitPaint(z, mesh, true); }
+      renderRight();
+    }
+    if (x === 'dup') { if (z.forme === 'peinte') newPaintedZone(z); else startPick('dup', z.id); }
+    if (x === 'del' && confirm(`Supprimer « ${z.nom} » ?`)) {
+      data.physique.splice(data.physique.indexOf(z), 1);
+      paintW.delete(z.id);
+      physSel = data.physique.find(physOfMii)?.id || null;
+      tool = null;
+      save(); renderLeft(); renderRight();
+    }
+  }
+  function onPhysField(t, final) {
+    if (t.dataset && 'pb' in t.dataset) {
+      brush = Math.min(0.15, Math.max(0.005, +t.value || 0.03));
+      syncPair(t, brush);
+      return;
+    }
+    const z = zsel(), f = t.dataset?.pf;
+    if (!z || !f) return;
+    if (f === 'nom') { z.nom = t.value; save(); if (final) renderLeft(); return; }
+    const v = +t.value || 0;
+    z[f] = f === 'rayon' ? Math.min(0.3, Math.max(0.005, v)) : f === 'ampleur' ? Math.min(0.3, Math.max(0.005, v)) : Math.min(1, Math.max(0, v));
+    syncPair(t, z[f]);
+    save();
+    if (final) { renderRight(); if (f !== 'rayon') mii.jiggle.kick(z.id); }
+  }
+  addEventListener('keydown', e => {
+    if (e.key === 'Escape' && (picking || tool)) { stopPick(); tool = null; renderRight(); }
+    if (tab === 'physique' && (e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.target.closest?.('input, select, textarea')) { e.preventDefault(); undoPaint(); }
+  });
 
   let drag = null;
   canvas.addEventListener('contextmenu', e => e.preventDefault());
   canvas.addEventListener('pointerdown', e => {
     canvas.setPointerCapture(e.pointerId);
+    if (e.button === 0 && physPick(e)) return;
+    if (physPaintDown(e)) return;
     if (e.button === 0 && gizmos.some(g => g.pointerDown(e))) return;
-    drag = { x: e.clientX, y: e.clientY, pan: e.button === 1 || e.button === 2 || e.shiftKey };
+    drag = { x: e.clientX, y: e.clientY, pan: painting() ? e.button === 1 : e.button === 1 || e.button === 2 || e.shiftKey };
   });
   canvas.addEventListener('pointermove', e => {
+    if (physPaintMove(e)) return;
     let busy = false;
     for (const g of gizmos) busy = g.pointerMove(e) || busy;
     if (busy) return;
@@ -234,7 +671,7 @@ export async function startCharEditor(mii) {
     }
     applyCamera();
   });
-  canvas.addEventListener('pointerup', () => { for (const g of gizmos) g.pointerUp(); drag = null; });
+  canvas.addEventListener('pointerup', () => { physPaintUp(); for (const g of gizmos) g.pointerUp(); drag = null; });
   canvas.addEventListener('wheel', e => {
     e.preventDefault();
     cam.dist = THREE.MathUtils.clamp(cam.dist * Math.exp(e.deltaY * 0.0012), H * 0.25, H * 30);
@@ -313,8 +750,8 @@ export async function startCharEditor(mii) {
   let statusText = '';
   const setStatus = t => { statusText = t; const s = top.querySelector('.st'); if (s) s.textContent = t; };
   function renderTop() {
-    top.innerHTML = `<b>🃏 Éditeur de personnage</b>
-      <span class="tabs"><button data-tab="apparence" class="${tab === 'apparence' ? 'on' : ''}">🎭 Apparence</button><button data-tab="animations" class="${tab === 'animations' ? 'on' : ''}">👋 Animations</button></span>
+    top.innerHTML = `${pageTabs('perso')}
+      <span class="tabs"><button data-tab="apparence" class="${tab === 'apparence' ? 'on' : ''}">🎭 Apparence</button><button data-tab="animations" class="${tab === 'animations' ? 'on' : ''}">👋 Animations</button><button data-tab="physique" class="${tab === 'physique' ? 'on' : ''}">🎈 Physique</button></span>
       <button data-v="tete">🙂 Tête</button><button data-v="buste">👕 Buste</button><button data-v="corps">🧍 Corps entier</button>
       <button data-a="all" class="${char.showAll ? 'on' : ''}" title="Montrer tous les ajouts en même temps (aperçu, ici seulement)">👁 Tout montrer</button>
       <span class="st">${esc(statusText)}</span>`;
@@ -323,7 +760,14 @@ export async function startCharEditor(mii) {
     const b = e.target.closest('button');
     if (!b) return;
     if (b.dataset.v) goView(b.dataset.v);
-    if (b.dataset.tab && b.dataset.tab !== tab) {
+    if (b.dataset.tab === 'physique' && tab !== 'physique') {
+      if (capturing) cancelCapture();
+      tab = 'physique'; playStart = 0;
+      setPreview();
+      renderTop(); renderLeft(); renderRight(); renderTimeline();
+      goView('tete');
+    } else if (b.dataset.tab && b.dataset.tab !== tab) {
+      stopPick();
       tab = b.dataset.tab;
       const first = data.items.find(i => (tab === 'animations') === isAnim(i));
       select(first?.id || null, true);
@@ -335,6 +779,7 @@ export async function startCharEditor(mii) {
   const keyLabel = it => it.touche ? (it.maintien ? '⏬ ' : '') + it.touche : '';
   const playsOnce = it => isAnim(it) && !it.boucle && !it.maintien;
   function renderLeft() {
+    if (tab === 'physique') { physLeft(); return; }
     const row = it => `<div class="it ${it.id === selected ? 'sel' : ''}" data-id="${esc(it.id)}">
         <span>${it.type === 'objet' ? '🎩' : isAnim(it) ? '👋' : '🙂'}</span><span class="n">${esc(it.nom || 'Sans nom')}</span>
         ${it.touche ? `<span class="k" title="Raccourci">${esc(keyLabel(it))}</span>` : ''}
@@ -358,9 +803,10 @@ export async function startCharEditor(mii) {
       <h3>Dossiers</h3>
       <div class="grid2"><button data-act="openExpressions">📁 Expressions</button><button data-act="openAccessoires">📁 Accessoires</button>
         <button data-imp="expressions" title="Choisir des images PNG sur le PC : elles sont copiées dans Personnage\\Expressions">📥 Image…</button><button data-imp="accessoires" title="Choisir des modèles 3D sur le PC : ils sont copiés dans Personnage\\Accessoires">📥 Modèle 3D…</button></div>
-      <p class="muted">Interrupteur vert = activé partout (fenêtre du Mii et OBS), comme dans les réglages.</p>`;
+      <p class="muted">Interrupteur allumé (ou case cochée) = activé partout (fenêtre du Mii et OBS), comme dans les réglages.</p>`;
   }
   left.addEventListener('click', e => {
+    if (tab === 'physique') { onPhysLeft(e); return; }
     const on = e.target.closest('[data-on]');
     if (on) { toggleOn(on.dataset.on); return; }
     const impL = e.target.closest('[data-imp]');
@@ -410,6 +856,7 @@ export async function startCharEditor(mii) {
   let capturing = false;
   const imgUrl = f => './personnage/Expressions/' + encodeURIComponent(f) + '?v=' + rev;
   function renderRight() {
+    if (tab === 'physique') { physRight(); return; }
     const it = sel();
     if (!it) {
       right.innerHTML = tab === 'animations'
@@ -720,6 +1167,7 @@ export async function startCharEditor(mii) {
   })();
 
   right.addEventListener('click', e => {
+    if (tab === 'physique') { onPhysRight(e); return; }
     const it = sel();
     if (!it) return;
     if (isAnim(it) && onAnimClick(e, it)) return;
@@ -765,6 +1213,7 @@ export async function startCharEditor(mii) {
     }
   });
   const onField = (e, final) => {
+    if (tab === 'physique') { onPhysField(e.target, final); return; }
     const it = sel();
     const t = e.target;
     if (!it || !t.dataset) return;
@@ -880,5 +1329,5 @@ export async function startCharEditor(mii) {
 
   renderTop(); renderLeft(); renderRight(); renderTimeline();
   host?.postMessage({ type: 'ready' });
-  window.charEditor = { get data() { return data; }, select, addItem, toggleOn };
+  window.charEditor = { get data() { return data; }, select, addItem, toggleOn, physPick, startPick, get tab() { return tab; } };
 }

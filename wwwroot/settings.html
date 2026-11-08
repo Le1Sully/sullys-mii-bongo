@@ -7,6 +7,7 @@
 <link rel="icon" href="icon.png">
 <link rel="stylesheet" href="theme-wii.css">
 <link rel="stylesheet" href="theme-carnet.css">
+<link rel="stylesheet" href="theme-notice.css">
 <script src="theme.js"></script>
 <script src="theme-icons.js"></script>
 <style>
@@ -57,6 +58,13 @@
     background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 40' preserveAspectRatio='none'%3E%3Cpath d='M5 9 Q 60 3 118 7 T 197 5 L 195 33 Q 138 38 80 33 T 3 35 Z' fill='%23ffdf5e' fill-opacity='.92'/%3E%3C/svg%3E") center / 100% 100% no-repeat, #fffbf1; }
   .prev-carnet i .wi { vertical-align: -0.3em; }
   .themepick .hand { font-family: "Segoe Print", "Ink Free", "Comic Sans MS", cursive; }
+  .prev-notice { background: #f3f0e8; border: 1px solid #1b1b19; border-top-width: 4px; gap: 0; padding: 12px 22px; align-items: stretch; }
+  .prev-notice i { background: #fbfaf6; border: 1px solid #1b1b19; color: #1b1b19; border-radius: 0; margin-top: -1px; text-align: left;
+    font-family: Bahnschrift, "Segoe UI", sans-serif; display: flex; gap: 8px; align-items: center; }
+  .prev-notice i::before { content: attr(data-n); font: 10px "Cascadia Mono", Consolas, monospace; color: #d4441c; }
+  .prev-notice i.on { background: #1b1b19; color: #f3f0e8; }
+  .themepick .notice { font-family: Bahnschrift, "Segoe UI", sans-serif; letter-spacing: .02em; }
+  .naved { display: contents; }
   .sclist { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 6px; }
   .scr.cur { box-shadow: 0 0 0 1.5px var(--accent) inset; }
   .scr .nm { flex: 1; min-width: 160px; display: flex; flex-direction: column; }
@@ -197,10 +205,12 @@
     <button data-go="raccourcis"><span class="ni">⌨️</span><span><b>Raccourcis</b><small id="navRaccourcis"></small></span></button>
     <button data-go="theme"><span class="ni">🎨</span><span><b>Thème</b><small id="navTheme"></small></span></button>
     <button data-go="systeme"><span class="ni">📺</span><span><b>OBS &amp; système</b><small id="navSysteme"></small></span></button>
-    <div class="navfoot">Éditeurs</div>
+    <div class="naved">
+    <div class="navfoot">Éditeur</div>
     <button class="mini" data-act="openCharEditor">🎭 Personnage…</button>
     <button class="mini" data-act="openEditor">🧱 Scène…</button>
     <button class="mini" data-act="openPadEditor">🎮 Manettes…</button>
+    </div>
   </nav>
 
   <main>
@@ -458,6 +468,9 @@
         <button class="padpick themepick" data-v="carnet">
           <span class="prev prev-carnet icons-carnet" data-wii-icons><i>✏️ Mes notes</i><i class="on">🎨 Dessins</i><i>📁 Ranger</i></span>
           <b class="hand">Carnet</b><small>papier, encre, traits à main levée</small></button>
+        <button class="padpick themepick" data-v="notice">
+          <span class="prev prev-notice"><i data-n="01">Instrument</i><i data-n="02" class="on">Personnage</i><i data-n="03">Affichage</i></span>
+          <b class="notice">Notice</b><small>onglets, sections numérotées, sans emojis</small></button>
       </div>
     </section>
   </div>
@@ -839,7 +852,7 @@
     mark('fluidite', c.Fluidite || 'auto');
     mark('theme', c.Theme || 'classique');
     window.setUiTheme?.(c.Theme);
-    $('#navTheme').textContent = { wii: 'Wii', carnet: 'Carnet' }[c.Theme] || 'Classique';
+    $('#navTheme').textContent = { wii: 'Wii', carnet: 'Carnet', notice: 'Notice' }[c.Theme] || 'Classique';
     renderPresets(s);
     renderGames(s);
     const persos = s.pads || [], hidden = c.HiddenPads || [];

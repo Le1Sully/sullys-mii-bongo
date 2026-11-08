@@ -86,6 +86,7 @@
     + `<defs><filter id="a" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".32" numOctaves="2" seed="4"/><feDisplacementMap in="SourceGraphic" scale="1.5" xChannelSelector="R" yChannelSelector="G"/></filter>`
     + `<filter id="b" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".45" numOctaves="1" seed="11"/><feDisplacementMap in="SourceGraphic" scale="1.9" xChannelSelector="G" yChannelSelector="R"/></filter></defs>`
     + `<g filter="url(#a)">${body}</g><g filter="url(#b)" opacity=".42" stroke-width="1.1" transform="translate(.45 .35)">${body}</g></svg>`;
+  const fine = body => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter">${body}</svg>`;
   const css = document.createElement('style');
   css.textContent = `
     .wi { display: inline-block; width: 1.25em; height: 1.25em; vertical-align: -0.25em; background: currentColor;
@@ -93,7 +94,9 @@
     .wi-emoji { filter: grayscale(1) brightness(.55) contrast(1.3); }
     ${Object.entries(ICONS).map(([n, b]) => `.wi-${n} { --i: url("data:image/svg+xml,${encodeURIComponent(svg(b))}"); }`).join('\n')}
     :is(:root[data-theme="carnet"], .icons-carnet) .wi-emoji { filter: grayscale(1) sepia(.5) brightness(.5) contrast(1.2); }
-    ${Object.entries(ICONS).map(([n, b]) => `:root[data-theme="carnet"] .wi-${n}:not(.prev-wii *), .icons-carnet .wi-${n} { --i: url("data:image/svg+xml,${encodeURIComponent(sketch(b))}"); }`).join('\n')}`;
+    ${Object.entries(ICONS).map(([n, b]) => `:root[data-theme="carnet"] .wi-${n}:not(.prev-wii *), .icons-carnet .wi-${n} { --i: url("data:image/svg+xml,${encodeURIComponent(sketch(b))}"); }`).join('\n')}
+    :root[data-theme="notice"] .wi-emoji { filter: grayscale(1) brightness(.4) contrast(1.4); }
+    ${Object.entries(ICONS).map(([n, b]) => `:root[data-theme="notice"] .wi-${n}:not(.prev *) { --i: url("data:image/svg+xml,${encodeURIComponent(fine(b))}"); }`).join('\n')}`;
   document.head.appendChild(css);
 
   const RX = /\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*️?/gu;
@@ -139,7 +142,14 @@
       }
       if (last < s.length) frag.append(s.slice(last));
       n.replaceWith(frag);
+      markSolo(p);
     }
+  }
+
+  function markSolo(p) {
+    const box = p.closest('button, label, summary, h2, h3') || p;
+    const solo = !box.textContent.replace(RX, '').trim();
+    for (const sp of box.querySelectorAll('.wi, .wi-emoji')) sp.classList.toggle('solo', solo);
   }
 
   function restore() {
@@ -172,7 +182,7 @@
   });
 
   function update() {
-    const wii = ['wii', 'carnet'].includes(document.documentElement.dataset.theme);
+    const wii = ['wii', 'carnet', 'notice'].includes(document.documentElement.dataset.theme);
     if (wii === on && update.done) return;
     update.done = true;
     on = wii;

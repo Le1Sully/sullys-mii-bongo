@@ -46,7 +46,7 @@ vers les trois éditeurs ; la page ouverte la dernière fois est rouverte :
 | 🪟 Affichage | fenêtre sur le bureau (afficher, premier plan, verrouiller, taille, fond, **fluidité** : Fluide 60 img/s, **Auto** 60 pendant l'activité et 30 au repos, Économe 30 img/s) ; caméra (cadrage, vue orbitale) |
 | 🏠 Décor & scène | décor (vue, décorations, sol), écrans en direct (fluidité), éditeur de scène et vos objets |
 | ⌨️ Raccourcis | **tous les raccourcis clavier** au même endroit : en créer pour les réglages (changer d'instrument, instrument suivant, afficher / masquer ou verrouiller la fenêtre, cadrage, vue orbitale, décor, objets, micro, désactiver les extras, modèle de manette, fluidité, recharger), changer ou supprimer ceux des extras (avec *Appuyer* / *Maintenir*), interrupteur général, alerte si une combinaison sert deux fois |
-| 🎨 Thème | **Classique** (sombre), **Wii** (clair, boutons blancs arrondis, sélection bleue) ou **Carnet** (papier, encre, traits à main levée) : réglages, trois éditeurs et menu de l'icône |
+| 🎨 Thème | **Classique** (sombre), **Wii** (clair, boutons blancs arrondis, sélection bleue), **Carnet** (papier, encre, traits à main levée) ou **Notice** (autre disposition : onglets, sections numérotées, cases à cocher) : réglages, trois éditeurs et menu de l'icône |
 | 📺 OBS & système | URL pour OBS, démarrage avec Windows, ancien menu complet, **⚡ Performances** (images par seconde et saccades de chaque page qui affiche le Mii) |
 
 Relancer `Sully's Mii-Bongo.exe` alors qu'il tourne déjà ouvre aussi la fenêtre de réglages.
@@ -67,6 +67,11 @@ Dans la fenêtre : **glisser** pour la déplacer, **molette** pour la redimensio
 Pour construire un décor à votre goût autour du Mii : réglages → **Éditeur de scène → ✏️ Ouvrir l'éditeur**
 (ou clic droit sur l'icône → *Éditeur de scène…*, ou `"Sully's Mii-Bongo.exe" --editor`).
 L'éditeur s'ouvre dans sa propre fenêtre, avec votre Mii et vos réglages actuels.
+
+Les trois éditeurs (**scène**, **personnage**, **manettes**) sont les pages d'une **seule fenêtre « Éditeur »** : les
+onglets *🧱 Scène · 🃏 Personnage · 🎮 Manettes*, en haut à gauche de la barre d'outils, passent de l'un à l'autre
+(ce qui n'était pas encore enregistré l'est avant de changer de page). Les boutons des réglages et du menu de l'icône
+ouvrent cette fenêtre directement sur la bonne page.
 
 **Ajouter** (panneau de gauche) : 🧊 Cube, 🧱 Mur, ⬜ Plaque / sol, 🏛️ Colonne, ⚪ Boule, 🔺 Pyramide,
 🪜 Escalier, 🖼️ Panneau / image, 🖥️ **Écran**, 💡 **Lumière**, et 📦 vos **objets 3D** (dossier `Objets`, voir *Formats 3D
@@ -513,6 +518,31 @@ suivent en direct.
 Les animations sont enregistrées dans `Personnage\Personnage.json` avec les autres extras. Elles ne s'appliquent pas en
 mode Debout (VR), où les bras suivent le casque et les manettes.
 
+### Physique (pompons, mèches, antennes…)
+
+Éditeur de personnage → onglet **🎈 Physique** : une partie du Mii ou d'un objet accroché ballotte quand il bouge.
+
+1. Choisissez le **genre** (*Pompon*, *Tissu, cheveux*, *Ressort, antenne*, *Gelée*) puis **🎈 + Physique** ;
+2. **cliquez sur la partie qui doit bouger**, par exemple le pompon du chapeau. Une boule jaune montre la zone : son
+   cœur bouge d'un bloc, le bord se déforme en douceur ;
+3. ajustez la **taille** de la zone (curseur, ou les boules du repère 3D ; ses flèches la déplacent), puis
+   **🫨 Secouer** pour voir le résultat.
+
+Les curseurs **Souplesse** (raide → mou), **Rebond** (s'arrête vite → ballotte longtemps) et **Ampleur** (jusqu'où ça
+peut partir) affinent le comportement. **⧉ Dupliquer et placer** reprend les mêmes réglages pour une autre partie (le
+deuxième pompon) : cliquez-la ensuite. *📍 Replacer* déplace une zone, l'interrupteur la coupe.
+
+**🖌 À colorier**, comme les pièces de l'éditeur de manettes : au lieu d'une boule, vous **coloriez sur le modèle** ce qui
+doit bouger (en jaune ; les autres zones en bleu). Outils : **🖌 Pinceau** (taille réglable), **🧽 Gomme** (ou `Maj` + clic),
+**🪣 Remplir une pièce** (colorie d'un coup une pièce détachée, comme un pompon séparé du chapeau, avec un fondu sur ce
+qui la tient pour qu'elle reste attachée), **↶ Annuler** (`Ctrl`+`Z`) et *Tout effacer*. Clic droit + glisser tourne
+autour du Mii pendant le coloriage. Une boule peut être changée en zone coloriée (et inversement) : le coloriage part
+de la boule. Faites une zone par partie (⧉ *Dupliquer*) pour que chacune bouge de son côté.
+
+Les pièces du modèle n'ont pas besoin d'être séparées : la zone déforme seulement ce qui est dans la boule ou colorié. Les zones
+sont enregistrées dans `Personnage\Personnage.json` (`physique`), liées au Mii sur lequel elles ont été posées, et
+s'appliquent à la fenêtre du Mii comme à OBS. Pour un objet accroché, activez-le (ou *👁 Tout montrer*) avant de cliquer.
+
 ## Mini Mii sur la manette
 
 Réglages → **🎹 Instrument** → *Manette* → **🧑‍🤝‍🧑 Mini Mii sur la manette**. Au lieu du Mii qui tient la manette,
@@ -538,7 +568,13 @@ Réglages → **🎨 Thème** :
 - **Carnet** : comme un carnet tenu à la main. Papier crème à petits points, encre brun-noir, boutons découpés au contour
   tracé à main levée avec une petite ombre décalée, coup de surligneur jaune sur ce qui est choisi, titres écrits à la main
   et soulignés au crayon rouge, bouts de ruban adhésif sur les cartes, champs « sur la ligne », pense-bêtes pour les états,
-  et les mêmes icônes repassées au crayon. Le menu de l'icône passe aussi en papier et surligneur.
+  et les mêmes icônes repassées au crayon. Le menu de l'icône passe aussi en papier et surligneur ;
+- **Notice** : change aussi la **disposition**, comme une notice imprimée. Les pages passent en **onglets numérotés** en
+  haut, chaque page a son grand titre, et les cartes deviennent des **sections numérotées** séparées par un filet, titre à
+  gauche et réglages à droite. Les interrupteurs deviennent des **cases à cocher**, les choix des **boutons accolés**, et
+  les modes de l'instrument une liste à cocher. Plus d'emojis dans les libellés (seuls les boutons à icône gardent une
+  icône au trait fin). Les éditeurs se rangent en **panneaux collés aux bords**, avec une barre d'outils en haut et une
+  barre d'aide en bas (survolez-la pour la lire en entier). Les raccourcis vers les éditeurs passent dans la barre du bas.
 
 Il s'applique à la fenêtre de réglages, aux trois éditeurs (scène, personnage, manettes) et au menu du clic droit sur l'icône,
 tout de suite, y compris aux fenêtres déjà ouvertes. Le Mii, sa fenêtre et OBS ne changent pas.

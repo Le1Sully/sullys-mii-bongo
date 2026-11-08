@@ -4,6 +4,7 @@ import {
   loadSource, buildController, makeControls, zoneShape, xboxProfile, emptyProfile, mainTexture,
 } from './pad-profile.js';
 import { TEXTURES, textureCanvas } from './scene-objects.js';
+import { pageTabs, onLeavePage } from './editor-pages.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const fmt = v => (Math.round(v * 100) / 100).toString();
@@ -15,7 +16,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-const themeBg = () => renderer.setClearColor({ wii: 0xe4e7ea, carnet: 0xebe2cf }[window.uiTheme?.()] ?? 0x1e1f26);
+const themeBg = () => renderer.setClearColor({ wii: 0xe4e7ea, carnet: 0xebe2cf, notice: 0xe6e2d8 }[window.uiTheme?.()] ?? 0x1e1f26);
 themeBg();
 addEventListener('uitheme', themeBg);
 document.body.prepend(renderer.domElement);
@@ -184,6 +185,7 @@ function changed(rebuildNeeded = true) {
   renderTop();
 }
 let lastSaved = '';
+onLeavePage(() => { if (saveTimer && current?.profile) { clearTimeout(saveTimer); saveTimer = null; host?.postMessage({ type: 'savePad', file: current.file, data: current.profile }); } });
 function doUndo() {
   if (!undo.length || !current?.profile) return;
   current.profile = JSON.parse(undo.pop());
@@ -394,7 +396,7 @@ document.body.append(left, right, top, help, made);
 
 function renderTop() {
   const editable = current && !current.builtin;
-  top.innerHTML = `<b>🎮 Éditeur de manettes</b>
+  top.innerHTML = `${pageTabs('manettes')}
     <button data-t="place" class="${placing ? 'on' : ''}" ${editable ? '' : 'disabled'} title="Puis cliquez sur le modèle, là où se trouve le bouton">＋ Ajouter une pièce</button>
     <button data-t="tint" class="${tint ? 'on' : ''}" title="Colorer chaque pièce pour bien voir la découpe">🎨 Repérer les pièces</button>
     <button data-t="undo" ${undo.length && editable ? '' : 'disabled'}>↶ Annuler</button>

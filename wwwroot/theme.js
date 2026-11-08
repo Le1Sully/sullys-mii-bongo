@@ -1,5 +1,5 @@
 (function () {
-  const norm = t => (['wii', 'carnet'].includes(t) ? t : 'classique');
+  const norm = t => (['wii', 'carnet', 'notice'].includes(t) ? t : 'classique');
   function apply(t) {
     t = norm(t);
     if (document.documentElement.dataset.theme === t) return;

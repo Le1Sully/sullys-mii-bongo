@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from './vendor/three/examples/jsm/loaders/GLTFLoader.js';
 import { loadModel3D } from './model-loader.js';
+import { Jiggle, meshesOf, findMesh } from './physics.js';
 import { mergeGeometries } from './vendor/three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildController, makeControls, PAD_WIDTH } from './pad-profile.js';
 import { buildScene, disposeObject, setRenderer as setObjectsRenderer, normalizeScene, makeMaterial, boxGeo, getTexture, makeObject, SHAPES } from './scene-objects.js';
@@ -97,14 +98,14 @@ const BG = { green: '#00ff00', dark: '#1e1f26' };
 if (CFG.bg === 'transparent') renderer.setClearColor(0x000000, 0);
 else renderer.setClearColor(new THREE.Color(BG[CFG.bg] || ('#' + CFG.bg.replace('#', ''))), 1);
 if (CFG.editor || CFG.perso) {
-  for (const href of ['./theme-wii.css', './theme-carnet.css']) {
+  for (const href of ['./theme-wii.css', './theme-carnet.css', './theme-notice.css']) {
     const link = document.createElement('link');
     link.rel = 'stylesheet'; link.href = href;
     document.head.appendChild(link);
   }
   for (const src of ['./theme.js', './theme-icons.js'])
     await new Promise(res => { const s = document.createElement('script'); s.src = src; s.onload = s.onerror = res; document.head.appendChild(s); });
-  const themeBg = () => renderer.setClearColor({ wii: 0xe4e7ea, carnet: 0xebe2cf }[window.uiTheme?.()] ?? 0x1e1f26, 1);
+  const themeBg = () => renderer.setClearColor({ wii: 0xe4e7ea, carnet: 0xebe2cf, notice: 0xe6e2d8 }[window.uiTheme?.()] ?? 0x1e1f26, 1);
   themeBg();
   addEventListener('uitheme', themeBg);
 }
@@ -2054,6 +2055,24 @@ function updateFace(t, dt) {
 const char = { items: [], on: new Set(), order: [], expr: new Map(), objs: new Map(), rev: Date.now(), preview: null, seq: 0, showAll: false,
   anims: new Map(), once: new Map(), loopStart: new Map(), animPreview: null };
 const charOn = id => char.showAll || char.on.has(id) || char.preview === id;
+let miiMeshes = null;
+function physTargets() {
+  const out = [];
+  if (rig.root) {
+    miiMeshes ||= meshesOf(rig.root);
+    miiMeshes.forEach((mesh, i) => out.push({ mesh, cible: 'mii', index: i }));
+  }
+  for (const [id, o] of char.objs) if (o.group.visible) meshesOf(o.group).forEach((mesh, i) => out.push({ mesh, cible: id, index: i }));
+  return out;
+}
+const jiggle = new Jiggle(def => {
+  if (def.cible === 'mii') { if (!rig.root) return null; miiMeshes ||= meshesOf(rig.root); return findMesh(miiMeshes, def.mesh, def.meshNom); }
+  if (!def.cible) return null;
+  const o = char.objs.get(def.cible);
+  return o ? findMesh(meshesOf(o.group), def.mesh, def.meshNom) : null;
+});
+jiggle.resolve.isMii = m => !!miiMeshes?.includes(m);
+const sceneH = () => rig.sceneUnit || rig.modelBox?.getSize(V()).y || 1;
 const charGlb = new Map();
 
 async function loadCharacter() {
@@ -2075,6 +2094,7 @@ function setCharacterOn(ids) {
 function applyCharacter(data) {
   const items = (Array.isArray(data?.items) ? data.items : []).filter(it => it && it.id && (!it.mii || it.mii === CFG.model));
   char.items = items;
+  if (Array.isArray(data?.physique)) jiggle.setDefs(data.physique.filter(z => z && (z.cible !== 'mii' || !z.mii || z.mii === CFG.model)));
   const byId = new Map(items.map(i => [i.id, i]));
   for (const id of [...char.expr.keys()]) if (byId.get(id)?.type !== 'expression') char.expr.delete(id);
   for (const it of items.filter(i => i.type === 'expression')) {
@@ -3212,6 +3232,7 @@ function animate() {
       updateFace(t, dt);
       updateNotes(dt);
       updateAttachments();
+      jiggle.update(dt, sceneH());
       updateOccluders(dt);
       renderer.render(scene, viewCam);
       requestAnimationFrame(animate);
@@ -3256,6 +3277,7 @@ function animate() {
 
   updateNotes(dt);
   updateAttachments();
+  if (rig.root) jiggle.update(dt, sceneH());
   updateOccluders(dt);
   renderer.render(scene, viewCam);
   requestAnimationFrame(animate);
@@ -3329,7 +3351,7 @@ loadModel()
 animate();
 
 window.mii = { THREE, scene, camera, orthoCam, rig, state, face, onEvent, CFG, onScreenFrame, renderer, frameCamera, loadUserScene, applyBase, screenMaterial, sceneScreenCtx, refreshScreenTargets, userScreens,
-  char, applyCharacter, setCharacterOn, loadCharacter, playAnim, normalizeAnim, sampleAnim,
+  char, applyCharacter, setCharacterOn, loadCharacter, playAnim, normalizeAnim, sampleAnim, jiggle, physTargets, sceneH,
   reloadExpressions() {
     char.rev = Date.now();
     for (const e of char.expr.values()) e.src = null;

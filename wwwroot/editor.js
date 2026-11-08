@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { SHAPES, TEXTURES, textureCanvas, makeObject, disposeObject, normalizeScene } from './scene-objects.js';
 import { Gizmo } from './gizmo.js';
+import { pageTabs, onLeavePage } from './editor-pages.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const round = (v, step) => Math.round(v / step) * step;
@@ -129,6 +130,7 @@ export async function startEditor(mii) {
     renderProps(fromPanel);
   };
   addEventListener('beforeunload', () => { if (saveTimer) saveNow(); });
+  onLeavePage(() => { if (saveTimer) saveNow(); });
   const restore = json => {
     data = JSON.parse(json);
     data.base ||= {};
@@ -474,7 +476,7 @@ export async function startEditor(mii) {
   const setStatus = t => { statusText = t; const s = top.querySelector('.st'); if (s) s.textContent = t; };
   let miiVisible = true;
   function renderTopbar() {
-    top.innerHTML = `<b>🧱 Éditeur de scène</b>
+    top.innerHTML = `${pageTabs('scene')}
       <button data-a="undo" ${undo.length ? '' : 'disabled'} title="Annuler (Ctrl+Z)">↶ Annuler</button>
       <button data-a="redo" ${redo.length ? '' : 'disabled'} title="Rétablir (Ctrl+Y)">↷ Rétablir</button>
       <button data-a="snap" class="${snap ? 'on' : ''}" title="Aimant : pas de 0,05 et angles de 15°">🧲 Aimant</button>

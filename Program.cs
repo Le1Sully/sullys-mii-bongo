@@ -397,20 +397,80 @@ sealed class SullysMiiBongoContext : ApplicationContext
     EventWaitHandle? _openSignal, _editorSignal;
     volatile bool _closing;
 
-    SettingsForm? _editorForm;
+    SettingsForm? _editorsForm;
+    string _editorPage = "scene";
+    SettingsForm? LiveEditors => _editorsForm is { IsDisposed: false } ? _editorsForm : null;
+    SettingsForm? _editorForm => _editorPage == "scene" ? LiveEditors : null;
+    SettingsForm? _charEditorForm => _editorPage == "perso" ? LiveEditors : null;
+    SettingsForm? _padEditorForm => _editorPage == "manettes" ? LiveEditors : null;
 
-    void OpenEditor()
+    static readonly Dictionary<string, (string Path, string Title)> EditorPages = new()
     {
-        if (_editorForm == null || _editorForm.IsDisposed)
+        ["scene"] = ("?follow=1&editor=1&bg=1e1f26", "Scène"),
+        ["perso"] = ("?follow=1&perso=1&bg=1e1f26", "Personnage"),
+        ["manettes"] = ("manettes.html", "Manettes"),
+    };
+
+    static string EditorTitle(string page) => $"{AppPaths.Name} — Éditeur · {EditorPages[page].Title}";
+
+    void OpenEditor() => OpenEditors("scene");
+    void OpenCharEditor() => OpenEditors("perso");
+    void OpenPadEditor() => OpenEditors("manettes");
+
+    void OpenEditors(string page)
+    {
+        if (!EditorPages.ContainsKey(page)) page = "scene";
+        if (LiveEditors == null)
         {
             var area = Screen.PrimaryScreen!.WorkingArea;
             var size = new Size(Math.Min(1400, area.Width - 80), Math.Min(880, area.Height - 60));
-            _editorForm = new SettingsForm(_server.Url + "?follow=1&editor=1&bg=1e1f26", AppIcon(), $"{AppPaths.Name} — Éditeur de scène", size, hideOnClose: false);
-            _editorForm.MessageReceived += OnEditorMessage;
+            _editorPage = page;
+            _editorsForm = new SettingsForm(_server.Url + EditorPages[page].Path, AppIcon(), EditorTitle(page), size, hideOnClose: false);
+            _editorsForm.MessageReceived += OnEditorsMessage;
+            _editorsForm.FormClosed += (_, _) => { _captureKey = false; UpdateVrTracker(); };
         }
-        _editorForm.Show();
-        if (_editorForm.WindowState == FormWindowState.Minimized) _editorForm.WindowState = FormWindowState.Normal;
-        _editorForm.Activate();
+        else if (_editorPage != page)
+        {
+            if (LiveEditors!.IsReady) LiveEditors.Post(System.Text.Json.JsonSerializer.Serialize(new { type = "goPage", page }));
+            else SwitchEditorPage(page);
+        }
+        var f = LiveEditors!;
+        f.Show();
+        if (f.WindowState == FormWindowState.Minimized) f.WindowState = FormWindowState.Normal;
+        f.Activate();
+        UpdateVrTracker();
+    }
+
+    void SwitchEditorPage(string page)
+    {
+        if (!EditorPages.ContainsKey(page) || LiveEditors is not { } f) return;
+        _captureKey = false;
+        _editorPage = page;
+        f.NavigateTo(_server.Url + EditorPages[page].Path, EditorTitle(page));
+        UpdateVrTracker();
+    }
+
+    static string PageOfSource(string src) =>
+        src.Contains("manettes.html", StringComparison.OrdinalIgnoreCase) ? "manettes" : src.Contains("perso=1") ? "perso" : "scene";
+
+    void OnEditorsMessage(System.Text.Json.JsonElement msg)
+    {
+        var type = msg.TryGetProperty("type", out var t) ? t.GetString() : null;
+        if (type == "editorPage") { SwitchEditorPage(msg.TryGetProperty("page", out var p) ? p.GetString() ?? "" : ""); return; }
+        var from = PageOfSource(_editorsForm?.LastSource ?? "");
+        if (from != _editorPage && type is not ("savePerso" or "scene" or "savePad")) return;
+        var keep = _editorPage;
+        _editorPage = from;
+        try
+        {
+            switch (from)
+            {
+                case "perso": OnCharEditorMessage(msg); break;
+                case "manettes": OnPadEditorMessage(msg); break;
+                default: OnEditorMessage(msg); break;
+            }
+        }
+        finally { _editorPage = keep; }
     }
 
     void RunImport(string kind, SettingsForm? form)
@@ -563,26 +623,10 @@ sealed class SullysMiiBongoContext : ApplicationContext
         catch (Exception ex) { _editorForm?.Post(System.Text.Json.JsonSerializer.Serialize(new { type = "error", message = ex.Message })); }
     }
 
-    SettingsForm? _charEditorForm;
     readonly PersoHotkeys _hotkeys = new();
     AppPaths.PersoItem[] _persoItems = [];
     readonly Dictionary<string, uint> _persoHeld = new();
     bool _captureKey;
-
-    void OpenCharEditor()
-    {
-        if (_charEditorForm == null || _charEditorForm.IsDisposed)
-        {
-            var area = Screen.PrimaryScreen!.WorkingArea;
-            var size = new Size(Math.Min(1400, area.Width - 80), Math.Min(880, area.Height - 60));
-            _charEditorForm = new SettingsForm(_server.Url + "?follow=1&perso=1&bg=1e1f26", AppIcon(), $"{AppPaths.Name} — Éditeur de personnage", size, hideOnClose: false);
-            _charEditorForm.MessageReceived += OnCharEditorMessage;
-            _charEditorForm.FormClosed += (_, _) => _captureKey = false;
-        }
-        _charEditorForm.Show();
-        if (_charEditorForm.WindowState == FormWindowState.Minimized) _charEditorForm.WindowState = FormWindowState.Normal;
-        _charEditorForm.Activate();
-    }
 
     void ReloadPersoItems() => _persoItems = AppPaths.PersoItems();
 
@@ -745,24 +789,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
         PushState();
     }
 
-    SettingsForm? _padEditorForm;
     System.Windows.Forms.Timer? _padReloadTimer;
-
-    void OpenPadEditor()
-    {
-        if (_padEditorForm == null || _padEditorForm.IsDisposed)
-        {
-            var area = Screen.PrimaryScreen!.WorkingArea;
-            var size = new Size(Math.Min(1400, area.Width - 80), Math.Min(880, area.Height - 60));
-            _padEditorForm = new SettingsForm(_server.Url + "manettes.html", AppIcon(), $"{AppPaths.Name} — Éditeur de manettes", size, hideOnClose: false);
-            _padEditorForm.MessageReceived += OnPadEditorMessage;
-            _padEditorForm.FormClosed += (_, _) => UpdateVrTracker();
-        }
-        _padEditorForm.Show();
-        if (_padEditorForm.WindowState == FormWindowState.Minimized) _padEditorForm.WindowState = FormWindowState.Normal;
-        _padEditorForm.Activate();
-        UpdateVrTracker();
-    }
 
     string PadsJson() => System.Text.Json.JsonSerializer.Serialize(new
     {
@@ -1081,7 +1108,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
                 if (S() is { } spd) { AppPaths.DeleteScenePreset(spd); PresetsChanged(); }
                 break;
             case "theme":
-                if (S() is { } th && Allowed("classique", "wii", "carnet").Contains(th))
+                if (S() is { } th && Allowed("classique", "wii", "carnet", "notice").Contains(th))
                 {
                     _settings.Theme = th;
                     var oldMenu = _tray.ContextMenuStrip; _tray.ContextMenuStrip = BuildTrayMenu(); oldMenu?.Dispose();
@@ -1334,9 +1361,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
         _tray.Dispose();
         _overlay.Dispose();
         _settingsForm?.Dispose();
-        _editorForm?.Dispose();
-        _padEditorForm?.Dispose();
-        _charEditorForm?.Dispose();
+        _editorsForm?.Dispose();
         _closing = true;
         _openSignal?.Set();
         _editorSignal?.Set();
