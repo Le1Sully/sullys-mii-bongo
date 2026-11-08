@@ -169,8 +169,18 @@ async function loadByExt(ext, url, manager, readText) {
 
 async function loadZip(url) {
   const buf = new Uint8Array(await (await fetch(url)).arrayBuffer());
-  const files = unzipSync(buf);
-  const entries = Object.entries(files).filter(([p, d]) => d.length && !/(^|\/)__MACOSX\//.test(p) && !/(^|\/)\./.test(p));
+  const entries = [];
+  const expand = (data, prefix, depth) => {
+    for (const [p, d] of Object.entries(unzipSync(data))) {
+      if (!d.length || /(^|\/)__MACOSX\//.test(p) || /(^|\/)\./.test(p)) continue;
+      const path = prefix + p;
+      if (extOf(p) === 'zip' && depth < 2) {
+        try { expand(d, path.slice(0, path.lastIndexOf('/') + 1), depth + 1); continue; } catch { }
+      }
+      entries.push([path, d]);
+    }
+  };
+  expand(buf, '', 0);
   const main = PRIORITY.map(e => entries.filter(([p]) => extOf(p) === e).sort((a, b) => a[0].split('/').length - b[0].split('/').length)[0]).find(Boolean);
   if (!main) throw new Error("aucun modèle 3D dans ce ZIP (glb, gltf, fbx, obj, dae, 3mf, stl ou ply)");
   const byPath = new Map(), byName = new Map(), byStem = new Map(), blobData = new Map();
@@ -194,7 +204,77 @@ async function loadZip(url) {
   const result = await loadByExt(extOf(main[0]), byPath.get(main[0].toLowerCase()), manager, readText);
   result.zip = main[0];
   result.tracker = manager.tracker;
+  result.images = entries.filter(([p]) => TEX_RANK[extOf(p)] !== undefined).map(([p]) => ({ path: p, url: byPath.get(p.toLowerCase()) }));
+  result.flipY = !['glb', 'gltf'].includes(extOf(main[0]));
   return result;
+}
+
+const TEX_RANK = { jpg: 0, jpeg: 0, png: 1, webp: 1, bmp: 3, tga: 4 };
+const TEX_ROLES = [
+  ['normalMap', /(normalmap|normal|nrm|norm)$|[_\-. ]n$/],
+  ['roughnessMap', /(roughness|rough|rgh)$|[_\-. ]r$/],
+  ['metalnessMap', /(metalness|metallic|metal)$|[_\-. ]m$/],
+  ['aoMap', /(ambientocclusion|occlusion|ao)$/],
+  ['map', /(albedo|basecolor|base_color|diffuse|diff|dif|color|col)$|[_\-. ](a|d|bc|c)$/],
+];
+const cleanName = s => String(s || '').toLowerCase().replace(/[_\-. ]*(inst|mat|material|mtl)$/, '').replace(/[_\-. ]+$/, '');
+
+function textureSets(images) {
+  const sets = new Map();
+  for (const img of images) {
+    const stem = stemOf(img.path);
+    for (const [role, rx] of TEX_ROLES) {
+      const m = stem.match(rx);
+      if (!m) continue;
+      const base = stem.slice(0, m.index).replace(/[_\-. ]+$/, '');
+      const set = sets.get(base) || sets.set(base, {}).get(base);
+      const cur = set[role];
+      if (!cur || TEX_RANK[extOf(img.path)] < TEX_RANK[extOf(cur.path)]) set[role] = img;
+      break;
+    }
+  }
+  return sets;
+}
+
+async function autoTextures(root, images, flipY) {
+  if (!images?.length) return 0;
+  const sets = [...textureSets(images)].filter(([, s]) => s.map);
+  if (!sets.length) return 0;
+  const tga = new TGALoader(), loader = new THREE.TextureLoader(), cache = new Map();
+  const load = img => {
+    if (!cache.has(img.url)) {
+      const l = extOf(img.path) === 'tga' ? tga : loader;
+      cache.set(img.url, l.loadAsync(img.url).then(t => { t.flipY = flipY; t.needsUpdate = true; return t; }).catch(() => null));
+    }
+    return cache.get(img.url);
+  };
+  const jobs = [], seen = new Set();
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      if (!m || m.map || seen.has(m) || !m.isMeshStandardMaterial) continue;
+      seen.add(m);
+      const key = cleanName(m.name);
+      let best = null;
+      for (const [base, set] of sets) if (base && key && (key.includes(base) || base.includes(key)) && (!best || base.length > best[0].length)) best = [base, set];
+      if (!best && sets.length === 1) best = sets[0];
+      if (!best) continue;
+      const set = best[1];
+      for (const role of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap']) {
+        if (!set[role] || m[role]) continue;
+        jobs.push(load(set[role]).then(t => {
+          if (!t) return;
+          if (role === 'map') { t.colorSpace = THREE.SRGBColorSpace; m.color.set(0xffffff); }
+          m[role] = t;
+          if (role === 'roughnessMap') m.roughness = 1;
+          if (role === 'metalnessMap') m.metalness = 1;
+          m.needsUpdate = true;
+        }));
+      }
+    }
+  });
+  await Promise.all(jobs);
+  return jobs.length;
 }
 
 export async function loadModel3D(url) {
@@ -211,6 +291,9 @@ export async function loadModel3D(url) {
   if (dropped.length) console.warn(`Modèle ${baseName(url)} : textures introuvables ignorées (${dropped.join(', ')})`, result.tracker?.failed || []);
   delete result.tracker;
   tidyMaterials(result.scene);
+  await autoTextures(result.scene, result.images, result.flipY !== false);
+  delete result.images;
+  delete result.flipY;
   result.scene.traverse(o => {
     if (!o.isMesh) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
