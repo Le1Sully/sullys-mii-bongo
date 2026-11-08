@@ -92,6 +92,15 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.autoUpdate = false;
+renderer.shadowMap.needsUpdate = true;
+let shadowAt = 0, shadowUntil = 0;
+const shadowLive = CFG.editor || CFG.perso;
+const shadowBurst = (ms = 3000) => { shadowUntil = Math.max(shadowUntil, performance.now() + ms); renderer.shadowMap.needsUpdate = true; };
+const shadowTick = now => {
+  const gap = shadowLive ? 50 : now < shadowUntil ? 250 : Infinity;
+  if (now - shadowAt >= gap) { renderer.shadowMap.needsUpdate = true; shadowAt = now; }
+};
 document.body.appendChild(renderer.domElement);
 
 const BG = { green: '#00ff00', dark: '#1e1f26' };
@@ -460,6 +469,7 @@ async function loadModel() {
   }
   if (CFG.decor) buildDecor(left, right, reach);
   if (CFG.objs || CFG.editor) await loadUserScene();
+  shadowBurst(4000);
 
   await setupFace().catch(e => console.warn('Visage :', e));
   if (!CFG.perso) loadCharacter();
@@ -581,11 +591,14 @@ function updateShadowFlags() {
   let lights = false;
   scene.traverse(o => { if (o.isPointLight && o.castShadow && o.visible) lights = true; });
   if (!lights) return;
+  let fresh = false;
   scene.traverse(o => {
     if (!o.isMesh || SHADOW_SKIP(o)) return;
+    if (!o.castShadow || !o.receiveShadow) fresh = true;
     o.castShadow = true;
     o.receiveShadow = true;
   });
+  if (fresh) shadowBurst(1500);
 }
 setInterval(updateShadowFlags, 1200);
 
@@ -2092,6 +2105,7 @@ function setCharacterOn(ids) {
 }
 
 function applyCharacter(data) {
+  shadowBurst(3000);
   const items = (Array.isArray(data?.items) ? data.items : []).filter(it => it && it.id && (!it.mii || it.mii === CFG.model));
   char.items = items;
   if (Array.isArray(data?.physique)) jiggle.setDefs(data.physique.filter(z => z && (z.cible !== 'mii' || !z.mii || z.mii === CFG.model)));
@@ -3234,6 +3248,7 @@ function animate() {
       updateAttachments();
       jiggle.update(dt, sceneH());
       updateOccluders(dt);
+      shadowTick(now);
       renderer.render(scene, viewCam);
       requestAnimationFrame(animate);
       return;
@@ -3279,6 +3294,7 @@ function animate() {
   updateAttachments();
   if (rig.root) jiggle.update(dt, sceneH());
   updateOccluders(dt);
+  shadowTick(now);
   renderer.render(scene, viewCam);
   requestAnimationFrame(animate);
 }
@@ -3313,6 +3329,7 @@ async function loadUserScene(data) {
   rig.userSceneData = data;
   rig.sceneData = data;
   scene.add(rig.userScene);
+  shadowBurst(3000);
   applyBase(data.base);
 }
 

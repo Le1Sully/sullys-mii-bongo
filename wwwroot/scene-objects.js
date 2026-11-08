@@ -252,7 +252,7 @@ export function makeObject(o, u, ctx = {}) {
     const range = Math.max(0, +o.range || 0);
     const light = new THREE.PointLight(color, Math.max(0, o.intensity ?? 3) * u * u, range * u, 2);
     light.castShadow = o.shadow !== false;
-    light.shadow.mapSize.set(1024, 1024);
+    light.shadow.mapSize.set(512, 512);
     light.shadow.bias = -0.0008;
     light.shadow.normalBias = 0.02 * u;
     light.shadow.camera.near = 0.02 * u;
