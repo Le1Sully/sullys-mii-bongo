@@ -7,6 +7,7 @@ import { ColladaLoader } from './vendor/three/examples/jsm/loaders/ColladaLoader
 import { STLLoader } from './vendor/three/examples/jsm/loaders/STLLoader.js';
 import { PLYLoader } from './vendor/three/examples/jsm/loaders/PLYLoader.js';
 import { ThreeMFLoader } from './vendor/three/examples/jsm/loaders/3MFLoader.js';
+import { TGALoader } from './vendor/three/examples/jsm/loaders/TGALoader.js';
 import { unzipSync } from './vendor/three/examples/jsm/libs/fflate.module.js';
 
 export const MODEL_EXTENSIONS = ['glb', 'gltf', 'fbx', 'obj', 'dae', '3mf', 'stl', 'ply', 'zip'];
@@ -15,6 +16,39 @@ const PRIORITY = ['glb', 'gltf', 'fbx', 'dae', 'obj', '3mf', 'stl', 'ply'];
 const extOf = name => (decodeURIComponent(String(name).split(/[?#]/)[0]).match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase();
 const baseName = p => decodeURIComponent(String(p).split(/[?#]/)[0]).split(/[\\/]/).pop().toLowerCase();
 const dirOf = url => url.slice(0, url.lastIndexOf('/') + 1);
+const stemOf = p => baseName(p).replace(/\.[a-z0-9]+$/i, '');
+
+function track(manager) {
+  manager.addHandler(/\.tga$/i, new TGALoader(manager));
+  const t = { pending: 0, failed: [], wake: null };
+  const start = manager.itemStart.bind(manager), end = manager.itemEnd.bind(manager), error = manager.itemError.bind(manager);
+  manager.itemStart = u => { t.pending++; start(u); };
+  manager.itemEnd = u => { t.pending = Math.max(0, t.pending - 1); end(u); if (!t.pending) t.wake?.(); };
+  manager.itemError = u => { t.failed.push(u); error(u); };
+  t.idle = ms => t.pending ? new Promise(r => { t.wake = r; setTimeout(r, ms); }) : Promise.resolve();
+  return t;
+}
+
+function dropBrokenTextures(root) {
+  const dropped = new Set();
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    for (const m of Array.isArray(o.material) ? o.material : [o.material]) {
+      if (!m) continue;
+      for (const k of Object.keys(m)) {
+        const tex = m[k];
+        if (!tex?.isTexture || tex.isRenderTargetTexture || tex.isVideoTexture || tex.isCanvasTexture) continue;
+        const img = tex.image;
+        const ok = img && (img.data || img.width > 0 || img.naturalWidth > 0 || (Array.isArray(img) && img.length));
+        if (ok) continue;
+        dropped.add(tex.name || k);
+        m[k] = null;
+        m.needsUpdate = true;
+      }
+    }
+  });
+  return [...dropped];
+}
 
 export const isModelFile = name => MODEL_EXTENSIONS.includes(extOf(name));
 export const modelLabel = name => String(name).replace(/\.(glb|gltf|fbx|obj|dae|3mf|stl|ply|zip)$/i, '');
@@ -22,6 +56,7 @@ export const modelLabel = name => String(name).replace(/\.(glb|gltf|fbx|obj|dae|
 function folderManager(url) {
   const dir = dirOf(url);
   const manager = new THREE.LoadingManager();
+  manager.tracker = track(manager);
   manager.setURLModifier(u => {
     if (/^(blob:|data:)/.test(u)) return u;
     if (/\\|^[a-z]:/i.test(decodeURIComponent(u).replace(/^https?:\/\/[^/]+\//, ''))) return dir + encodeURIComponent(baseName(u));
@@ -85,32 +120,43 @@ async function loadZip(url) {
   const entries = Object.entries(files).filter(([p, d]) => d.length && !/(^|\/)__MACOSX\//.test(p) && !/(^|\/)\./.test(p));
   const main = PRIORITY.map(e => entries.filter(([p]) => extOf(p) === e).sort((a, b) => a[0].split('/').length - b[0].split('/').length)[0]).find(Boolean);
   if (!main) throw new Error("aucun modèle 3D dans ce ZIP (glb, gltf, fbx, obj, dae, 3mf, stl ou ply)");
-  const byPath = new Map(), byName = new Map(), blobData = new Map();
+  const byPath = new Map(), byName = new Map(), byStem = new Map(), blobData = new Map();
   for (const [p, d] of entries) {
     const u = URL.createObjectURL(new Blob([d]));
     byPath.set(p.toLowerCase(), u);
     if (!byName.has(baseName(p))) byName.set(baseName(p), u);
+    if (!isModelFile(p) && !byStem.has(stemOf(p))) byStem.set(stemOf(p), u);
     blobData.set(u, d);
   }
   const mainDir = main[0].includes('/') ? main[0].slice(0, main[0].lastIndexOf('/') + 1).toLowerCase() : '';
   const manager = new THREE.LoadingManager();
+  manager.tracker = track(manager);
   manager.setURLModifier(u => {
     if (blobData.has(u) || /^data:/.test(u)) return u;
     const rel = decodeURIComponent(u.replace(/^blob:[a-z]+:\/\/[^/]+\//i, '').replace(/^https?:\/\/[^/]+\//i, '')).replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
-    return byPath.get(mainDir + rel) || byPath.get(rel) || byName.get(baseName(rel)) || u;
+    return byPath.get(mainDir + rel) || byPath.get(rel) || byName.get(baseName(rel)) || byStem.get(stemOf(rel)) || u;
   });
   const decoder = new TextDecoder();
   const readText = async u => decoder.decode(blobData.get(manager.resolveURL(u)) || new Uint8Array());
   const result = await loadByExt(extOf(main[0]), byPath.get(main[0].toLowerCase()), manager, readText);
   result.zip = main[0];
+  result.tracker = manager.tracker;
   return result;
 }
 
 export async function loadModel3D(url) {
   const ext = extOf(url);
-  const result = ext === 'zip'
-    ? await loadZip(url)
-    : await loadByExt(ext, url, folderManager(url), async u => (await fetch(u)).text());
+  let result;
+  if (ext === 'zip') result = await loadZip(url);
+  else {
+    const manager = folderManager(url);
+    result = await loadByExt(ext, url, manager, async u => (await fetch(u)).text());
+    result.tracker = manager.tracker;
+  }
+  await result.tracker?.idle(10000);
+  const dropped = dropBrokenTextures(result.scene);
+  if (dropped.length) console.warn(`Modèle ${baseName(url)} : textures introuvables ignorées (${dropped.join(', ')})`, result.tracker?.failed || []);
+  delete result.tracker;
   result.scene.traverse(o => {
     if (!o.isMesh) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
