@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { SHAPES, TEXTURES, textureCanvas, makeObject, disposeObject, normalizeScene } from './scene-objects.js';
+import { Gizmo } from './gizmo.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 const round = (v, step) => Math.round(v / step) * step;
@@ -75,11 +76,19 @@ export async function startEditor(mii) {
   const targetOf = id => {
     if (id === '@mii') return rig.root;
     if (id === '@table') return rig.table?.desk;
+    if (id === '@pad') return rig.table?.pad;
     const i = baseScreenIndex(id);
     if (i >= 0) return rig.baseScreens?.[i]?.grp;
     return groups.get(id);
   };
   const tableData = () => (data.base.table ||= { ...TABLE_DEFAULT });
+  const padData = () => {
+    const p = (data.base.pad ||= { tex: 'uni', color: data.base.table?.padColor || '#6a2a8a', texScale: 1, w: 1, d: 1, hidden: false });
+    const B = rig.table?.padBase;
+    p.pos ||= B ? B.pos.toArray().map(v => Math.round(v / u * 1000) / 1000) : [0, 0, 0];
+    p.rot ||= [0, 0, 0];
+    return p;
+  };
   const screenData = i => {
     data.base.screens ||= [];
     while (data.base.screens.length <= i) data.base.screens.push({ source: data.base.screens.length + 1, color: '#1b1b20', hidden: false });
@@ -140,6 +149,7 @@ export async function startEditor(mii) {
   const addGroup = o => {
     const g = makeObject(o, u, ctx);
     g.userData.loaded = () => { if (selected === o.id) updateHelper(); };
+    if (g.userData.bulb) g.userData.bulb.visible = true;
     rig.userScene.add(g); groups.set(o.id, g);
     return g;
   };
@@ -175,6 +185,12 @@ export async function startEditor(mii) {
     const o = { id: newId(), type, name: nameFor(type), pos: dropPoint(), rot: [0, 0, 0], size: [...def.size], tex: def.tex || 'uni', color: def.color || '#ffffff', texScale: 1, ...extra };
     if (type === 'panel' && userImages.length && !extra.tex) o.tex = 'img:' + userImages[0];
     if (type === 'glb') { delete o.tex; delete o.color; delete o.texScale; }
+    if (type === 'light') {
+      delete o.tex; delete o.texScale;
+      Object.assign(o, { intensity: 6, range: 0, shadow: true, bulb: false });
+      const c = rig.modelBox.getCenter(V());
+      o.pos = [Math.round(c.x / u * 20) / 20 + 0.5, Math.round(rig.modelBox.max.y / u * 20) / 20 + 0.6, Math.round(c.z / u * 20) / 20 - 0.4];
+    }
     if (type === 'screen') {
       delete o.tex; delete o.texScale;
       o.source = 1; o.stand = true;
@@ -202,7 +218,76 @@ export async function startEditor(mii) {
     data.objects.push(c); addGroup(c); if (c.type === 'screen') mii.refreshScreenTargets();
     select(c.id); commit();
   };
-  const select = id => { selected = id; updateHelper(); renderList(); renderProps(); };
+  const select = id => { selected = id; updateHelper(); updateGizmo(); renderList(); renderProps(); };
+
+  let localAxes = true;
+  const rotOf = id => {
+    if (id === '@pad') return padData().rot;
+    const i = baseScreenIndex(id);
+    if (i >= 0) { const e = screenData(i); e.rot ||= currentScreenPose(i).rot; return e.rot; }
+    return byId(id)?.rot;
+  };
+  const toRot = q => { const e = new THREE.Euler().setFromQuaternion(q, 'YXZ'); return [e.x, e.y, e.z].map(r => Math.round(THREE.MathUtils.radToDeg(r) * 10) / 10); };
+  const fromRot = r => new THREE.Quaternion().setFromEuler(new THREE.Euler(...r.map(THREE.MathUtils.degToRad), 'YXZ'));
+  let gStart = null;
+  const gizmo = new Gizmo({
+    scene, camera, canvas,
+    onStart: () => {
+      const o = byId(selected);
+      gStart = { pos: [...(posOf(selected) || [0, 0, 0])], rot: [...(rotOf(selected) || [0, 0, 0])], size: o ? [...o.size] : null };
+      if (selected === '@pad') { const p = padData(); gStart.pad = [p.w, p.d]; }
+    },
+    onChange: ev => {
+      if (!gStart || !selected) return;
+      const o = byId(selected);
+      if (ev.kind === 'move') {
+        const pos = posOf(selected), step = snap ? 0.05 : 0.001;
+        for (let k = 0; k < 3; k++) {
+          const d = [ev.delta.x, ev.delta.y, ev.delta.z][k] / u;
+          pos[k] = Math.abs(d) < 1e-9 ? gStart.pos[k] : Math.round(round(gStart.pos[k] + d, step) * 1000) / 1000;
+        }
+        if (selected !== '@mii') pos[1] = Math.max(-5, pos[1]);
+        afterMove(selected);
+      } else if (ev.kind === 'rotate') {
+        const step = snap ? Math.PI / 12 : 0;
+        const a = step ? Math.round(ev.angle / step) * step : ev.angle;
+        const q = new THREE.Quaternion().setFromAxisAngle(ev.worldAxis, a).multiply(fromRot(gStart.rot));
+        const r = rotOf(selected); toRot(q).forEach((v, k) => { r[k] = v; });
+        afterMove(selected);
+      } else if (ev.kind === 'scale' && selected === '@pad' && gStart.pad) {
+        const p = padData(), step = snap ? 0.05 : 0.005, k = ev.axis === 2 ? 1 : 0;
+        if (ev.axis !== 1) p[k ? 'd' : 'w'] = Math.min(4, Math.max(0.2, Math.round(round(gStart.pad[k] * ev.factor, step) * 1000) / 1000));
+        applyBaseLive();
+      } else if (ev.kind === 'scale' && o && gStart.size) {
+        const step = snap ? 0.05 : 0.005;
+        const sz = k => Math.max(0.01, Math.round(round(gStart.size[k] * ev.factor, step) * 1000) / 1000);
+        if (o.type === 'glb') o.size = [0, 1, 2].map(() => sz(0));
+        else o.size[ev.axis] = sz(ev.axis);
+        const g = groups.get(o.id);
+        if (g) g.scale.set(...o.size.map((v, k) => v / gStart.size[k]));
+        gStart.scaled = true;
+      }
+      updateHelper();
+      renderProps(true);
+    },
+    onEnd: () => {
+      const o = byId(selected);
+      if (gStart?.scaled && o) { groups.get(o.id)?.scale.set(1, 1, 1); rebuild(o); }
+      gStart = null; commit();
+    },
+  });
+  function updateGizmo() {
+    const id = selected, g = targetOf(id);
+    if (!id || id === '@table' || !g) { gizmo.setTarget(null); return; }
+    const isMii = id === '@mii', isScreen = baseScreenIndex(id) >= 0, isLight = byId(id)?.type === 'light';
+    gizmo.setModes({ move: true, plane: true, center: true, rotate: !isMii && !isLight, scale: !isMii && !isScreen && !isLight && localAxes });
+    gizmo.setTarget(() => {
+      const t = targetOf(selected);
+      if (!t || t.visible === false) return null;
+      t.updateWorldMatrix(true, false);
+      return { position: t.getWorldPosition(V()), quaternion: localAxes && !isMii ? t.getWorldQuaternion(new THREE.Quaternion()) : new THREE.Quaternion() };
+    });
+  }
 
   const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
   const setRay = e => {
@@ -213,6 +298,7 @@ export async function startEditor(mii) {
   const pickables = () => {
     const list = [...groups.values()];
     (rig.baseScreens || []).forEach((S, i) => { if (S.grp.visible) { S.grp.userData.pickId = '@screen' + i; list.push(S.grp); } });
+    if (rig.table?.pad?.visible) { rig.table.pad.userData.pickId = '@pad'; list.push(rig.table.pad); }
     if (rig.table?.desk.visible) { rig.table.desk.userData.pickId = '@table'; list.push(rig.table.desk); }
     if (rig.root.visible) { rig.root.userData.pickId = '@mii'; list.push(rig.root); }
     return list;
@@ -226,18 +312,20 @@ export async function startEditor(mii) {
   };
   const posOf = id => {
     if (id === '@mii') return ((data.base.mii ||= { pos: [0, 0, 0] }).pos);
+    if (id === '@pad') return padData().pos;
     const i = baseScreenIndex(id);
     if (i >= 0) { const e = screenData(i); e.pos ||= currentScreenPose(i).pos; return e.pos; }
     return byId(id)?.pos;
   };
   const afterMove = id => {
     if (id === '@mii') { const p = data.base.mii.pos; p[1] = 0; applyBaseLive(); return; }
-    if (baseScreenIndex(id) >= 0) applyBaseLive(); else placeGroup(byId(id));
+    if (baseScreenIndex(id) >= 0 || id === '@pad') applyBaseLive(); else placeGroup(byId(id));
   };
 
   let drag = null;
   canvas.addEventListener('pointerdown', e => {
     try { canvas.setPointerCapture(e.pointerId); } catch { }
+    if (e.button === 0 && gizmo.pointerDown(e)) return;
     if (e.button === 2 || e.button === 1) {
       drag = { kind: e.button === 1 || e.shiftKey ? 'pan' : 'orbit', x: e.clientX, y: e.clientY, az: cam.az, el: cam.el, target: cam.target.clone() };
       return;
@@ -253,6 +341,7 @@ export async function startEditor(mii) {
     drag = { kind: lift ? 'lift' : 'move', plane: new THREE.Plane().setFromNormalAndCoplanarPoint(normal, hit.point), start: hit.point.clone(), pos: [...pos], moved: false };
   });
   canvas.addEventListener('pointermove', e => {
+    if (gizmo.pointerMove(e)) return;
     if (!drag) return;
     if (drag.kind === 'orbit') {
       cam.az = drag.az - (e.clientX - drag.x) * 0.4;
@@ -273,7 +362,7 @@ export async function startEditor(mii) {
     drag.moved = true;
     afterMove(selected); renderProps(true);
   });
-  const endDrag = () => { if (drag?.moved) commit(); drag = null; };
+  const endDrag = () => { if (gizmo.pointerUp()) return; if (drag?.moved) commit(); drag = null; };
   canvas.addEventListener('pointerup', endDrag);
   canvas.addEventListener('pointercancel', endDrag);
   canvas.addEventListener('wheel', e => {
@@ -378,7 +467,7 @@ export async function startEditor(mii) {
   const top = el(`<div id="edTop" class="ed panel"></div>`);
   const left = el(`<div id="edLeft" class="ed panel"></div>`);
   const right = el(`<div id="edRight" class="ed panel" style="display:none"></div>`);
-  const help = el(`<div id="edHelp" class="ed">Clic : sélectionner · <b>glisser</b> : déplacer · <kbd>Maj</kbd> + glisser : monter / descendre · clic droit + glisser : tourner la vue · clic molette (ou <kbd>Maj</kbd> + clic droit) : déplacer la vue · molette : zoom · <kbd>Q</kbd>/<kbd>E</kbd> : pivoter · flèches, <kbd>Page↑</kbd>/<kbd>Page↓</kbd> : ajuster · <kbd>Ctrl</kbd>+<kbd>D</kbd> : dupliquer · <kbd>Suppr</kbd> · <kbd>Ctrl</kbd>+<kbd>Z</kbd></div>`);
+  const help = el(`<div id="edHelp" class="ed">Clic : sélectionner · <b>flèches X Y Z</b> : déplacer sur un axe · <b>carrés</b> : dans un plan · <b>arcs</b> : tourner · <b>boules</b> : taille · <b>glisser l'objet</b> : déplacer au sol · <kbd>Maj</kbd> + glisser : monter / descendre · clic droit + glisser : tourner la vue · clic molette (ou <kbd>Maj</kbd> + clic droit) : déplacer la vue · molette : zoom · <kbd>Q</kbd>/<kbd>E</kbd> : pivoter · flèches, <kbd>Page↑</kbd>/<kbd>Page↓</kbd> : ajuster · <kbd>Ctrl</kbd>+<kbd>D</kbd> : dupliquer · <kbd>Suppr</kbd> · <kbd>Ctrl</kbd>+<kbd>Z</kbd></div>`);
   document.body.append(top, left, right, help);
 
   let statusText = '';
@@ -389,6 +478,7 @@ export async function startEditor(mii) {
       <button data-a="undo" ${undo.length ? '' : 'disabled'} title="Annuler (Ctrl+Z)">↶ Annuler</button>
       <button data-a="redo" ${redo.length ? '' : 'disabled'} title="Rétablir (Ctrl+Y)">↷ Rétablir</button>
       <button data-a="snap" class="${snap ? 'on' : ''}" title="Aimant : pas de 0,05 et angles de 15°">🧲 Aimant</button>
+      <button data-a="axes" title="Axes des flèches : ceux de l'objet (tournés avec lui) ou ceux de la scène">${localAxes ? '📦 Axes de l\'objet' : '🌐 Axes de la scène'}</button>
       <button data-a="mii" class="${miiVisible ? '' : 'on'}" title="Masquer le Mii pour mieux voir">${miiVisible ? '🙈 Masquer le Mii' : '👁 Montrer le Mii'}</button>
       <button data-a="home" title="Voir tout : le Mii et tous les objets">⤢ Tout voir</button>
       <span class="st">${statusText}</span>`;
@@ -398,6 +488,7 @@ export async function startEditor(mii) {
     if (a === 'undo') doUndo();
     if (a === 'redo') doRedo();
     if (a === 'snap') snap = !snap;
+    if (a === 'axes') { localAxes = !localAxes; updateGizmo(); }
     if (a === 'mii') {
       miiVisible = !miiVisible;
       rig.root.visible = miiVisible;
@@ -419,7 +510,7 @@ export async function startEditor(mii) {
       .map(([k, s]) => `<button data-add="${k}" title="Ajouter : ${s.label}"><span>${s.icon}</span>${s.label}</button>`).join('');
     const models = userModels.length
       ? `<div class="row"><select id="edGlb">${userModels.map(m => `<option>${escapeHtml(m)}</option>`).join('')}</select><button data-add="glb" title="Ajouter ce modèle">＋</button></div>`
-      : `<div class="muted">Déposez des fichiers .glb dans le dossier <b>Objets</b>, puis ↻.</div>`;
+      : `<div class="muted">Déposez vos modèles dans le dossier <b>Objets</b> (glb, gltf, fbx, obj, dae, stl, ply, 3mf, ou un zip avec ses textures), puis ↻.</div>`;
     left.innerHTML = `<h3>Scène</h3>
       <div class="io">
         <button data-io="import" title="Ouvrir un fichier de scène (.json)">📥 Importer</button>
@@ -433,6 +524,7 @@ export async function startEditor(mii) {
       <h3 style="margin-top:12px">Ajouter</h3><div class="shapes">${shapes}</div>
       <h3 style="margin-top:12px">📦 Objets 3D</h3>${models}
       <div class="row"><button data-act="openObjets">📁 Objets</button><button data-act="openTextures">📁 Images</button><button data-act="refresh" title="Actualiser les listes">↻</button></div>
+      <div class="row"><button data-imp="objets" title="Choisir des modèles 3D sur le PC : ils sont copiés dans le dossier Objets et ajoutés à la scène">📥 Modèle 3D…</button><button data-imp="images" title="Choisir des images sur le PC : elles sont copiées dans le dossier Images (textures, posters)">📥 Image…</button></div>
       <h3 style="margin-top:12px">Éléments de base</h3><div class="list" id="edBase"></div>
       <h3 style="margin-top:12px">Dans la scène</h3><div class="list" id="edList"></div>`;
     renderList(); renderPresets();
@@ -536,8 +628,10 @@ export async function startEditor(mii) {
       return;
     }
     const add = e.target.closest('[data-add]')?.dataset.add;
-    if (add === 'glb') { const f = left.querySelector('#edGlb')?.value; if (f) addObject('glb', { file: f, name: f.replace(/\.(glb|gltf)$/i, '') }); return; }
+    if (add === 'glb') { const f = left.querySelector('#edGlb')?.value; if (f) addObject('glb', { file: f, name: f.replace(/\.(glb|gltf|fbx|obj|dae|3mf|stl|ply|zip)$/i, '') }); return; }
     if (add) { addObject(add); return; }
+    const imp = e.target.closest('[data-imp]')?.dataset.imp;
+    if (imp) { host ? host.postMessage({ type: 'import', kind: imp }) : setStatus("Importer : depuis l'appli seulement"); return; }
     const io = e.target.closest('[data-io]')?.dataset.io;
     if (io === 'import') { host ? host.postMessage({ type: 'importScene' }) : setStatus("Importer : depuis l'appli seulement"); return; }
     if (io === 'export') { showExport(); return; }
@@ -555,6 +649,7 @@ export async function startEditor(mii) {
       const items = [];
       items.push(['@mii', '🧍 Le Mii (sa place)']);
       if (rig.table) items.push(['@table', '🪑 Table du bureau' + (data.base.table?.hidden ? ' (masquée)' : '')]);
+      if (rig.table?.pad) items.push(['@pad', '🖱️ Tapis de souris' + (data.base.pad?.hidden ? ' (masqué)' : '')]);
       (rig.baseScreens || []).forEach((S, i) => items.push(['@screen' + i, `🖥️ Écran ${i + 1} du décor` + (data.base.screens?.[i]?.hidden ? ' (masqué)' : '')]));
       base.innerHTML = items.length
         ? items.map(([id, t]) => `<button data-sel="${id}" class="${id === selected ? 'on' : ''}">${t}</button>`).join('')
@@ -588,14 +683,17 @@ export async function startEditor(mii) {
 
   function renderProps(valuesOnly = false) {
     const o = byId(selected), si = baseScreenIndex(selected);
-    right.style.display = o || selected === '@mii' || selected === '@table' && rig.table || si >= 0 ? '' : 'none';
+    right.style.display = o || selected === '@mii' || (selected === '@table' || selected === '@pad') && rig.table || si >= 0 ? '' : 'none';
     if (right.style.display === 'none') return;
     if (valuesOnly) {
-      const vals = o || (si >= 0 ? { ...screenData(si), ...currentScreenPose(si) } : null);
+      const vals = o || (si >= 0 ? { ...screenData(si), ...currentScreenPose(si) } : selected === '@pad' ? padData() : null);
+      if (selected === '@pad') right.querySelectorAll('[data-pd=w],[data-pd=d]').forEach(inp => { inp.value = vals[inp.dataset.pd]; if (inp.nextElementSibling) inp.nextElementSibling.textContent = '×' + fmt(vals[inp.dataset.pd]); });
       if (vals) right.querySelectorAll('[data-k]').forEach(inp => { const [k, i] = inp.dataset.k.split('.'); if (vals[k] && i != null && document.activeElement !== inp) inp.value = fmt(vals[k][i]); });
       return;
     }
     if (selected === '@table') return renderTable();
+    if (selected === '@pad') return renderPad();
+    if (o.type === 'light') return renderLight(o);
     if (selected === '@mii') return renderMii();
     if (si >= 0) return renderBaseScreen(si);
     const isGlb = o.type === 'glb', isScreen = o.type === 'screen';
@@ -637,9 +735,35 @@ export async function startEditor(mii) {
       <div class="row"><label>Largeur</label><input type="range" min="0.6" max="2.5" step="0.05" data-t="width" value="${t.width}"><span class="muted" style="width:38px;text-align:right">×${fmt(t.width)}</span></div>
       <div class="row"><label>Profondeur</label><input type="range" min="0.7" max="2.5" step="0.05" data-t="depth" value="${t.depth}"><span class="muted" style="width:38px;text-align:right">×${fmt(t.depth)}</span></div>
       <div class="row"><label>Pieds</label><input type="color" data-t="legColor" value="${t.legColor}"></div>
-      <div class="row"><label>Tapis souris</label><input type="color" data-t="padColor" value="${t.padColor}"></div>
+      <div class="muted">Le tapis de souris se règle à part : « 🖱️ Tapis de souris » dans les éléments de base.</div>
       <label class="chk"><input type="checkbox" data-t="hidden" ${t.hidden ? 'checked' : ''}> Masquer la table (clavier et souris restent)</label>
       <div class="acts"><button data-do="resetTable" style="grid-column:1/-1">↺ Table d'origine</button></div>`;
+  }
+  function renderPad() {
+    const p = padData();
+    right.innerHTML = `<h3>🖱️ Tapis de souris</h3>
+      <div class="muted">Changez sa matière, sa taille et sa place librement : la souris du Mii garde sa zone de mouvement d'origine.</div>
+      <h3 style="margin-top:12px">Matière</h3>${texGrid(p.tex)}
+      <div class="row"><label>Couleur</label><input type="color" data-pd="color" value="${p.color}"><button data-pdc="#ffffff" title="Sans teinte">⟲</button></div>
+      <div class="row"><label>Motif</label><input type="range" min="0.2" max="4" step="0.05" data-pd="texScale" value="${p.texScale}"><span class="muted" style="width:38px;text-align:right">×${fmt(p.texScale)}</span></div>
+      <div class="row"><label>Largeur</label><input type="range" min="0.2" max="4" step="0.05" data-pd="w" value="${p.w}"><span class="muted" style="width:38px;text-align:right">×${fmt(p.w)}</span></div>
+      <div class="row"><label>Profondeur</label><input type="range" min="0.2" max="4" step="0.05" data-pd="d" value="${p.d}"><span class="muted" style="width:38px;text-align:right">×${fmt(p.d)}</span></div>
+      <div class="row"><label>Position</label><div class="trio">${num('pos', 0, 0.05, '← →', p.pos[0])}${num('pos', 1, 0.01, 'hauteur', p.pos[1])}${num('pos', 2, 0.05, 'avant / arr.', p.pos[2])}</div></div>
+      <div class="row"><label>Pivoter</label><input type="range" min="-180" max="180" step="${snap ? 15 : 1}" data-k="rot.1" value="${p.rot[1]}"><span class="muted" style="width:38px;text-align:right">${Math.round(p.rot[1])}°</span></div>
+      <label class="chk"><input type="checkbox" data-pd="hidden" ${p.hidden ? 'checked' : ''}> Masquer le tapis</label>
+      <div class="acts"><button data-do="resetPad" style="grid-column:1/-1">↺ Tapis d'origine</button></div>`;
+  }
+  function renderLight(o) {
+    right.innerHTML = `<h3>💡 Lumière</h3>
+      <div class="row"><label>Nom</label><input type="text" data-f="name" value="${escapeHtml(o.name || '')}"></div>
+      <div class="row"><label>Position</label><div class="trio">${num('pos', 0, 0.05, '← →', o.pos[0])}${num('pos', 1, 0.05, 'hauteur', o.pos[1])}${num('pos', 2, 0.05, 'avant / arr.', o.pos[2])}</div></div>
+      <div class="row"><label>Couleur</label><input type="color" data-lf="color" value="${o.color || '#fff1d6'}"></div>
+      <div class="row"><label>Intensité</label><input type="range" min="0" max="20" step="0.1" data-lf="intensity" value="${o.intensity ?? 3}"><span class="muted" style="width:38px;text-align:right">${fmt(o.intensity ?? 3)}</span></div>
+      <div class="row"><label>Portée</label><input type="range" min="0" max="10" step="0.1" data-lf="range" value="${o.range ?? 0}"><span class="muted" style="width:52px;text-align:right">${o.range ? fmt(o.range) : 'infinie'}</span></div>
+      <label class="chk"><input type="checkbox" data-lf="shadow" ${o.shadow !== false ? 'checked' : ''}> Projette des ombres</label>
+      <label class="chk"><input type="checkbox" data-lf="bulb" ${o.bulb ? 'checked' : ''}> Ampoule visible (fenêtre du Mii et OBS)</label>
+      <div class="muted">L'ombre tombe à l'opposé de la lumière : pour la voir, placez la lumière en hauteur, un peu derrière ou sur le côté de ce qui doit avoir une ombre. Les ombres demandent un peu plus au PC (chaque lumière à ombres redessine la scène) : une ou deux suffisent.</div>
+      <div class="acts"><button data-do="dup" title="Dupliquer (Ctrl+D)">⧉ Dupliquer</button><button data-do="del" class="danger" title="Supprimer (Suppr)">🗑 Suppr.</button><div></div></div>`;
   }
   function renderBaseScreen(i) {
     const e = screenData(i), pose = currentScreenPose(i);
@@ -658,9 +782,10 @@ export async function startEditor(mii) {
   right.addEventListener('input', e => {
     const t = e.target, o = byId(selected), si = baseScreenIndex(selected);
     const label = (txt) => { if (t.nextElementSibling?.classList.contains('muted')) t.nextElementSibling.textContent = txt; };
-    if (t.dataset.k && (o || si >= 0)) {
+    if (t.dataset.k && (o || si >= 0 || selected === '@pad')) {
       const [k, i] = t.dataset.k.split('.'); const v = parseFloat(t.value); if (!Number.isFinite(v)) return;
-      if (si >= 0) {
+      if (selected === '@pad') { padData()[k][i] = v; applyBaseLive(); updateHelper(); }
+      else if (si >= 0) {
         const e2 = screenData(si); const pose = currentScreenPose(si);
         e2.pos ||= pose.pos; e2.rot ||= pose.rot;
         e2[k][i] = v; applyBaseLive();
@@ -674,6 +799,17 @@ export async function startEditor(mii) {
       p[+t.dataset.m] = parseFloat(t.value);
       label(fmt(p[+t.dataset.m]));
       applyBaseLive();
+    } else if (t.dataset.pd) {
+      const p = padData(), k = t.dataset.pd;
+      p[k] = t.type === 'checkbox' ? t.checked : t.type === 'range' ? parseFloat(t.value) : t.value;
+      if (t.type === 'range') label('×' + fmt(p[k]));
+      applyBaseLive(); updateHelper();
+    } else if (t.dataset.lf && o) {
+      const k = t.dataset.lf;
+      o[k] = t.type === 'checkbox' ? t.checked : t.type === 'range' ? parseFloat(t.value) : t.value;
+      if (k === 'intensity') label(fmt(o[k]));
+      if (k === 'range') label(o[k] ? fmt(o[k]) : 'infinie');
+      rebuild(o);
     } else if (t.dataset.t) {
       const tb = tableData(), k = t.dataset.t;
       tb[k] = t.type === 'checkbox' ? t.checked : t.type === 'range' ? parseFloat(t.value) : t.value;
@@ -701,6 +837,11 @@ export async function startEditor(mii) {
         if (tex !== 'uni' && tb.color === TABLE_DEFAULT.color) { tb.color = '#ffffff'; right.querySelector('[data-t=color]').value = '#ffffff'; }
         applyBaseLive();
       }
+      else if (selected === '@pad') {
+        const p = padData(); p.tex = tex;
+        if (tex !== 'uni' && p.color === '#6a2a8a') { p.color = '#ffffff'; right.querySelector('[data-pd=color]').value = '#ffffff'; }
+        applyBaseLive();
+      }
       else if (o) { o.tex = tex; rebuild(o); }
       commit(true);
       right.querySelectorAll('[data-tex]').forEach(b => b.classList.toggle('on', b.dataset.tex === tex));
@@ -717,6 +858,8 @@ export async function startEditor(mii) {
     }
     const c = e.target.closest('[data-c]')?.dataset.c;
     if (c && o) { o.color = c; rebuild(o); commit(true); right.querySelector('[data-f=color]').value = c; return; }
+    const pdc = e.target.closest('[data-pdc]')?.dataset.pdc;
+    if (pdc) { padData().color = pdc; applyBaseLive(); commit(true); right.querySelector('[data-pd=color]').value = pdc; return; }
     const tc = e.target.closest('[data-tc]')?.dataset.tc;
     if (tc) { const [k, v] = tc.split(':'); tableData()[k] = v; applyBaseLive(); commit(true); right.querySelector(`[data-t=${k}]`).value = v; return; }
     const d = e.target.closest('[data-do]')?.dataset.do;
@@ -725,6 +868,7 @@ export async function startEditor(mii) {
     if (d === 'dup') duplicateSelected();
     if (d === 'del') removeSelected();
     if (d === 'resetTable') { delete data.base.table; applyBaseLive(); commit(); }
+    if (d === 'resetPad') { delete data.base.pad; applyBaseLive(); commit(); renderProps(); updateHelper(); }
     if (d === 'resetMii') { data.base.mii = { pos: [0, 0, 0] }; applyBaseLive(); commit(); }
     if (d === 'resetScreen' && si >= 0) { data.base.screens[si] = { source: si + 1, color: '#1b1b20', hidden: false }; applyBaseLive(); commit(); }
   });
@@ -816,6 +960,10 @@ export async function startEditor(mii) {
   host?.addEventListener('message', e => {
     const m = e.data || {};
     if (m.type === 'importText') askImport(m.text, 'fichier ' + (m.name || ''));
+    if (m.type === 'imported') refreshLists().then(() => {
+      if (m.kind === 'objets') for (const f of m.files) addObject('glb', { file: f, name: f.replace(/\.(glb|gltf|fbx|obj|dae|3mf|stl|ply|zip)$/i, '') });
+      setStatus(m.kind === 'objets' ? `📥 ${m.files.length} modèle(s) importé(s) et ajouté(s)` : `📥 ${m.files.length} image(s) importée(s) : choisissez-les dans les textures`);
+    });
     if (m.type === 'exported') { setStatus('✓ Exportée : ' + (m.name || '')); refreshPresets(); }
     if (m.type === 'presetText') loadPresetText(m);
     if (m.type === 'presetSaved') { currentPreset = m.file; presetBase = JSON.stringify(data); setStatus('✓ Préréglage enregistré : « ' + m.name + ' »'); refreshPresets(); }

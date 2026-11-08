@@ -425,7 +425,8 @@ function renderLeft() {
         : `<button data-l="del" ${current ? '' : 'disabled'} title="Vers la corbeille de Windows">🗑 Supprimer</button>`}
     </div>
     <div class="grid2" style="margin-top:6px"><button data-l="folder">📁 Dossier</button><button data-l="refresh">↻ Actualiser</button></div>
-    <div class="muted" style="margin-top:10px">Votre propre modèle : déposez un fichier <b>.glb</b> dans le dossier <b>Manettes</b>, puis <b>➕ Nouvelle</b>.</div>
+    <button data-l="import" style="width:100%;margin-top:6px" title="Choisir un modèle 3D sur le PC : il est copié dans le dossier Manettes">📥 Importer un modèle 3D…</button>
+    <div class="muted" style="margin-top:10px">Votre propre modèle : <b>📥 Importer</b> (glb, fbx, obj, dae, stl… ou un zip avec ses textures), puis <b>➕ Nouvelle</b>.</div>
     <div class="muted" style="margin-top:6px">Les manettes intégrées ne se modifient pas : <b>Dupliquer</b> en fait une copie modifiable.</div>`;
 }
 left.addEventListener('click', async e => {
@@ -447,6 +448,7 @@ left.addEventListener('click', async e => {
   }
   if (l === 'hide') { const h = new Set(list.hidden || []); h.has(current.id) ? h.delete(current.id) : h.add(current.id); list.hidden = [...h]; host?.postMessage({ type: 'hidePads', ids: list.hidden }); renderLeft(); }
   if (l === 'folder') host?.postMessage({ type: 'action', name: 'openManettes' });
+  if (l === 'import') host?.postMessage({ type: 'import', kind: 'manettes' });
   if (l === 'refresh') refreshList();
 });
 
@@ -463,7 +465,7 @@ function showNew() {
   modal(`<h2>➕ Nouvelle manette</h2>
     <div class="row"><label>Nom</label><input type="text" id="nNom" value="Ma manette"></div>
     <div class="row"><label>Modèle 3D</label><select id="nModele">${models.map(([k, l]) => `<option value="${esc(k)}">${esc(l)}</option>`).join('')}</select></div>
-    <div class="muted">Votre modèle n'est pas dans la liste ? Déposez le fichier <b>.glb</b> dans le dossier <b>Manettes</b> (bouton 📁), puis ↻ Actualiser.</div>
+    <div class="muted">Votre modèle n'est pas dans la liste ? Fermez cette fenêtre et utilisez <b>📥 Importer un modèle 3D…</b> à gauche.</div>
     <div class="muted" style="margin-top:6px">Ensuite : onglet <b>Modèle</b> pour l'orienter, puis <b>＋ Ajouter une pièce</b> pour chaque bouton.</div>
     <div class="btns"><button data-x>Annuler</button><button data-go class="primary">Créer</button></div>`,
     (e, m) => {
@@ -504,6 +506,7 @@ host?.addEventListener('message', async e => {
   const m = e.data || {};
   if (m.type === 'padCreated') { await refreshList(); await openPad({ file: m.file }); tab = pendingTab; renderRight(); setStatus('✓ Manette créée'); }
   if (m.type === 'error') setStatus('⚠ ' + (m.message || 'erreur'));
+  if (m.type === 'imported') { await refreshList(); setStatus('📥 Importé : ' + m.files.join(', ') + ' · ➕ Nouvelle pour en faire une manette'); }
   if (m.type === 'textureSaved' && current?.profile) {
     current.profile.texture = m.file; await refreshList(); changed(); renderRight();
     setStatus(m.paint ? '🖌 Ouverte dans Paint : enregistrez, puis ↻ Recharger' : '📤 Exportée : ' + m.file);

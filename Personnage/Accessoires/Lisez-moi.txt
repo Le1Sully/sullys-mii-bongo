@@ -1,2 +1,2 @@
-Déposez ici vos modèles 3D (.glb) à accrocher au Mii, puis choisissez-les dans l'éditeur de personnage.
+Déposez ici vos modèles 3D (glb, gltf, fbx, obj, dae, stl, ply, 3mf, ou un .zip avec ses textures) à accrocher au Mii, puis choisissez-les dans l'éditeur de personnage.
 Le modèle est automatiquement centré et mis à l'échelle ; réglez ensuite sa position, sa rotation et sa taille.

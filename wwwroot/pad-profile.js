@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from './vendor/three/examples/jsm/loaders/GLTFLoader.js';
+import { loadModel3D } from './model-loader.js';
 import { getTexture } from './scene-objects.js';
 
 const V = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
@@ -45,7 +45,7 @@ const gltfCache = new Map();
 
 export async function loadSource(profile) {
   const url = modelUrl(profile.modele);
-  if (!gltfCache.has(url)) gltfCache.set(url, new GLTFLoader().loadAsync(url));
+  if (!gltfCache.has(url)) gltfCache.set(url, loadModel3D(url));
   const gltf = await gltfCache.get(url);
   const src = gltf.scene;
   src.updateMatrixWorld(true);

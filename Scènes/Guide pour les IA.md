@@ -61,7 +61,7 @@ Construis les meubles **en assemblant plusieurs formes**. Reste sous ~150 objets
 
 | Champ | Valeurs |
 |---|---|
-| `type` | `cube`, `wall` (mur), `plate` (plaque / sol / plafond), `column` (colonne, cylindre), `sphere` (boule), `pyramid`, `stairs` (escalier, il monte vers `-z`), `panel` (panneau, cadre, porte, image), `screen` (écran) |
+| `type` | `cube`, `wall` (mur), `plate` (plaque / sol / plafond), `column` (colonne, cylindre), `sphere` (boule), `pyramid`, `stairs` (escalier, il monte vers `-z`), `panel` (panneau, cadre, porte, image), `screen` (écran), `light` (lumière) |
 | `name` | nom lisible, ex. `"Mur du fond"` |
 | `pos` | `[x, y, z]` |
 | `rot` | `[x, y, z]` en degrés |
@@ -69,6 +69,10 @@ Construis les meubles **en assemblant plusieurs formes**. Reste sous ~150 objets
 | `tex` | texture : `uni`, `bois`, `brique`, `beton`, `pierre`, `carrelage`, `damier`, `moquette`, `gazon`, `metal`, `marbre`, `papier` (papier peint), `verre` (transparent) |
 | `color` | couleur `#rrggbb` qui **teinte** la texture (`#ffffff` = couleurs naturelles de la texture ; pour une couleur franche, utilise `uni` + la couleur) |
 | `texScale` | taille du motif (1 = normale, 2 = motif deux fois plus grand) |
+
+Pour une **lumière** (`type: "light"`) : une ampoule qui éclaire autour d'elle et projette des ombres. `pos` = sa place
+(en hauteur, ex. `[0.6, 1.8, 0.8]`), `color`, `intensity` (3 par défaut, 0 à 50), `range` (portée, `0` = infinie),
+`shadow` (`true` / `false`), `bulb` (`true` pour voir l'ampoule). Une ou deux lumières suffisent.
 
 Pour un **écran** (`type: "screen"`) : `size` = `[largeur, hauteur, épaisseur]` (ex. `[0.9, 0.51, 0.04]`),
 `source` = ce qu'il affiche : `1` (écran principal de l'utilisateur), `2` (son 2ᵉ écran)… ou `"off"` (éteint) ;

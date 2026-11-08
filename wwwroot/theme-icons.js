@@ -66,6 +66,8 @@
     popcorn: '<path d="M6 9l1.5 11h9L18 9zM9.5 9l.5 11M14.5 9L14 20"/><path d="M6 9a2.5 2.5 0 0 1 2-4 2.5 2.5 0 0 1 4-1.5A2.5 2.5 0 0 1 16 5a2.5 2.5 0 0 1 2 4"/>',
     save: '<path d="M5 4h11.5L20 7.5V19a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"/><path d="M8 4v5h7V4M7.5 20v-6h9v6"/>',
     play: '<path d="M8 5.5v13l10.5-6.5z"/>',
+    bulb: '<path d="M9 17.5h6M10 20.5h4M8.2 14.5a6 6 0 1 1 7.6 0c-.8.7-1.3 1.6-1.3 2.6V17.5h-5v-.4c0-1-.5-1.9-1.3-2.6z"/>',
+    mouse: '<rect x="6.5" y="3.5" width="11" height="17" rx="5.5"/><path d="M12 3.5v6M6.5 9.5h11"/>',
   };
   const EMOJI = {
     '📁': 'folder', '📂': 'folder', '🙂': 'face', '😀': 'face', '⌨': 'keyboard', '🎮': 'gamepad', '🖥': 'monitor', '💻': 'monitor',
@@ -73,10 +75,10 @@
     '🧑‍🤝‍🧑': 'people', '👥': 'people', '➕': 'plus', '✚': 'plus', '🖌': 'brush', '📤': 'upload', '📥': 'download', '🧱': 'bricks',
     '🏠': 'house', '🪟': 'window', '📦': 'box', '🧊': 'box', '🤖': 'robot', '🎭': 'masks', '🪑': 'chair', '⚡': 'bolt', '📐': 'setsquare',
     '⚙': 'gear', '👆': 'tap', '🎹': 'piano', '👁': 'eye', '🙈': 'eyeoff', '🎨': 'palette', '📺': 'tv', '🥽': 'vr', '🖼': 'picture',
-    '🏎': 'wheel', '👕': 'shirt', '🎥': 'camera', '✅': 'checkbox', '✨': 'sparkles', '🤚': 'hand', '✋': 'hand', '🎬': 'clapper',
+    '🏎': 'wheel', '👕': 'shirt', '🎥': 'camera', '✅': 'checkbox', '✨': 'sparkles', '🤚': 'hand', '✋': 'hand', '👋': 'hand', '🎬': 'clapper',
     '🩳': 'waist', '🎤': 'mic', '🥁': 'drum', '👀': 'eyes', '🚫': 'forbidden', '🏛': 'column', '🔧': 'wrench', '⚪': 'circle',
     '🎯': 'target', '🍃': 'leaf', '🌿': 'leaf', '🟦': 'square', '⬜': 'square', '⬛': 'square', '◼': 'square', '🪵': 'log', '🔒': 'lock',
-    '🪜': 'stairs', '🗣': 'speak', '🚀': 'rocket', '🔁': 'repeat', '👄': 'mouth', '🧲': 'magnet', '🔺': 'triangle', '♟': 'tiles', '🍿': 'popcorn', '💾': 'save', '▶': 'play',
+    '🪜': 'stairs', '🗣': 'speak', '🚀': 'rocket', '🔁': 'repeat', '👄': 'mouth', '🧲': 'magnet', '🔺': 'triangle', '♟': 'tiles', '🍿': 'popcorn', '💾': 'save', '▶': 'play', '💡': 'bulb', '🖱': 'mouse',
   };
 
   const svg = body => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;

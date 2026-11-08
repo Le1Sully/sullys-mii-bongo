@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { GLTFLoader } from './vendor/three/examples/jsm/loaders/GLTFLoader.js';
+import { loadModel3D } from './model-loader.js';
 import { mergeGeometries } from './vendor/three/examples/jsm/utils/BufferGeometryUtils.js';
 
 let maxAniso = 4;
@@ -16,6 +16,7 @@ export const SHAPES = {
   panel:   { label: 'Panneau / image', icon: '🖼️', size: [0.8, 0.8, 0.02], tex: 'uni', color: '#f4f1ea' },
   screen:  { label: 'Écran', icon: '🖥️', size: [0.9, 0.51, 0.04], color: '#1b1b20' },
   glb:     { label: 'Objet 3D', icon: '📦', size: [0.6, 0.6, 0.6] },
+  light:   { label: 'Lumière', icon: '💡', size: [0.1, 0.1, 0.1], color: '#fff1d6' },
 };
 
 function seeded(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
@@ -218,7 +219,7 @@ function buildGeometry(type, [w, h, d], tile) {
 
 const gltfCache = new Map();
 function loadGlb(file) {
-  if (!gltfCache.has(file)) gltfCache.set(file, new GLTFLoader().loadAsync('./objets/' + encodeURIComponent(file)));
+  if (!gltfCache.has(file)) gltfCache.set(file, loadModel3D('./objets/' + encodeURIComponent(file)));
   return gltfCache.get(file);
 }
 
@@ -245,6 +246,23 @@ export function makeObject(o, u, ctx = {}) {
       holder.add(m);
       group.userData.loaded?.();
     }).catch(() => { box.material.color.set(0xff4040); });
+  } else if (o.type === 'light') {
+    const color = new THREE.Color(o.color || SHAPES.light.color);
+    const range = Math.max(0, +o.range || 0);
+    const light = new THREE.PointLight(color, Math.max(0, o.intensity ?? 3) * u * u, range * u, 2);
+    light.castShadow = o.shadow !== false;
+    light.shadow.mapSize.set(1024, 1024);
+    light.shadow.bias = -0.0008;
+    light.shadow.normalBias = 0.02 * u;
+    light.shadow.camera.near = 0.02 * u;
+    light.shadow.camera.far = (range || 30) * u;
+    group.add(light);
+    const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), new THREE.MeshBasicMaterial({ color }));
+    bulb.userData.noShadow = true;
+    bulb.visible = o.bulb === true;
+    group.add(bulb);
+    group.userData.light = light;
+    group.userData.bulb = bulb;
   } else if (o.type === 'panel') {
     const g = new THREE.BoxGeometry(size[0], size[1], size[2]).translate(0, size[1] / 2, 0);
     if (o.tex?.startsWith('img:')) {
@@ -289,6 +307,7 @@ export function makeObject(o, u, ctx = {}) {
 
 export function disposeObject(group) {
   group.traverse(m => {
+    if (m.isLight) { m.dispose?.(); return; }
     if (!m.isMesh) return;
     m.geometry?.dispose();
     for (const mt of Array.isArray(m.material) ? m.material : [m.material]) mt?.dispose();
@@ -316,6 +335,7 @@ const TYPE_ALIASES = {
   panel: 'panel', panneau: 'panel', image: 'panel', poster: 'panel', tableau: 'panel', cadre: 'panel',
   screen: 'screen', ecran: 'screen', moniteur: 'screen', monitor: 'screen', tele: 'screen', tv: 'screen',
   glb: 'glb', objet: 'glb', model: 'glb', modele: 'glb', objet3d: 'glb',
+  light: 'light', lumiere: 'light', lampe: 'light', ampoule: 'light', lamp: 'light', pointlight: 'light', spot: 'light',
 };
 const TEX_ALIASES = {
   uni: 'uni', plain: 'uni', none: 'uni', couleur: 'uni', color: 'uni',
@@ -403,6 +423,12 @@ export function normalizeScene(raw) {
     if (type === 'glb') {
       obj.file = String(o.file ?? o.fichier ?? '');
       if (!obj.file) { warn('objet 3D sans fichier, ignoré'); return; }
+    } else if (type === 'light') {
+      obj.color = color(o.color ?? o.couleur, def.color);
+      obj.intensity = clamp(num(o.intensity ?? o.intensite ?? o.puissance, 3), 0, 50);
+      obj.range = clamp(num(o.range ?? o.portee ?? o.distance, 0), 0, 100);
+      obj.shadow = (o.shadow ?? o.ombres ?? o.ombre) !== false;
+      obj.bulb = !!(o.bulb ?? o.ampoule);
     } else if (type === 'screen') {
       obj.source = screenSource(o.source ?? o.affiche ?? o.ecran);
       obj.stand = o.stand ?? o.pied ?? true;
@@ -439,6 +465,18 @@ export function normalizeScene(raw) {
       if (e.size ?? e.taille) out.size = clamp(num(e.size ?? e.taille, 1), 0.2, 5);
       return out;
     });
+  }
+  const pd = b.pad ?? b.tapis;
+  if (pd && typeof pd === 'object') {
+    const warn = m => warnings.push(`tapis de souris : ${m}`);
+    base.pad = {
+      tex: texName(pd.tex ?? pd.texture, warn) || 'uni', color: color(pd.color ?? pd.couleur, '#6a2a8a'),
+      texScale: clamp(num(pd.texScale ?? pd.motif, 1), 0.05, 10),
+      w: clamp(num(pd.w ?? pd.largeur, 1), 0.2, 4), d: clamp(num(pd.d ?? pd.profondeur, 1), 0.2, 4),
+      hidden: !!(pd.hidden ?? pd.masque),
+    };
+    if (pd.pos ?? pd.position) base.pad.pos = vec3(pd.pos ?? pd.position, [0, 0, 0], warn, 'position');
+    if (pd.rot ?? pd.rotation) base.pad.rot = vec3(pd.rot ?? pd.rotation, [0, 0, 0], warn, 'rot');
   }
   const mi = b.mii;
   if (mi && typeof mi === 'object') {

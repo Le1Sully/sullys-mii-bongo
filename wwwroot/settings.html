@@ -169,6 +169,8 @@
   .madeby { position: fixed; left: 28px; bottom: 8px; font-size: 10.5px; color: var(--muted); opacity: .7;
             letter-spacing: .02em; pointer-events: none; }
   #nohost { display: none; padding: 30px; text-align: center; color: var(--muted); }
+  .toast { position: fixed; right: 20px; bottom: 16px; z-index: 50; max-width: 460px; background: var(--card); color: var(--text); border: 1px solid var(--line);
+           border-radius: 12px; padding: 10px 14px; box-shadow: 0 6px 22px #0006; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -256,9 +258,11 @@
       <section class="card">
         <h2><span class="ico">🃏</span>Mii et visage</h2>
         <div class="row"><label class="lbl">Mii</label><select id="model"></select>
-          <button class="btn" data-act="openModels" title="Ouvrir le dossier Mii (vos modèles .glb)">📁</button></div>
+          <button class="btn" data-act="openModels" title="Ouvrir le dossier Mii (vos modèles 3D : glb, fbx, dae, zip…)">📁</button>
+          <button class="btn" data-imp="mii" title="Importer un Mii : choisissez un modèle 3D sur le PC, il est copié dans le dossier Mii">📥</button></div>
         <div class="row"><label class="lbl">Visage</label><select id="face"></select>
-          <button class="btn" data-act="openFaces" title="Ouvrir le dossier Visages">📁</button></div>
+          <button class="btn" data-act="openFaces" title="Ouvrir le dossier Visages">📁</button>
+          <button class="btn" data-imp="visage" title="Importer un visage : choisissez son dossier (yeux fermés.png, bouche 1.png…), il est copié dans Visages">📥</button></div>
         <div class="faces" id="facePreview"></div>
         <details><summary>Créer un visage</summary>
           <div class="sub">Les visages (bouche qui parle, yeux fermés) sont communs à tous les Mii : un dossier par visage dans
@@ -277,8 +281,8 @@
       </section>
 
       <section class="card wide" id="cardPerso">
-        <h2><span class="ico">🎭</span>Extras : expressions et objets accrochés</h2>
-        <div class="sub">Activez-les ici ou avec leur raccourci clavier (même en jeu). Créez-les dans l'éditeur de personnage.</div>
+        <h2><span class="ico">🎭</span>Extras : expressions, objets accrochés et animations</h2>
+        <div class="sub">Activez-les ici ou avec leur raccourci clavier (même en jeu). Une animation se joue avec ▶. Créez-les dans l'éditeur de personnage (onglet 👋 Animations pour les animations).</div>
         <div class="plist" id="persoList"></div>
         <div class="row"><button class="btn primary" data-act="openCharEditor">✏️ Éditeur de personnage</button><button class="btn" data-act="openPerso">📁 Dossier Personnage</button></div>
       </section>
@@ -387,6 +391,7 @@
         <label class="sw">Afficher mes objets (fenêtre et OBS)<input type="checkbox" data-tog="showObjects"><span class="t"></span></label>
         <label class="sw">Rendre invisibles les objets qui cachent le Mii<input type="checkbox" data-tog="hideOccluders"><span class="t"></span></label>
         <div class="row"><button class="btn" data-act="openTextures">📁 Mes images</button><button class="btn" data-act="openObjets">📁 Mes objets 3D</button><button class="btn" data-act="openScenes">📁 Mes scènes</button></div>
+        <div class="row"><button class="btn" data-imp="images" title="Choisir des images sur le PC : elles sont copiées dans le dossier Images">📥 Importer des images…</button><button class="btn" data-imp="objets" title="Choisir des modèles 3D sur le PC : ils sont copiés dans le dossier Objets">📥 Importer des objets 3D…</button></div>
       </section>
 
       <section class="card wide">
@@ -502,6 +507,25 @@
     if (page === 'affichage') post({ type: 'listApps' });
   }
   document.querySelectorAll('#nav [data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+  document.addEventListener('click', e => { const b = e.target.closest('[data-imp]'); if (b) post({ type: 'import', kind: b.dataset.imp }); });
+  let toastTimer = null;
+  function toast(text) {
+    let t = document.querySelector('.toast');
+    if (!t) { t = document.createElement('div'); t.className = 'toast'; document.body.appendChild(t); }
+    t.textContent = text; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 6000);
+  }
+  const IMPORT_DONE = {
+    mii: f => `📥 Mii importé : ${f}. Choisissez-le dans la liste « Mii ».`,
+    visage: f => `📥 Visage importé : ${f}. Choisissez-le dans la liste « Visage ».`,
+    images: f => `📥 Image(s) importée(s) : ${f}. Elles sont dans les textures de l'éditeur de scène.`,
+    objets: f => `📥 Objet(s) 3D importé(s) : ${f}. Ajoutez-les depuis l'éditeur de scène (📦 Objets 3D).`,
+  };
+  host?.addEventListener('message', e => {
+    const m = e.data || {};
+    if (m.type === 'imported') toast((IMPORT_DONE[m.kind] || (f => '📥 Importé : ' + f))(m.files.join(', ')));
+    if (m.type === 'error') toast('⚠ ' + (m.message || 'erreur'));
+  });
   document.querySelector('[data-set="theme"]').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) window.setUiTheme?.(b.dataset.v); });
 
   async function refreshPerf() {
@@ -712,7 +736,7 @@
     const perso = s.perso || [];
     $('#scPerso').innerHTML = perso.length ? perso.map(p => {
       const w = capture?.kind === 'perso' && capture.id === p.id;
-      return `<div class="scr"><span class="act">${p.type === 'objet' ? '🎩' : '🙂'} ${esc(p.nom)}</span>
+      return `<div class="scr"><span class="act">${({ objet: '🎩', animation: '👋' }[p.type] || '🙂')} ${esc(p.nom)}</span>
         <span class="key ${w ? 'wait' : p.touche ? '' : 'none'}">${w ? 'Appuyez…' : esc(p.touche || 'aucun')}</span>
         <div class="seg"><button data-sc="pmode" data-v="0" data-id="${esc(p.id)}" class="${p.maintien ? '' : 'active'}">👆 Appuyer</button><button data-sc="pmode" data-v="1" data-id="${esc(p.id)}" class="${p.maintien ? 'active' : ''}">⏬ Maintenir</button></div>
         <button class="btn" data-sc="pkey" data-id="${esc(p.id)}" title="Changer la combinaison">${w ? 'Annuler' : '⌨'}</button>
@@ -789,6 +813,7 @@
   $('#model').addEventListener('change', e => set('model', e.target.value));
   $('#face').addEventListener('change', e => set('face', e.target.value));
   $('#persoList').addEventListener('change', e => { const cb = e.target.closest('[data-perso]'); if (cb) set('persoItem', `${cb.dataset.perso}:${cb.checked ? 'on' : 'off'}`); });
+  $('#persoList').addEventListener('click', e => { const b = e.target.closest('[data-play]'); if (b) set('playAnim', b.dataset.play); });
 
   function fillSelect(sel, items, value) {
     const sig = JSON.stringify(items);
@@ -838,7 +863,7 @@
     document.querySelectorAll('[data-deco]').forEach(b => b.classList.toggle('active', c.Decorations.includes(b.dataset.deco)));
     $('#decorHint').style.display = c.Decor ? 'none' : '';
     fillSelect($('#micDevice'), [{ v: '', t: 'Micro par défaut de Windows' }, ...s.micDevices.map(d => ({ v: d.id, t: d.name }))], c.MicDeviceId || '');
-    fillSelect($('#model'), s.models.map(m => ({ v: m, t: m.replace(/\.(glb|gltf)$/i, '') })), c.Model);
+    fillSelect($('#model'), s.models.map(m => ({ v: m, t: m.replace(/\.(glb|gltf|fbx|obj|dae|3mf|stl|ply|zip)$/i, '') })), c.Model);
     fillSelect($('#face'), [{ v: '', t: "Visage d'origine du Mii (sans animation)" }, ...s.faces.map(f => ({ v: f.name, t: f.name }))], c.Face ?? '');
     const fs = s.faces.find(f => f.name === c.Face);
     const items = fs ? [...(fs.blink ? [[fs.blink, 'yeux fermés']] : []), ...fs.mouths.map((m, i) => [m, 'bouche ' + (i + 1)])] : [];
@@ -848,20 +873,25 @@
       $('#facePreview').innerHTML = items.map(([src, label]) => `<figure><img src="${src}" alt=""><figcaption>${label}</figcaption></figure>`).join('');
     }
     const perso = s.perso || [];
-    const persoSig = JSON.stringify(perso.map(p => [p.id, p.nom, p.type, p.touche, p.maintien, p.autreMii]));
+    const persoSig = JSON.stringify(perso.map(p => [p.id, p.nom, p.type, p.touche, p.maintien, p.autreMii, p.uneFois]));
     if ($('#persoList').dataset.sig !== persoSig) {
       $('#persoList').dataset.sig = persoSig;
       $('#persoList').innerHTML = perso.length ? '' : '<div class="sub">Aucun pour l\'instant : ouvrez l\'éditeur de personnage.</div>';
       for (const p of perso) {
-        const row = document.createElement('label');
+        const row = document.createElement(p.uneFois ? 'div' : 'label');
         row.className = 'sw' + (p.autreMii ? ' dim' : '');
-        row.title = p.autreMii ? 'Réservé au Mii ' + p.autreMii : (p.maintien ? 'Raccourci : actif tant que la touche est enfoncée' : 'Raccourci : appuyer pour activer / désactiver');
-        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = (p.type === 'objet' ? '🎩 ' : '🙂 ') + p.nom;
+        row.title = p.autreMii ? 'Réservé au Mii ' + p.autreMii : p.uneFois ? 'Raccourci : appuyer pour jouer l\'animation' : (p.maintien ? 'Raccourci : actif tant que la touche est enfoncée' : 'Raccourci : appuyer pour activer / désactiver');
+        const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = ({ objet: '🎩 ', animation: '👋 ' }[p.type] || '🙂 ') + p.nom;
         row.appendChild(nm);
         if (p.touche) { const k = document.createElement('span'); k.className = 'k'; k.textContent = (p.maintien ? '⏬ ' : '') + p.touche; row.appendChild(k); }
-        const cb = document.createElement('input'); cb.type = 'checkbox'; cb.dataset.perso = p.id;
-        const t = document.createElement('span'); t.className = 't';
-        row.append(cb, t);
+        if (p.uneFois) {
+          const b = document.createElement('button'); b.className = 'btn'; b.dataset.play = p.id; b.textContent = '▶ Jouer'; b.title = 'Jouer sur le Mii (fenêtre et OBS)';
+          row.appendChild(b);
+        } else {
+          const cb = document.createElement('input'); cb.type = 'checkbox'; cb.dataset.perso = p.id;
+          const t = document.createElement('span'); t.className = 't';
+          row.append(cb, t);
+        }
         $('#persoList').appendChild(row);
       }
     }
@@ -888,7 +918,7 @@
     const nOn = (s.perso || []).filter(p => p.on).length;
     const sizeName = { 260: 'petite', 420: 'moyenne', 640: 'grande', 900: 'très grande' }[c.Size] || '';
     $('#navInstrument').textContent = modes[c.Mode] || c.Mode;
-    $('#navPersonnage').textContent = (c.Model || '').replace(/\.(glb|gltf)$/i, '') + (nOn ? ` · ${nOn} extra${nOn > 1 ? 's' : ''} actif${nOn > 1 ? 's' : ''}` : '');
+    $('#navPersonnage').textContent = (c.Model || '').replace(/\.(glb|gltf|fbx|obj|dae|3mf|stl|ply|zip)$/i, '') + (nOn ? ` · ${nOn} extra${nOn > 1 ? 's' : ''} actif${nOn > 1 ? 's' : ''}` : '');
     $('#navAffichage').textContent = (s.windowVisible ? ('Fenêtre ' + sizeName).trim() : 'Fenêtre masquée') + (c.Orbit ? ' · orbitale' : '');
     const curPreset = (s.scenePresets || []).find(p => p.file.toLowerCase() === (c.ScenePreset || '').toLowerCase());
     $('#navDecor').textContent = (c.Decor ? 'Décor activé' : 'Sans décor') + (curPreset ? ' · ' + curPreset.nom : s.sceneObjects ? ` · ${s.sceneObjects} objet${s.sceneObjects > 1 ? 's' : ''}` : '');

@@ -20,11 +20,11 @@ Le dossier de l'appli ne contient que l'essentiel :
 | Élément | Contenu |
 |---|---|
 | `Sully's Mii-Bongo.exe` | l'application (les pages 3D, les manettes 3D et l'icône sont intégrées dedans) |
-| `Mii\` | **vos Mii** (fichiers `.glb`) |
+| `Mii\` | **vos Mii** (modèles 3D : voir *Formats 3D acceptés*) |
 | `Visages\` | **les visages** (bouche qui parle, yeux fermés), communs à tous les Mii : un sous-dossier par visage |
 | `Images\` | vos images pour l'éditeur de scène (textures, posters) |
-| `Objets\` | vos modèles 3D (`.glb`) à placer avec l'éditeur de scène |
-| `Manettes\` | vos manettes créées avec l'**éditeur de manettes** (`.json`) et vos modèles 3D de manettes (`.glb`) |
+| `Objets\` | vos modèles 3D à placer avec l'éditeur de scène |
+| `Manettes\` | vos manettes créées avec l'**éditeur de manettes** (`.json`) et vos modèles 3D de manettes |
 | `Scènes\` | vos **préréglages de scène** et scènes exportées (`.json`), un exemple, et le **Guide pour les IA** (pour faire créer des scènes par une IA) |
 | `Personnage\` | l'**éditeur de personnage** : `Expressions\` (visages en plus), `Accessoires\` (modèles 3D à accrocher au Mii), `Personnage.json` |
 | `Lisez-moi.md` | ce mode d'emploi |
@@ -69,14 +69,31 @@ Pour construire un décor à votre goût autour du Mii : réglages → **Éditeu
 L'éditeur s'ouvre dans sa propre fenêtre, avec votre Mii et vos réglages actuels.
 
 **Ajouter** (panneau de gauche) : 🧊 Cube, 🧱 Mur, ⬜ Plaque / sol, 🏛️ Colonne, ⚪ Boule, 🔺 Pyramide,
-🪜 Escalier, 🖼️ Panneau / image, 🖥️ **Écran**, et 📦 vos **objets 3D** (fichiers `.glb` du dossier `Objets`).
-Le nouvel objet apparaît au sol, au milieu de la vue. La liste *Dans la scène* permet de le resélectionner.
+🪜 Escalier, 🖼️ Panneau / image, 🖥️ **Écran**, 💡 **Lumière**, et 📦 vos **objets 3D** (dossier `Objets`, voir *Formats 3D
+acceptés*). **📥 Modèle 3D…** et **📥 Image…** choisissent un fichier sur le PC et le copient dans le bon dossier (un
+modèle importé est ajouté directement à la scène). Le nouvel objet apparaît au sol, au milieu de la vue. La liste
+*Dans la scène* permet de le resélectionner.
+
+**💡 Lumière et ombres** : une lumière ponctuelle (comme une ampoule) qui éclaire autour d'elle et **projette des
+ombres** : le Mii, la table, vos objets 3D et le décor s'ombrent les uns les autres, ce qui leur donne du relief. Réglages :
+couleur, intensité, portée (*infinie* par défaut), *Projette des ombres*, *Ampoule visible* (dans la fenêtre du Mii et
+OBS ; dans l'éditeur elle est toujours montrée pour pouvoir la saisir). L'ombre tombe à l'opposé de la lumière : placez-la
+en hauteur, un peu derrière ou sur le côté de ce qui doit avoir une ombre. Chaque lumière à ombres redessine la scène
+plusieurs fois : une ou deux suffisent.
+
+**🖱️ Tapis de souris** (élément de base, mode clavier + souris) : matière, couleur, motif, largeur, profondeur, position,
+rotation, ou masqué. La souris du Mii garde sa **zone de mouvement d'origine** : seul le tapis change.
 
 **Placer** :
 
 | Action | Effet |
 |---|---|
-| clic | sélectionner (cadre jaune) |
+| clic | sélectionner (cadre jaune) : le **repère 3D** apparaît |
+| flèches **X** (rouge), **Y** (verte), **Z** (bleue) | déplacer sur un axe |
+| carrés gris | déplacer dans un plan |
+| arcs | tourner autour d'un axe |
+| boules sur les axes | changer la taille |
+| point jaune au centre | déplacer face à la caméra |
 | glisser un objet | le déplacer sur le sol |
 | `Maj` + glisser | le monter / descendre |
 | clic droit + glisser | tourner autour de la scène |
@@ -164,7 +181,7 @@ ou `"Sully's Mii-Bongo.exe" --manettes`). L'éditeur s'ouvre dans sa propre fen�
 
 | Bouton | Effet |
 |---|---|
-| ➕ Nouvelle | à partir d'un modèle intégré ou de **votre propre modèle** (`.glb` déposé dans le dossier `Manettes`) |
+| ➕ Nouvelle | à partir d'un modèle intégré ou de **votre propre modèle** (déposé dans le dossier `Manettes`) |
 | ⧉ Dupliquer | copie modifiable (d'une intégrée : la Xbox arrive avec toutes ses pièces déjà délimitées) |
 | ✓ Utiliser | le Mii tient cette manette (aussi dans les réglages, *Vos manettes*) |
 | 🗑 Supprimer / 🙈 Masquer | une manette à vous part dans la corbeille de Windows ; une intégrée est masquée des listes |
@@ -452,7 +469,7 @@ y est toujours visible. Glisser : tourner autour · clic droit + glisser : dépl
 - Si deux expressions actives touchent la même partie du visage, la dernière activée l'emporte. Une expression
   qui change les yeux remplace le clignement.
 
-**Objets accrochés** (🎩 + Objet 3D) : vos modèles `.glb` du dossier `Personnage\Accessoires` (chapeau, lunettes,
+**Objets accrochés** (🎩 + Objet 3D) : vos modèles 3D du dossier `Personnage\Accessoires` (chapeau, lunettes,
 épée, ailes…) ou une forme simple (cube, boule, pyramide, colonne…, avec couleur et texture).
 
 - **Accroché à** : tête, corps, taille, main gauche ou main droite — l'objet suit la tête qui tourne, les mains qui tapent…
@@ -472,6 +489,29 @@ y est toujours visible. Glisser : tourner autour · clic droit + glisser : dépl
 Exemples fournis (désactivés) : *Yeux fermés* (Ctrl+Maj+F1), *Grande bouche* (maintenir Ctrl+Maj+F2),
 *Chapeau pointu* (Ctrl+Maj+F3). Tout est enregistré dans `Personnage\Personnage.json` ; la fenêtre du Mii et OBS
 suivent en direct.
+
+### Animations (coucou, victoire…)
+
+Éditeur de personnage → onglet **👋 Animations** : faites faire un geste au Mii d'une touche ou d'un clic.
+
+- **Nouvelle animation** : partez d'un modèle (*Coucou*, *Victoire*, *Oui de la tête*, *Non de la tête*, *Applaudir*,
+  *Danse*, *Je sais pas*) ou d'une animation vide, puis *👋 + Animation*.
+- Une animation est une suite de **poses clés**. Pour chaque clé : son **moment** (en secondes), la position de chaque
+  **main** (écarter, hauteur, avancer ; décochée = la main reste libre et continue de taper, de tenir la manette…), la
+  **tête** (tourner, lever / baisser, pencher) et le **buste** (en avant, sur le côté). Le Mii passe en douceur d'une clé
+  à l'autre, puis reprend ce qu'il faisait.
+- **Frise en bas** : *▶ Aperçu* joue l'animation en boucle dans l'éditeur ; glissez une clé pour changer son moment,
+  double-cliquez sur la frise pour ajouter une clé à cet endroit. *⇋ Miroir* échange gauche et droite.
+- **Copier / coller des clés** : *📋 Copier la clé* (`Ctrl`+`C`), *📥 Coller sur cette clé* (`Ctrl`+`V`, remplace la
+  pose en gardant le moment) ou *➕ Coller en nouvelle clé* (`Ctrl`+`Maj`+`V`). On peut coller dans une autre animation.
+- **Repère 3D sur les mains** : chaque main active de la clé choisie a ses flèches pour la placer directement.
+- **Lecture** : *Une fois par appui* (le raccourci, le bouton ▶ des réglages ou du menu de l'icône jouent le geste
+  une fois) ou *En boucle* (un interrupteur, comme les autres extras). *Joue tant que la touche est enfoncée* est aussi
+  possible.
+- **📺 Jouer sur le Mii** la joue tout de suite dans la fenêtre du Mii et dans OBS.
+
+Les animations sont enregistrées dans `Personnage\Personnage.json` avec les autres extras. Elles ne s'appliquent pas en
+mode Debout (VR), où les bras suivent le casque et les manettes.
 
 ## Mini Mii sur la manette
 
@@ -525,7 +565,42 @@ Les raccourcis marchent même quand un jeu est au premier plan et ne bloquent pa
 
 ## Ajouter d'autres Mii
 
-Déposez vos `.glb` dans le dossier **`Mii`** (bouton 📁 de la section Personnage), puis *↻ Actualiser les listes*.
+Déposez vos modèles dans le dossier **`Mii`** (bouton 📁 de la section Personnage), puis *↻ Actualiser les listes*.
+Ils doivent avoir un squelette de Mii (os `Arm_1_L/R`, `Arm_2_L/R`, `Wrist_L/R`, `Head`, `Spine_1`) : un `.fbx` ou un
+`.dae` exporté avec ces os marche comme un `.glb`.
+
+## Formats 3D acceptés
+
+Partout où l'appli prend un modèle 3D (dossiers `Mii`, `Objets`, `Personnage\Accessoires`, `Manettes`) :
+
+| Format | Remarques |
+|---|---|
+| `.glb` | le plus simple : un seul fichier, textures comprises |
+| `.gltf` | avec ses fichiers `.bin` et ses images posés à côté |
+| `.fbx` | textures intégrées, ou images posées à côté (même si le fichier pointe vers un autre disque, l'image du même nom est retrouvée) |
+| `.obj` | avec son `.mtl` et ses images posés à côté |
+| `.dae` (Collada) | images à côté ou dans un sous-dossier |
+| `.stl`, `.ply` | formes sans texture (impression 3D, scans) ; gris clair, ou les couleurs du fichier pour un `.ply` |
+| `.3mf` | impression 3D |
+| **`.zip`** | **un modèle téléchargé tel quel** : l'appli ouvre le zip, y trouve le modèle (glb, gltf, fbx, dae, obj, 3mf, stl ou ply, même dans un sous-dossier) et ses textures (sous-dossiers `Textures`… compris) |
+
+Le plus pratique pour un modèle trouvé sur internet (Sketchfab, etc.) : déposez directement son **.zip**, sans le
+décompresser. Les modèles sont remis à la bonne taille automatiquement (objets de scène, accessoires).
+
+**Boutons 📥 Importer** : plus besoin de déplacer les fichiers à la main. Partout où l'appli prend un fichier, un bouton
+📥 ouvre l'explorateur et **copie** le fichier choisi dans le bon dossier (sans écraser : un nom libre est choisi) :
+
+| Où | Ce qui est importé |
+|---|---|
+| Réglages → Personnage → Mii 📥 | un Mii (dossier `Mii`) |
+| Réglages → Personnage → Visage 📥 | un dossier de visage (`Visages`) |
+| Réglages → Décor & scène, éditeur de scène | des images (`Images`) et des modèles 3D (`Objets`) |
+| Éditeur de personnage | des images d'expression (`Personnage\Expressions`) et des modèles à accrocher (`Personnage\Accessoires`) |
+| Éditeur de manettes | un modèle 3D de manette (`Manettes`) |
+
+Un modèle qui a besoin d'autres fichiers (`.obj` avec son `.mtl`, `.fbx` / `.dae` avec leurs textures, `.gltf` avec son
+`.bin`) est rangé avec eux dans un **.zip** : l'appli lit le modèle, retrouve les fichiers qu'il utilise (à côté, dans un
+sous-dossier ou dans un dossier `Textures` voisin) et les emporte.
 Le script attend un squelette de type Mii (os `Arm_1_L/R`, `Arm_2_L/R`, `Wrist_L/R`, `Head`, `Spine_1`),
 comme les modèles exportés depuis Miitopia / Tomodachi.
 

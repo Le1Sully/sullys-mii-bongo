@@ -338,8 +338,9 @@ sealed class SullysMiiBongoContext : ApplicationContext
             foreach (var it in persoItems)
             {
                 bool on = st.PersoOn.Contains(it.Id);
-                var label = (it.Type == "objet" ? "🎩 " : "🙂 ") + (it.Nom.Length > 0 ? it.Nom : it.Id) + (it.Touche.Length > 0 ? $"   ({it.Touche})" : "");
-                perso.DropDownItems.Add(Check(label, on, () => ApplySetting("persoItem", $"{it.Id}:{(on ? "off" : "on")}")));
+                var label = (it.Type switch { "objet" => "🎩 ", "animation" => it.JoueUneFois ? "▶ " : "👋 ", _ => "🙂 " }) + (it.Nom.Length > 0 ? it.Nom : it.Id) + (it.Touche.Length > 0 ? $"   ({it.Touche})" : "");
+                if (it.JoueUneFois) perso.DropDownItems.Add(label, null, (_, _) => PlayAnim(it.Id));
+                else perso.DropDownItems.Add(Check(label, on, () => ApplySetting("persoItem", $"{it.Id}:{(on ? "off" : "on")}")));
             }
             menu.Items.Add(perso);
 
@@ -412,11 +413,27 @@ sealed class SullysMiiBongoContext : ApplicationContext
         _editorForm.Activate();
     }
 
+    void RunImport(string kind, SettingsForm? form)
+    {
+        void Reply(object o) => form?.Post(System.Text.Json.JsonSerializer.Serialize(o));
+        try
+        {
+            var files = Importer.Run(kind, form);
+            if (files.Length == 0) return;
+            if (kind is "mii" or "visage") RefreshSlowInfo();
+            if (kind == "manettes") _padsCache = null;
+            Reply(new { type = "imported", kind, files });
+            PushState();
+        }
+        catch (Exception ex) { Reply(new { type = "error", message = "Import impossible : " + ex.Message }); }
+    }
+
     void OnEditorMessage(System.Text.Json.JsonElement msg)
     {
         try
         {
             var type = msg.GetProperty("type").GetString();
+            if (type == "import") { RunImport(msg.GetProperty("kind").GetString() ?? "", _editorForm); return; }
             if (type == "scene" && msg.TryGetProperty("data", out var data))
             {
                 if (AppPaths.SaveScene(data, out _sceneCount))
@@ -574,6 +591,9 @@ sealed class SullysMiiBongoContext : ApplicationContext
 
     IEnumerable<string> PersoActive() => _settings.PersoOn.Concat(_persoHeld.Keys).Distinct();
 
+    void PlayAnim(string id) =>
+        _server.Publish(System.Text.Json.JsonSerializer.Serialize(new { t = "anim", id }));
+
     void PublishPersoOn() =>
         _server.Publish(System.Text.Json.JsonSerializer.Serialize(new { t = "persoOn", ids = PersoActive() }));
 
@@ -606,7 +626,8 @@ sealed class SullysMiiBongoContext : ApplicationContext
         foreach (var it in PersoItemsForModel())
         {
             if (it.Touche.Length == 0 || PersoHotkeys.Normalize(it.Touche) != key) continue;
-            if (it.Maintien) { if (!_persoHeld.ContainsKey(it.Id)) { _persoHeld[it.Id] = vk; changed = true; } }
+            if (it.JoueUneFois) PlayAnim(it.Id);
+            else if (it.Maintien) { if (!_persoHeld.ContainsKey(it.Id)) { _persoHeld[it.Id] = vk; changed = true; } }
             else
             {
                 if (!_settings.PersoOn.Remove(it.Id)) _settings.PersoOn.Add(it.Id);
@@ -688,6 +709,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
         {
             switch (msg.GetProperty("type").GetString())
             {
+                case "import": RunImport(msg.GetProperty("kind").GetString() ?? "", _charEditorForm); break;
                 case "savePerso":
                     if (!AppPaths.SavePerso(msg.GetProperty("data"))) { Reply(new { type = "error", message = "personnage non enregistré" }); break; }
                     ReloadPersoItems();
@@ -703,6 +725,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
                     break;
                 case "captureKey": _captureKey = true; _captureFor = null; break;
                 case "cancelCapture": _captureKey = false; break;
+                case "playAnim": PlayAnim(msg.GetProperty("id").GetString() ?? ""); break;
                 case "saveExpression":
                 {
                     var bytes = Convert.FromBase64String(msg.GetProperty("data").GetString() ?? "");
@@ -757,6 +780,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
             var type = msg.GetProperty("type").GetString();
             switch (type)
             {
+                case "import": RunImport(msg.GetProperty("kind").GetString() ?? "", _padEditorForm); break;
                 case "savePad":
                 {
                     var file = msg.GetProperty("file").GetString() ?? "";
@@ -890,7 +914,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
             pads = (_padsCache ??= AppPaths.PadProfiles()).Select(p => new { id = "perso:" + p.File, nom = p.Nom.Length > 0 ? p.Nom : p.File }),
             perso = _persoItems.Select(i => new
             {
-                id = i.Id, nom = i.Nom.Length > 0 ? i.Nom : i.Id, type = i.Type, touche = i.Touche, maintien = i.Maintien,
+                id = i.Id, nom = i.Nom.Length > 0 ? i.Nom : i.Id, type = i.Type, touche = i.Touche, maintien = i.Maintien, boucle = i.Boucle, uneFois = i.JoueUneFois,
                 on = _settings.PersoOn.Contains(i.Id) || _persoHeld.ContainsKey(i.Id),
                 autreMii = i.Mii.Length > 0 && !string.Equals(i.Mii, _settings.Model, StringComparison.OrdinalIgnoreCase) ? i.Mii : null,
             }),
@@ -934,6 +958,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
             else if (type == "captureKey") { _captureKey = true; _captureFor = _settingsForm; }
             else if (type == "cancelCapture") { _captureKey = false; _captureFor = null; }
             else if (type == "listApps") _settingsForm?.Post(System.Text.Json.JsonSerializer.Serialize(new { type = "apps", list = GameDetector.OpenApps() }));
+            else if (type == "import") RunImport(msg.GetProperty("kind").GetString() ?? "", _settingsForm);
         }
         catch { }
         PushState();
@@ -1068,6 +1093,9 @@ sealed class SullysMiiBongoContext : ApplicationContext
                 if (S() is { } fc && (fc == "" || Directory.Exists(Path.Combine(AppPaths.FacesDir, Path.GetFileName(fc)))))
                 { _settings.Face = fc == "" ? "" : Path.GetFileName(fc); PageSettingsChanged(); }
                 break;
+            case "playAnim":
+                if (S() is { } pa && _persoItems.Any(i => i.Id == pa)) PlayAnim(pa);
+                return;
             case "persoItem":
                 if (S() is { } pi && pi.LastIndexOf(':') is var cut and > 0)
                 {

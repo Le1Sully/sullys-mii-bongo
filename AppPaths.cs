@@ -35,7 +35,8 @@ static class AppPaths
         }
         return list.ToArray();
     }
-    public static string[] PadModels() => FilesIn(ManettesDir, "*.glb");
+    public static readonly string[] ModelPatterns = ["*.glb", "*.gltf", "*.fbx", "*.obj", "*.dae", "*.3mf", "*.stl", "*.ply", "*.zip"];
+    public static string[] PadModels() => FilesIn(ManettesDir, ModelPatterns);
     public static string[] PadTextures() => FilesIn(ManettesDir, "*.png", "*.jpg", "*.jpeg", "*.webp");
 
     public static string NewPadFile(string nom, string ext = ".json")
@@ -87,7 +88,7 @@ static class AppPaths
     static string PersoFile => Path.Combine(PersoDir, "Personnage.json");
 
     public static string[] PersoExpressions() => FilesIn(ExpressionsDir, "*.png", "*.webp");
-    public static string[] PersoModels() => FilesIn(AccessoiresDir, "*.glb");
+    public static string[] PersoModels() => FilesIn(AccessoiresDir, ModelPatterns);
 
     const string PersoExample = """
     {
@@ -143,7 +144,10 @@ static class AppPaths
         catch { return false; }
     }
 
-    public sealed record PersoItem(string Id, string Nom, string Type, string Touche, bool Maintien, string Mii);
+    public sealed record PersoItem(string Id, string Nom, string Type, string Touche, bool Maintien, string Mii, bool Boucle = false)
+    {
+        public bool JoueUneFois => Type == "animation" && !Boucle && !Maintien;
+    }
 
     public static PersoItem[] PersoItems()
     {
@@ -153,8 +157,9 @@ static class AppPaths
             if (!doc.RootElement.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array) return [];
             string Str(JsonElement e, string k) => e.TryGetProperty(k, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
             return items.EnumerateArray().Where(e => e.ValueKind == JsonValueKind.Object && Str(e, "id").Length > 0)
-                .Select(e => new PersoItem(Str(e, "id"), Str(e, "nom"), Str(e, "type") == "objet" ? "objet" : "expression", Str(e, "touche"),
-                    e.TryGetProperty("maintien", out var m) && m.ValueKind == JsonValueKind.True, Str(e, "mii")))
+                .Select(e => new PersoItem(Str(e, "id"), Str(e, "nom"), Str(e, "type") is "objet" or "animation" ? Str(e, "type") : "expression", Str(e, "touche"),
+                    e.TryGetProperty("maintien", out var m) && m.ValueKind == JsonValueKind.True, Str(e, "mii"),
+                    e.TryGetProperty("boucle", out var b) && b.ValueKind == JsonValueKind.True))
                 .ToArray();
         }
         catch { return []; }
@@ -168,7 +173,7 @@ static class AppPaths
         while (File.Exists(Path.Combine(dir, file))) file = $"{name} ({k++}){ext}";
         return file;
     }
-    public static string[] UserObjects() => FilesIn(ObjectsDir, "*.glb");
+    public static string[] UserObjects() => FilesIn(ObjectsDir, ModelPatterns);
 
     public static string SceneFile => Path.Combine(SettingsDir, "scene.json");
 
@@ -340,7 +345,7 @@ static class AppPaths
 
     public static string[] MiiModels() =>
         Directory.Exists(MiiDir)
-            ? Directory.GetFiles(MiiDir, "*.glb").Concat(Directory.GetFiles(MiiDir, "*.gltf")).Select(f => Path.GetFileName(f)!).OrderBy(n => n).ToArray()
+            ? ModelPatterns.SelectMany(p => Directory.GetFiles(MiiDir, p)).Select(f => Path.GetFileName(f)!).Distinct().OrderBy(n => n).ToArray()
             : [];
 
     public sealed record FaceSet(string Name, string? Blink, string[] Mouths, double Split, string Material);

@@ -2,6 +2,7 @@ Sully's Mii-Bongo — crédits et licences des éléments tiers
 =========================================================
 
 Rendu 3D : three.js r160 — licence MIT — https://threejs.org
+  (avec ses lecteurs de modèles glTF, FBX, OBJ/MTL, Collada, STL, PLY, 3MF, TGA et la décompression fflate — licence MIT)
 Audio (niveau du micro) : NAudio — licence MIT — https://github.com/naudio/NAudio
 Volant : Vortice.DirectInput — licence MIT — https://github.com/amerkoleci/Vortice.Windows
 Manettes PlayStation (HID) : HidSharp — licence Apache 2.0 — https://www.zer7.com/software/hidsharp

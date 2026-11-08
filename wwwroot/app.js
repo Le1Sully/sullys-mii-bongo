@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from './vendor/three/examples/jsm/loaders/GLTFLoader.js';
+import { loadModel3D } from './model-loader.js';
 import { mergeGeometries } from './vendor/three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildController, makeControls, PAD_WIDTH } from './pad-profile.js';
 import { buildScene, disposeObject, setRenderer as setObjectsRenderer, normalizeScene, makeMaterial, boxGeo, getTexture, makeObject, SHAPES } from './scene-objects.js';
@@ -88,6 +89,8 @@ const pixelRatio = () => CFG.fps === '30' ? 1 : Math.min(window.devicePixelRatio
 renderer.setPixelRatio(pixelRatio());
 renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 document.body.appendChild(renderer.domElement);
 
 const BG = { green: '#00ff00', dark: '#1e1f26' };
@@ -334,10 +337,9 @@ async function fetchSceneData() {
 }
 
 async function loadModel() {
-  const loader = new GLTFLoader();
   rig.sceneData = await fetchSceneData();
   status(`Chargement de ${CFG.model}…`, 0);
-  const gltf = await loader.loadAsync('./mii/' + encodeURIComponent(CFG.model));
+  const gltf = await loadModel3D('./mii/' + encodeURIComponent(CFG.model));
   const root = gltf.scene;
   rig.root = root;
   scene.add(root);
@@ -544,11 +546,47 @@ function buildDesk(left, right, reach) {
   const mouse = addProp(makeMouse(reach * 0.2));
   mouse.position.copy(pad.position).setY(deskY + reach * 0.015);
   rig.pad = { center: pad.position.clone(), w: padW, d: padD, y: deskY + reach * 0.015 };
+  if (rig.table) rig.table.padBase = { pos: pad.position.clone(), w: padW, d: padD, thick: reach * 0.015 };
   rig.mouse = mouse;
 
   rig.focusBottom = deskY - reach * 0.25;
   applyTable(rig.sceneData?.base?.table);
+  applyPad(rig.sceneData?.base);
 }
+
+function applyPad(base) {
+  const T = rig.table, P = T?.pad, B = T?.padBase;
+  if (!P || !B) return;
+  const p = base?.pad || {};
+  const us = rig.sceneUnit ||= rig.modelBox.getSize(V()).y || 1;
+  const w = B.w * (+p.w || 1), d = B.d * (+p.d || 1);
+  const color = p.color || base?.table?.padColor || '#6a2a8a', tex = p.tex || 'uni', texScale = +p.texScale || 1;
+  const key = JSON.stringify([w, d, tex, color, texScale]);
+  if (P.userData.key !== key) {
+    P.userData.key = key;
+    P.geometry.dispose();
+    P.geometry = boxGeo(w / us, B.thick / us, d / us, texScale * 0.6).scale(us, us, us);
+    P.userData.baseMat ||= P.material;
+    if (P.material !== P.userData.baseMat) P.material.dispose();
+    P.material = tex === 'uni' && texScale === 1 ? (P.userData.baseMat.color.set(color), P.userData.baseMat) : makeMaterial({ tex, color, texScale });
+  }
+  if (p.pos) P.position.set(p.pos[0] * us, p.pos[1] * us, p.pos[2] * us); else P.position.copy(B.pos);
+  P.rotation.set(...(p.rot || [0, 0, 0]).map(THREE.MathUtils.degToRad), 'YXZ');
+  P.visible = !p.hidden;
+}
+
+const SHADOW_SKIP = o => o.userData.noShadow || [].concat(o.material || []).some(m => m && m.depthTest === false);
+function updateShadowFlags() {
+  let lights = false;
+  scene.traverse(o => { if (o.isPointLight && o.castShadow && o.visible) lights = true; });
+  if (!lights) return;
+  scene.traverse(o => {
+    if (!o.isMesh || SHADOW_SKIP(o)) return;
+    o.castShadow = true;
+    o.receiveShadow = true;
+  });
+}
+setInterval(updateShadowFlags, 1200);
 
 function applyTable(t) {
   const T = rig.table; if (!T) return;
@@ -572,7 +610,7 @@ function applyTable(t) {
     }
   }
   T.legMat.color.set(t.legColor);
-  T.pad?.material.color.set(t.padColor);
+
   T.desk.visible = !t.hidden;
   for (const leg of T.legs) leg.visible = !t.hidden;
 }
@@ -2013,9 +2051,9 @@ function updateFace(t, dt) {
   }
 }
 
-const char = { items: [], on: new Set(), order: [], expr: new Map(), objs: new Map(), rev: Date.now(), preview: null, seq: 0, showAll: false };
+const char = { items: [], on: new Set(), order: [], expr: new Map(), objs: new Map(), rev: Date.now(), preview: null, seq: 0, showAll: false,
+  anims: new Map(), once: new Map(), loopStart: new Map(), animPreview: null };
 const charOn = id => char.showAll || char.on.has(id) || char.preview === id;
-const charLoader = new GLTFLoader();
 const charGlb = new Map();
 
 async function loadCharacter() {
@@ -2029,6 +2067,7 @@ async function loadCharacter() {
 
 function setCharacterOn(ids) {
   const next = new Set(ids);
+  for (const id of next) if (!char.on.has(id)) char.loopStart.set(id, performance.now());
   char.order = [...char.order.filter(id => next.has(id)), ...ids.filter(id => !char.order.includes(id))];
   char.on = next;
 }
@@ -2050,6 +2089,7 @@ function applyCharacter(data) {
     e.zone = zone; e.parler = it.parler !== false;
   }
   face.key = '';
+  char.anims = new Map(items.filter(i => i.type === 'animation').map(i => [i.id, normalizeAnim(i)]));
   for (const [id, o] of char.objs) {
     const it = byId.get(id);
     if (!it || it.type !== 'objet' || objectSig(it) !== o.sig) { scene.remove(o.group); disposeObject(o.group); char.objs.delete(id); }
@@ -2079,7 +2119,7 @@ function buildCharObject(it) {
     shape.position.y = -0.5;
     group.add(shape);
   } else {
-    if (!charGlb.has(m)) charGlb.set(m, charLoader.loadAsync('./personnage/Accessoires/' + encodeURIComponent(m)));
+    if (!charGlb.has(m)) charGlb.set(m, loadModel3D('./personnage/Accessoires/' + encodeURIComponent(m)));
     charGlb.get(m).then(gltf => {
       if (!group.parent) return;
       const model = gltf.scene.clone(true);
@@ -2118,6 +2158,90 @@ function updateAttachments() {
     o.group.position.copy(_ap).add(_ao);
     o.group.quaternion.copy(_aq).multiply(o.rotQ);
     o.group.scale.setScalar(H * Math.max(0.005, +it.taille || 0.15));
+  }
+}
+
+function normalizeAnim(it) {
+  const v3 = a => Array.isArray(a) && a.length >= 3 ? a.slice(0, 3).map(x => +x || 0) : null;
+  const keys = (Array.isArray(it.cles) ? it.cles : []).map(k => ({
+    t: Math.max(0, +k.t || 0), mainG: v3(k.mainG), mainD: v3(k.mainD),
+    tete: v3(k.tete) || [0, 0, 0], buste: Array.isArray(k.buste) ? [+k.buste[0] || 0, +k.buste[1] || 0] : [0, 0],
+  })).sort((a, b) => a.t - b.t);
+  return { id: it.id, boucle: !!it.boucle, keys, duree: keys.length ? keys[keys.length - 1].t : 0 };
+}
+
+const smooth = x => x * x * (3 - 2 * x);
+function sampleAnim(a, t) {
+  const ks = a.keys;
+  if (!ks.length) return null;
+  let i = 0;
+  while (i < ks.length - 1 && ks[i + 1].t <= t) i++;
+  const k0 = ks[i], k1 = ks[Math.min(i + 1, ks.length - 1)];
+  const s = k1 === k0 || k1.t <= k0.t ? 0 : smooth(THREE.MathUtils.clamp((t - k0.t) / (k1.t - k0.t), 0, 1));
+  const mix = (x, y) => x.map((v, j) => v + (y[j] - v) * s);
+  const hand = side => {
+    const a0 = k0[side], a1 = k1[side];
+    if (!a0 && !a1) return { v: null, w: 0 };
+    return { v: a0 && a1 ? mix(a0, a1) : (a0 || a1).slice(), w: (a0 ? 1 - s : 0) + (a1 ? s : 0) };
+  };
+  return { mainG: hand('mainG'), mainD: hand('mainD'), tete: mix(k0.tete, k1.tete), buste: mix(k0.buste, k1.buste) };
+}
+
+const anim = { pose: null, w: 0 };
+function currentAnim(now) {
+  let best = null;
+  for (const [id, start] of char.once) {
+    const a = char.anims.get(id), t = (now - start) / 1000;
+    if (!a || t > a.duree) { char.once.delete(id); continue; }
+    if (!best || start > best.start) best = { a, t, start };
+  }
+  if (best) return { a: best.a, t: best.t, fade: Math.min(1, best.t / 0.18, (best.a.duree - best.t) / 0.25) };
+  const pv = char.animPreview;
+  if (pv) {
+    const a = normalizeAnim(pv.item);
+    if (pv.mode === 'pose') return { a, t: pv.t ?? 0, fade: 1 };
+    const t = (now - pv.start) / 1000;
+    return { a, t: a.duree > 0 ? t % (a.duree + 0.4) : 0, fade: 1 };
+  }
+  for (const id of [...char.order].reverse()) {
+    const a = char.anims.get(id);
+    if (!a || !char.on.has(id) || a.duree <= 0) continue;
+    const t = ((now - (char.loopStart.get(id) ?? now)) / 1000) % a.duree;
+    return { a, t, fade: null };
+  }
+  return null;
+}
+
+function playAnim(id) { if (char.anims.has(id)) char.once.set(id, performance.now()); }
+
+function updateAnim(now, dt) {
+  if (VR || rig.minis || !rig.arms?.L) return;
+  const cur = currentAnim(now);
+  if (cur) {
+    anim.pose = sampleAnim(cur.a, cur.t) || anim.pose;
+    anim.w = cur.fade != null ? Math.max(0, cur.fade) : damp(anim.w, 1, 10, dt);
+    lastActivity = now;
+  } else anim.w = damp(anim.w, 0, 10, dt);
+  if (!anim.pose || anim.w < 0.002) return;
+  const p = anim.pose, w = anim.w;
+  const rootQ = rig.root.getWorldQuaternion(new THREE.Quaternion()), rootInv = rootQ.clone().invert();
+  const inRoot = q => rootQ.clone().multiply(q).multiply(rootInv);
+  const deg = THREE.MathUtils.degToRad;
+  const ends = { L: worldPos(rig.arms.L.end), R: worldPos(rig.arms.R.end) };
+  if (p.buste[0] || p.buste[1]) rotateWorld(rig.bones.Spine_1, inRoot(qAxis(AX, deg(p.buste[0]) * w).multiply(qAxis(AZ, -deg(p.buste[1]) * w))));
+  if (p.tete[0] || p.tete[1] || p.tete[2])
+    rotateWorld(rig.bones.Head, inRoot(qAxis(AY, deg(p.tete[0]) * w).multiply(qAxis(AX, deg(p.tete[1]) * w)).multiply(qAxis(AZ, -deg(p.tete[2]) * w))));
+  for (const side of ['L', 'R']) {
+    const arm = rig.arms[side], h = side === 'L' ? p.mainG : p.mainD;
+    const hw = h.w * w;
+    if (hw < 0.002 && !(p.buste[0] || p.buste[1])) continue;
+    let target = ends[side];
+    if (h.v && hw > 0) {
+      const sgn = side === 'L' ? -1 : 1;
+      const goal = worldPos(arm.upper).add(V(sgn * h.v[0], h.v[1], h.v[2]).multiplyScalar(rig.unit).applyQuaternion(rootQ));
+      target = target.clone().lerp(goal, hw);
+    }
+    solveIK(arm, target);
   }
 }
 
@@ -2525,6 +2649,7 @@ function applyBaseScreens(list) {
 
 function applyBase(base) {
   applyTable(base?.table);
+  applyPad(base);
   applyBaseScreens(base?.screens);
   applyMiiOffset(base?.mii);
 }
@@ -2821,6 +2946,7 @@ function onEvent(ev) {
       if (!CFG.perso) { char.rev = Date.now(); loadCharacter(); }
       break;
     case 'persoOn': setCharacterOn(ev.ids || []); break;
+    case 'anim': playAnim(ev.id); break;
     case 'scene':
       if (!CFG.editor) loadUserScene();
       break;
@@ -3082,6 +3208,7 @@ function animate() {
       solveSeatedLegs();
       if (rig.minis) updateMinis(t, dt);
       lookAtMouseScreen(dt);
+      updateAnim(now, dt);
       updateFace(t, dt);
       updateNotes(dt);
       updateAttachments();
@@ -3123,6 +3250,7 @@ function animate() {
     }
 
     lookAtMouseScreen(dt);
+    updateAnim(now, dt);
     updateFace(t, dt);
   }
 
@@ -3201,7 +3329,7 @@ loadModel()
 animate();
 
 window.mii = { THREE, scene, camera, orthoCam, rig, state, face, onEvent, CFG, onScreenFrame, renderer, frameCamera, loadUserScene, applyBase, screenMaterial, sceneScreenCtx, refreshScreenTargets, userScreens,
-  char, applyCharacter, setCharacterOn, loadCharacter,
+  char, applyCharacter, setCharacterOn, loadCharacter, playAnim, normalizeAnim, sampleAnim,
   reloadExpressions() {
     char.rev = Date.now();
     for (const e of char.expr.values()) e.src = null;
