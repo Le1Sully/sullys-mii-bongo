@@ -4,7 +4,7 @@ import { loadModel3D } from './model-loader.js';
 import { Jiggle, meshesOf, findMesh } from './physics.js';
 import { mergeGeometries } from './vendor/three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildController, makeControls, PAD_WIDTH } from './pad-profile.js';
-import { buildScene, disposeObject, setRenderer as setObjectsRenderer, normalizeScene, makeMaterial, boxGeo, getTexture, makeObject, SHAPES } from './scene-objects.js';
+import { disposeObject, setRenderer as setObjectsRenderer, normalizeScene, makeMaterial, boxGeo, getTexture, makeObject, SHAPES } from './scene-objects.js';
 
 const params = new URLSearchParams(location.search);
 
@@ -2147,7 +2147,7 @@ function buildCharObject(it) {
       const k = 1 / Math.max(s.x, s.y, s.z, 1e-6);
       model.scale.setScalar(k);
       model.position.copy(bb.getCenter(V()).multiplyScalar(-k));
-      model.traverse(n => { if (n.isMesh) n.frustumCulled = false; });
+      model.traverse(n => { if (n.isMesh) { n.frustumCulled = false; n.userData.sharedRes = true; } });
       group.add(model);
     }).catch(e => {
       console.warn('Accessoire introuvable :', m, e);
@@ -3290,9 +3290,26 @@ async function loadUserScene(data) {
   data ||= await fetchSceneData();
   if (seq !== userSceneSeq || !rig.modelBox) return;
   rig.sceneUnit ||= rig.modelBox.getSize(V()).y || 1;
-  if (rig.userScene) { scene.remove(rig.userScene); rig.userScene.children.forEach(disposeObject); }
+  const old = rig.userScene;
+  const spare = new Map();
+  if (old) for (const g of old.children) {
+    const sig = g.userData.sig;
+    if (sig) spare.has(sig) ? spare.get(sig).push(g) : spare.set(sig, [g]);
+  }
   userScreens.clear();
-  rig.userScene = buildScene(CFG.objs || CFG.editor ? data : { objects: [] }, rig.sceneUnit, sceneScreenCtx);
+  const root = new THREE.Group();
+  root.name = 'objets-utilisateur';
+  for (const o of (CFG.objs || CFG.editor ? data : { objects: [] }).objects || []) {
+    const sig = o.type === 'screen' ? '' : JSON.stringify(o);
+    let g = sig && spare.get(sig)?.shift();
+    if (!g) {
+      try { g = makeObject(o, rig.sceneUnit, sceneScreenCtx); } catch (e) { console.warn('Objet ignoré :', o, e); continue; }
+      g.userData.sig = sig;
+    }
+    root.add(g);
+  }
+  if (old) { scene.remove(old); [...old.children].forEach(disposeObject); }
+  rig.userScene = root;
   rig.userSceneData = data;
   rig.sceneData = data;
   scene.add(rig.userScene);

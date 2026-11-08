@@ -237,6 +237,7 @@ export function makeObject(o, u, ctx = {}) {
     holder.add(box);
     loadGlb(o.file).then(gltf => {
       const m = gltf.scene.clone(true);
+      m.traverse(n => { if (n.isMesh) n.userData.sharedRes = true; });
       const bb = new THREE.Box3().setFromObject(m), s = bb.getSize(new THREE.Vector3());
       const k = size[0] / Math.max(s.x, s.y, s.z, 1e-6);
       m.scale.setScalar(k);
@@ -308,7 +309,7 @@ export function makeObject(o, u, ctx = {}) {
 export function disposeObject(group) {
   group.traverse(m => {
     if (m.isLight) { m.dispose?.(); return; }
-    if (!m.isMesh) return;
+    if (!m.isMesh || m.userData.sharedRes) return;
     m.geometry?.dispose();
     for (const mt of Array.isArray(m.material) ? m.material : [m.material]) mt?.dispose();
   });

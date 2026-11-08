@@ -29,6 +29,59 @@ function track(manager) {
   return t;
 }
 
+function averageColor(tex) {
+  const img = tex?.image;
+  if (!img || img.data || !(img.width > 0)) return null;
+  try {
+    const c = document.createElement('canvas');
+    c.width = c.height = 16;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    g.drawImage(img, 0, 0, 16, 16);
+    const d = g.getImageData(0, 0, 16, 16).data;
+    const s = [0, 0, 0];
+    for (let i = 0; i < d.length; i += 4) { s[0] += d[i]; s[1] += d[i + 1]; s[2] += d[i + 2]; }
+    return s.map(v => v / (d.length / 4));
+  } catch { return null; }
+}
+
+const looksLikeNormalMap = tex => {
+  const a = averageColor(tex);
+  return !!a && a[2] > 190 && a[0] > 90 && a[0] < 175 && a[1] > 90 && a[1] < 175;
+};
+
+function toStandard(m) {
+  const s = new THREE.MeshStandardMaterial({
+    name: m.name, color: m.color ? m.color.clone() : new THREE.Color(0xffffff), map: m.map || null,
+    emissive: m.emissive ? m.emissive.clone() : new THREE.Color(0), emissiveMap: m.emissiveMap || null, emissiveIntensity: m.emissiveIntensity ?? 1,
+    normalMap: m.normalMap || null, bumpMap: m.bumpMap || null, bumpScale: m.bumpScale ?? 1,
+    alphaMap: m.alphaMap || null, aoMap: m.aoMap || null, aoMapIntensity: m.aoMapIntensity ?? 1, lightMap: m.lightMap || null,
+    displacementMap: m.displacementMap || null, displacementScale: m.displacementScale ?? 1,
+    opacity: m.opacity, transparent: m.transparent, alphaTest: m.alphaTest, side: m.side, vertexColors: m.vertexColors,
+    depthWrite: m.depthWrite, depthTest: m.depthTest, flatShading: !!m.flatShading, wireframe: !!m.wireframe,
+    roughness: m.shininess != null ? Math.min(1, Math.max(0.25, Math.sqrt(2 / (m.shininess + 2)) * 1.6)) : 0.85, metalness: 0,
+  });
+  if (m.normalScale) s.normalScale.copy(m.normalScale);
+  s.userData = { ...m.userData };
+  return s;
+}
+
+function tidyMaterials(root) {
+  const done = new Map();
+  root.traverse(o => {
+    if (!o.isMesh) return;
+    const fix = m => {
+      if (!m) return m;
+      if (done.has(m)) return done.get(m);
+      let out = m;
+      if (m.bumpMap && !m.normalMap && looksLikeNormalMap(m.bumpMap)) { m.normalMap = m.bumpMap; m.bumpMap = null; m.needsUpdate = true; }
+      if (m.isMeshPhongMaterial || m.isMeshLambertMaterial) out = toStandard(m);
+      done.set(m, out);
+      return out;
+    };
+    o.material = Array.isArray(o.material) ? o.material.map(fix) : fix(o.material);
+  });
+}
+
 function dropBrokenTextures(root) {
   const dropped = new Set();
   root.traverse(o => {
@@ -157,6 +210,7 @@ export async function loadModel3D(url) {
   const dropped = dropBrokenTextures(result.scene);
   if (dropped.length) console.warn(`Modèle ${baseName(url)} : textures introuvables ignorées (${dropped.join(', ')})`, result.tracker?.failed || []);
   delete result.tracker;
+  tidyMaterials(result.scene);
   result.scene.traverse(o => {
     if (!o.isMesh) return;
     const mats = Array.isArray(o.material) ? o.material : [o.material];
