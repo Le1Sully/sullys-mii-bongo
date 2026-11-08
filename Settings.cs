@@ -36,6 +36,7 @@ sealed class Settings
     public bool TeteCalmeJeux { get; set; } = true;
     public List<string> Jeux { get; set; } = new();
     public string Theme { get; set; } = "classique";
+    public bool ThemeSombre { get; set; }
     public string ScenePreset { get; set; } = "";
     public List<string> PersoOn { get; set; } = new();
     public string Fluidite { get; set; } = "auto";
@@ -57,6 +58,7 @@ sealed class Settings
         fps = Fluidite,
         minis = PadMinis,
         theme = Theme,
+        themeDark = ThemeSombre,
         orbit = new { on = Orbit, az = Math.Round(OrbitAz), el = Math.Round(OrbitEl), zoom = Math.Round(OrbitZoom, 2) },
     });
 

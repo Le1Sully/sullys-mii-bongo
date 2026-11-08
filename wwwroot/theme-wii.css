@@ -123,3 +123,53 @@
 :root[data-theme="wii"] .edModal textarea { background: #fff !important; color: var(--wii-text) !important; }
 :root[data-theme="wii"] .pressed span { background: var(--wii-blue-soft) !important; color: #0f6f99 !important; border: 1px solid #b9e6f8; }
 :root[data-theme="wii"] .map label.lit { color: var(--wii-blue-deep) !important; }
+
+:root[data-theme="wii"][data-dark] {
+  --wii-bg: #1e2023; --wii-panel: #2a2d31; --wii-line: #484c52; --wii-text: #e8e9ea; --wii-muted: #a0a5aa;
+  --wii-blue-soft: #163543; --wii-blue-deep: #6fd0f5;
+  --wii-shadow: 0 1px 0 rgba(255, 255, 255, .08) inset, 0 -2px 0 rgba(0, 0, 0, .25) inset, 0 2px 4px rgba(0, 0, 0, .5);
+  --wii-shadow-in: 0 1px 3px rgba(0, 0, 0, .55) inset;
+  --card2: #33363b; --warn: #f0a63a;
+  color-scheme: dark;
+}
+:root[data-theme="wii"][data-dark] body { background: repeating-linear-gradient(180deg, #222428 0 3px, #1c1e21 3px 6px) !important; }
+:root[data-theme="wii"][data-dark] :is(.btn, .seg button, .tile, .padpick, #nav button, .scr .btn, .capture .mod,
+  .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button) {
+  background: linear-gradient(180deg, #3d4146 0%, #34373c 55%, #2b2e32 100%) !important;
+}
+:root[data-theme="wii"][data-dark] :is(.btn, .seg button, .tile, .padpick, #nav button, .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button):hover { border-color: #3b8fb3 !important; }
+:root[data-theme="wii"][data-dark] :is(.seg button.active, .tile.active, .padpick.active, #nav button.active,
+  .ed button.on, .ce button.on, .panel button.on, .list button.on, .it.sel):not(.tex button, .texgrid button, .imgs button, button.sw) {
+  background: linear-gradient(180deg, #2f3d45 0%, #234250 60%, #1b4a5e 100%) !important; color: #9fe2fa !important;
+}
+:root[data-theme="wii"][data-dark] :is(.btn.primary, .ed button.primary, .ce button.primary, .panel button.primary, .modal button.primary) { border-color: #2f7fa3 !important; }
+:root[data-theme="wii"][data-dark] :is(.card, .ed.panel, .ed .panel, .ce.panel, .panel, .modal .box) { border-color: #3a3d42 !important; box-shadow: 0 2px 8px rgba(0, 0, 0, .45) !important; }
+:root[data-theme="wii"][data-dark] :is(.card h2, .ed h3, .ce h3, .panel h3, h3) { color: #c3c7cb !important; }
+:root[data-theme="wii"][data-dark] :is(select, input[type=text], input[type=number], textarea, .ed select, .ce select, .panel select) { background: #1f2124 !important; border-color: #4a4e54 !important; }
+:root[data-theme="wii"][data-dark] option, :root[data-theme="wii"][data-dark] optgroup { background: #2a2d31; color: var(--wii-text); }
+:root[data-theme="wii"][data-dark] .sw .t { background: #4a4e54 !important; }
+:root[data-theme="wii"][data-dark] :is(.ce, .ed, .panel, body) button.sw { background: #4a4e54 !important; }
+:root[data-theme="wii"][data-dark] :is(.ce, .ed, .panel, body) button.sw.on, :root[data-theme="wii"][data-dark] .sw input:checked + .t { background: var(--wii-blue) !important; }
+:root[data-theme="wii"][data-dark] .logo { background: linear-gradient(180deg, #3d4146, #2b2e32) !important; }
+:root[data-theme="wii"][data-dark] h1 { color: #e8e9ea; }
+:root[data-theme="wii"][data-dark] .pill { background: #2a2d31; }
+:root[data-theme="wii"][data-dark] .pill.on { color: #9fe2fa; border-color: #2f7fa3; }
+:root[data-theme="wii"][data-dark] .state { background: #24272a !important; border-color: #3a3d42; }
+:root[data-theme="wii"][data-dark] .state.good { background: #163543 !important; color: #9fe2fa !important; border-color: #2f7fa3; }
+:root[data-theme="wii"][data-dark] .tile.active, :root[data-theme="wii"][data-dark] .padpick.active { background: linear-gradient(180deg, #2f3d45, #1b4a5e) !important; }
+:root[data-theme="wii"][data-dark] .faces img { background: #cfd2d5 !important; }
+:root[data-theme="wii"][data-dark] .plist .k, :root[data-theme="wii"][data-dark] .it .k, :root[data-theme="wii"][data-dark] :is(.scr .key, .ce .key) { background: #1f2124 !important; }
+:root[data-theme="wii"][data-dark] .scr, :root[data-theme="wii"][data-dark] .perf .pr { background: #26292d !important; border-color: #3a3d42; }
+:root[data-theme="wii"][data-dark] .perf .good { color: #7fd99a !important; }
+:root[data-theme="wii"][data-dark] .dial { background: radial-gradient(circle, #34373c 0 38%, #26292d 39% 100%) !important; }
+:root[data-theme="wii"][data-dark] .madeby { color: #7a7f84; }
+:root[data-theme="wii"][data-dark] :is(#edHelp, #ceHelp, #help) { color: #d4d7da !important; text-shadow: 0 1px 2px #000 !important; }
+:root[data-theme="wii"][data-dark] :is(#edHelp kbd) { background: #2a2d31 !important; }
+:root[data-theme="wii"][data-dark] .list button.on { background: #1b3e4c !important; }
+:root[data-theme="wii"][data-dark] .it:hover { background: #33363b !important; }
+:root[data-theme="wii"][data-dark] :is(.tex button, .texgrid button) { background-color: #2a2d31 !important; }
+:root[data-theme="wii"][data-dark] .src button.on { color: #9fe2fa !important; }
+:root[data-theme="wii"][data-dark] .edModal, :root[data-theme="wii"][data-dark] .modal { background: rgba(10, 11, 12, .65) !important; }
+:root[data-theme="wii"][data-dark] .edModal textarea { background: #1f2124 !important; }
+:root[data-theme="wii"][data-dark] .pressed span { color: #9fe2fa !important; border-color: #2f7fa3; }
+:root[data-theme="wii"][data-dark] .toast { background: #2a2d31; color: #e8e9ea; border-color: #484c52; }

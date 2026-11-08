@@ -7,14 +7,15 @@ static class ThemeMenu
     static readonly Color Blue = Color.FromArgb(42, 179, 232), BlueSoft = Color.FromArgb(227, 245, 253),
         Text = Color.FromArgb(59, 59, 59), Line = Color.FromArgb(214, 216, 219), Back = Color.FromArgb(251, 251, 251);
 
-    public static void Apply(ToolStrip menu, string theme)
+    public static void Apply(ToolStrip menu, string theme, bool dark = false)
     {
-        if (theme is not ("wii" or "carnet" or "notice")) { menu.RenderMode = ToolStripRenderMode.ManagerRenderMode; return; }
+        if (dark && theme is "wii" or "windows" or "switch") theme += "-dark";
+        if (theme is not ("wii" or "carnet" or "notice") && !Flats.ContainsKey(theme)) { menu.RenderMode = ToolStripRenderMode.ManagerRenderMode; return; }
         menu.Renderer = MakeRenderer(theme);
         menu.BackColor = BackOf(theme);
         menu.ForeColor = InkOf(theme);
         menu.Padding = new Padding(theme == "notice" ? 2 : 4);
-        if (theme == "notice") menu.Font = Notice.Font;
+        if (FontOf(theme) is { } f) menu.Font = f;
         foreach (ToolStripItem it in menu.Items) Style(it, theme);
     }
 
@@ -22,22 +23,132 @@ static class ThemeMenu
     {
         "carnet" => new CarnetRenderer(),
         "notice" => new NoticeRenderer(),
+        _ when Flats.TryGetValue(theme, out var p) => new FlatRenderer(p),
         _ => new WiiRenderer(),
     };
 
-    static Color BackOf(string theme) => theme switch { "carnet" => Carnet.Paper, "notice" => Notice.Paper, _ => Back };
-    static Color InkOf(string theme) => theme switch { "carnet" => Carnet.Ink, "notice" => Notice.Ink, _ => Text };
+    static Color BackOf(string theme) => theme switch { "carnet" => Carnet.Paper, "notice" => Notice.Paper, _ when Flats.TryGetValue(theme, out var p) => p.Back, _ => Back };
+    static Color InkOf(string theme) => theme switch { "carnet" => Carnet.Ink, "notice" => Notice.Ink, _ when Flats.TryGetValue(theme, out var p) => p.Text, _ => Text };
+    static Font? FontOf(string theme) => theme == "notice" ? Notice.Font : Flats.TryGetValue(theme, out var p) ? p.Font : null;
+
+    sealed record Flat(Color Back, Color Text, Color Muted, Color SelBack, Color SelText, Color Border, Color Sep, Color Mark, int Radius, bool Outline, Font Font);
+
+    static readonly Dictionary<string, Flat> Flats = new()
+    {
+        ["windows"] = new(Color.FromArgb(249, 249, 249), Color.FromArgb(27, 27, 27), Color.FromArgb(150, 150, 150), Color.FromArgb(234, 234, 234), Color.FromArgb(27, 27, 27),
+            Color.FromArgb(220, 220, 220), Color.FromArgb(229, 229, 229), Color.FromArgb(0, 95, 184), 4, false, new Font("Segoe UI", 9.5f)),
+        ["xbox"] = new(Color.FromArgb(31, 31, 31), Color.FromArgb(242, 242, 242), Color.FromArgb(120, 120, 120), Color.FromArgb(16, 124, 16), Color.White,
+            Color.FromArgb(60, 60, 60), Color.FromArgb(55, 55, 55), Color.White, 4, false, new Font("Segoe UI Semibold", 9.5f)),
+        ["switch"] = new(Color.FromArgb(250, 250, 250), Color.FromArgb(45, 45, 45), Color.FromArgb(160, 160, 160), Color.White, Color.FromArgb(10, 176, 214),
+            Color.FromArgb(220, 220, 220), Color.FromArgb(225, 225, 225), Color.FromArgb(0, 195, 227), 10, true, new Font("Segoe UI Semibold", 9.5f)),
+        ["playstation"] = new(Color.FromArgb(10, 27, 70), Color.White, Color.FromArgb(120, 135, 170), Color.White, Color.FromArgb(11, 29, 71),
+            Color.FromArgb(40, 62, 120), Color.FromArgb(35, 55, 105), Color.White, 8, false, new Font("Segoe UI", 9.5f)),
+        ["wii-dark"] = new(Color.FromArgb(42, 45, 49), Color.FromArgb(232, 233, 234), Color.FromArgb(130, 135, 140), Color.FromArgb(27, 74, 94), Color.FromArgb(159, 226, 250),
+            Color.FromArgb(72, 76, 82), Color.FromArgb(62, 66, 71), Color.FromArgb(42, 179, 232), 9, true, new Font("Segoe UI", 9.5f)),
+        ["windows-dark"] = new(Color.FromArgb(44, 44, 44), Color.White, Color.FromArgb(120, 120, 120), Color.FromArgb(61, 61, 61), Color.White,
+            Color.FromArgb(28, 28, 28), Color.FromArgb(60, 60, 60), Color.FromArgb(76, 194, 255), 4, false, new Font("Segoe UI", 9.5f)),
+        ["switch-dark"] = new(Color.FromArgb(58, 58, 58), Color.White, Color.FromArgb(140, 140, 140), Color.FromArgb(70, 70, 70), Color.FromArgb(62, 224, 248),
+            Color.FromArgb(85, 85, 85), Color.FromArgb(80, 80, 80), Color.FromArgb(0, 195, 227), 10, true, new Font("Segoe UI Semibold", 9.5f)),
+    };
+
+    sealed class FlatColors(Flat p) : ProfessionalColorTable
+    {
+        public override Color ToolStripDropDownBackground => p.Back;
+        public override Color ImageMarginGradientBegin => p.Back;
+        public override Color ImageMarginGradientMiddle => p.Back;
+        public override Color ImageMarginGradientEnd => p.Back;
+        public override Color MenuBorder => p.Border;
+        public override Color SeparatorDark => p.Sep;
+        public override Color SeparatorLight => p.Back;
+        public override Color MenuItemBorder => Color.Transparent;
+        public override Color MenuItemSelected => p.SelBack;
+        public override Color CheckBackground => p.Back;
+        public override Color CheckSelectedBackground => p.SelBack;
+        public override Color CheckPressedBackground => p.SelBack;
+    }
+
+    sealed class FlatRenderer : ToolStripProfessionalRenderer
+    {
+        readonly Flat _p;
+        public FlatRenderer(Flat p) : base(new FlatColors(p)) { _p = p; RoundedEdges = false; }
+
+        static GraphicsPath Round(RectangleF r, float rad)
+        {
+            var g = new GraphicsPath();
+            float d = rad * 2;
+            g.AddArc(r.X, r.Y, d, d, 180, 90);
+            g.AddArc(r.Right - d, r.Y, d, d, 270, 90);
+            g.AddArc(r.Right - d, r.Bottom - d, d, d, 0, 90);
+            g.AddArc(r.X, r.Bottom - d, d, d, 90, 90);
+            g.CloseFigure();
+            return g;
+        }
+
+        protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
+        {
+            if (!e.Item.Selected || !e.Item.Enabled) return;
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            var r = new RectangleF(4, 1, e.Item.Width - 8, e.Item.Height - 2);
+            using var path = Round(r, _p.Radius);
+            using var fill = new SolidBrush(_p.SelBack);
+            e.Graphics.FillPath(fill, path);
+            if (_p.Outline)
+            {
+                using var pen = new Pen(_p.Mark, 2.5f);
+                e.Graphics.DrawPath(pen, path);
+            }
+            else if (_p.Mark != _p.SelText)
+            {
+                using var bar = Round(new RectangleF(5, e.Item.Height / 2f - 7, 3, 14), 1.5f);
+                using var b = new SolidBrush(_p.Mark);
+                e.Graphics.FillPath(b, bar);
+            }
+        }
+
+        protected override void OnRenderItemText(ToolStripItemTextRenderEventArgs e)
+        {
+            e.TextColor = !e.Item.Enabled ? _p.Muted : e.Item.Selected ? _p.SelText : _p.Text;
+            base.OnRenderItemText(e);
+        }
+
+        protected override void OnRenderArrow(ToolStripArrowRenderEventArgs e)
+        {
+            e.ArrowColor = e.Item?.Selected == true ? _p.SelText : _p.Text;
+            base.OnRenderArrow(e);
+        }
+
+        protected override void OnRenderItemCheck(ToolStripItemImageRenderEventArgs e)
+        {
+            var r = e.ImageRectangle;
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+            using var pen = new Pen(e.Item.Selected ? _p.SelText : _p.Mark == Color.White ? _p.Text : _p.Mark, 2f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round };
+            e.Graphics.DrawLines(pen, new[] { new PointF(r.X + r.Width * .2f, r.Y + r.Height * .55f), new PointF(r.X + r.Width * .42f, r.Y + r.Height * .76f), new PointF(r.X + r.Width * .82f, r.Y + r.Height * .26f) });
+        }
+
+        protected override void OnRenderSeparator(ToolStripSeparatorRenderEventArgs e)
+        {
+            int y = e.Item.Height / 2;
+            using var pen = new Pen(_p.Sep, 1f);
+            e.Graphics.DrawLine(pen, 8, y, e.Item.Width - 8, y);
+        }
+
+        protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+        {
+            using var pen = new Pen(_p.Border, 1f);
+            e.Graphics.DrawRectangle(pen, 0, 0, e.AffectedBounds.Width - 1, e.AffectedBounds.Height - 1);
+        }
+    }
 
     static void Style(ToolStripItem it, string theme)
     {
         it.ForeColor = InkOf(theme);
-        if (theme == "notice") it.Font = Notice.Font;
+        if (FontOf(theme) is { } f) it.Font = f;
         if (it is ToolStripMenuItem mi)
         {
             mi.Padding = theme == "notice" ? new Padding(2, 4, 2, 4) : new Padding(4, 5, 4, 5);
             mi.DropDown.Renderer = MakeRenderer(theme);
             mi.DropDown.BackColor = BackOf(theme);
-            if (theme == "notice") mi.DropDown.Font = Notice.Font;
+            if (FontOf(theme) is { } df) mi.DropDown.Font = df;
             mi.DropDownOpening += (_, _) => { foreach (ToolStripItem sub in mi.DropDownItems) Style(sub, theme); };
         }
     }

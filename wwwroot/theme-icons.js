@@ -87,6 +87,7 @@
     + `<filter id="b" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".45" numOctaves="1" seed="11"/><feDisplacementMap in="SourceGraphic" scale="1.9" xChannelSelector="G" yChannelSelector="R"/></filter></defs>`
     + `<g filter="url(#a)">${body}</g><g filter="url(#b)" opacity=".42" stroke-width="1.1" transform="translate(.45 .35)">${body}</g></svg>`;
   const fine = body => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.6" stroke-linecap="square" stroke-linejoin="miter">${body}</svg>`;
+  const fluent = body => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
   const css = document.createElement('style');
   css.textContent = `
     .wi { display: inline-block; width: 1.25em; height: 1.25em; vertical-align: -0.25em; background: currentColor;
@@ -96,7 +97,9 @@
     :is(:root[data-theme="carnet"], .icons-carnet) .wi-emoji { filter: grayscale(1) sepia(.5) brightness(.5) contrast(1.2); }
     ${Object.entries(ICONS).map(([n, b]) => `:root[data-theme="carnet"] .wi-${n}:not(.prev-wii *), .icons-carnet .wi-${n} { --i: url("data:image/svg+xml,${encodeURIComponent(sketch(b))}"); }`).join('\n')}
     :root[data-theme="notice"] .wi-emoji { filter: grayscale(1) brightness(.4) contrast(1.4); }
-    ${Object.entries(ICONS).map(([n, b]) => `:root[data-theme="notice"] .wi-${n}:not(.prev *) { --i: url("data:image/svg+xml,${encodeURIComponent(fine(b))}"); }`).join('\n')}`;
+    ${Object.entries(ICONS).map(([n, b]) => `:root[data-theme="notice"] .wi-${n}:not(.prev *) { --i: url("data:image/svg+xml,${encodeURIComponent(fine(b))}"); }`).join('\n')}
+    :is(:root[data-theme="xbox"], :root[data-theme="playstation"], :root[data-dark]:is([data-theme="wii"], [data-theme="windows"], [data-theme="switch"])) .wi-emoji { filter: grayscale(1) brightness(1.7) contrast(1.1); }
+    ${Object.entries(ICONS).map(([n, b]) => `:root[data-theme="windows"] .wi-${n}:not(.prev *), .icons-fluent .wi-${n} { --i: url("data:image/svg+xml,${encodeURIComponent(fluent(b))}"); }`).join('\n')}`;
   document.head.appendChild(css);
 
   const RX = /\p{Extended_Pictographic}(?:️|‍\p{Extended_Pictographic})*️?/gu;
@@ -182,7 +185,7 @@
   });
 
   function update() {
-    const wii = ['wii', 'carnet', 'notice'].includes(document.documentElement.dataset.theme);
+    const wii = ['wii', 'carnet', 'notice', 'windows', 'xbox', 'switch', 'playstation'].includes(document.documentElement.dataset.theme);
     if (wii === on && update.done) return;
     update.done = true;
     on = wii;

@@ -105,7 +105,7 @@ if (CFG.editor || CFG.perso) {
   }
   for (const src of ['./theme.js', './theme-icons.js'])
     await new Promise(res => { const s = document.createElement('script'); s.src = src; s.onload = s.onerror = res; document.head.appendChild(s); });
-  const themeBg = () => renderer.setClearColor({ wii: 0xe4e7ea, carnet: 0xebe2cf, notice: 0xe6e2d8 }[window.uiTheme?.()] ?? 0x1e1f26, 1);
+  const themeBg = () => renderer.setClearColor({ wii: 0xe4e7ea, carnet: 0xebe2cf, notice: 0xe6e2d8, windows: 0xe9edf2, xbox: 0x161616, switch: 0xe2e2e2, playstation: 0x0b1d47, 'wii-dark': 0x1d1f22, 'windows-dark': 0x1c1c1c, 'switch-dark': 0x262626 }[(window.uiTheme?.() || '') + (window.uiDark?.() ? '-dark' : '')] ?? 0x1e1f26, 1);
   themeBg();
   addEventListener('uitheme', themeBg);
 }
@@ -2952,9 +2952,9 @@ function onEvent(ev) {
         renderer.setPixelRatio(pixelRatio());
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
-      if (ev.c?.theme && (CFG.editor || CFG.perso)) window.setUiTheme?.(ev.c.theme);
+      if (ev.c?.theme && (CFG.editor || CFG.perso)) window.setUiTheme?.(ev.c.theme, !!ev.c.themeDark);
       if (FOLLOW && ev.c) {
-        const strip = c => { const { orbit: _o, fps: _f, theme: _t, ...rest } = c; return JSON.stringify(rest); };
+        const strip = c => { const { orbit: _o, fps: _f, theme: _t, themeDark: _d, ...rest } = c; return JSON.stringify(rest); };
         let before = null;
         try { before = followedCfg && strip(JSON.parse(followedCfg)); } catch { }
         if (strip(ev.c) !== before) location.reload();

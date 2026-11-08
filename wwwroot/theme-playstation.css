@@ -1,0 +1,144 @@
+:root[data-theme="playstation"] {
+  --p-bg: #071436;
+  --p-glass: rgba(255, 255, 255, .07);
+  --p-glass2: rgba(255, 255, 255, .12);
+  --p-line: rgba(255, 255, 255, .12);
+  --p-text: #ffffff;
+  --p-muted: #aeb8d0;
+  --p-blue: #0070d1;
+  --p-blue2: #1f86e0;
+  --p-focus: 0 0 0 2px #ffffff, 0 0 18px 2px rgba(160, 200, 255, .45);
+  --p-font: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --bg: var(--p-bg); --card: #10224f; --card2: #172c5f; --line: var(--p-line);
+  --text: var(--p-text); --muted: var(--p-muted); --accent: var(--p-blue); --accent2: var(--p-blue2);
+  --ok: var(--p-blue2); --warn: #ffc34d;
+  color-scheme: dark;
+}
+:root[data-theme="playstation"] body {
+  background: radial-gradient(80% 70% at 85% -10%, rgba(64, 120, 255, .55) 0%, rgba(64, 120, 255, 0) 60%),
+    radial-gradient(70% 60% at 0% 110%, rgba(0, 112, 209, .35) 0%, rgba(0, 112, 209, 0) 65%),
+    linear-gradient(180deg, #0b2a72 0%, #061440 45%, #020820 100%) !important;
+  color: var(--p-text) !important;
+  font-family: var(--p-font);
+}
+:root[data-theme="playstation"] ::selection { background: var(--p-blue); color: #fff; }
+:root[data-theme="playstation"] h1 { font: 300 22px/1.1 var(--p-font); letter-spacing: .01em; }
+:root[data-theme="playstation"] .card h2 { font: 400 17px var(--p-font); color: #fff !important; }
+:root[data-theme="playstation"] :is(.ed h3, .ce h3, .panel h3, h3) { color: var(--p-muted) !important; font-weight: 400 !important; letter-spacing: .06em !important; }
+
+:root[data-theme="playstation"] :is(.btn, .seg button, .tile, .padpick, .scr .btn, .capture .mod,
+  .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button) {
+  background: var(--p-glass2) !important;
+  border: 0 !important;
+  border-radius: 99px !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  transition: box-shadow .15s, background-color .15s, transform .15s;
+}
+:root[data-theme="playstation"] :is(.tile.tile.tile, .padpick.padpick.padpick):not(.tex button, .texgrid button, .imgs button, button.sw, .list button) { border-radius: 12px !important; }
+:root[data-theme="playstation"] :is(.btn, .seg button, .tile, .padpick, .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button):not(:disabled):is(:hover, :focus-visible) {
+  background: rgba(255, 255, 255, .2) !important; box-shadow: var(--p-focus) !important; outline: none;
+}
+:root[data-theme="playstation"] :is(.tile, .padpick):not(:disabled):hover { transform: scale(1.04); }
+:root[data-theme="playstation"] :is(.seg button.active, .tile.active, .padpick.active, .ed button.on, .ce button.on, .panel button.on):not(.tex button, .texgrid button, .imgs button, button.sw, .list button) {
+  background: #ffffff !important; color: #0b1d47 !important;
+}
+:root[data-theme="playstation"] :is(.tile.active, .padpick.active) small { color: #3a4a70 !important; }
+:root[data-theme="playstation"] :is(.btn.primary, .ed button.primary, .ce button.primary, .panel button.primary, .modal button.primary):not(#t-x) { background: var(--p-blue) !important; color: #fff !important; }
+:root[data-theme="playstation"] :is(.btn.primary, .ed button.primary, .ce button.primary, .panel button.primary, .modal button.primary):not(#t-x):not(:disabled):hover { background: var(--p-blue2) !important; }
+:root[data-theme="playstation"] :is(.btn.danger, .danger) { color: #ff8a8a !important; }
+:root[data-theme="playstation"] button:disabled { opacity: .35; }
+
+:root[data-theme="playstation"] :is(.card, .ed.panel, .ed .panel, .ce.panel, .panel, .modal .box) {
+  background: var(--p-glass) !important;
+  border: 1px solid var(--p-line) !important;
+  border-radius: 14px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .3) !important;
+  backdrop-filter: blur(18px);
+  color: #fff !important;
+}
+:root[data-theme="playstation"] :is(.ed.panel, .ce.panel, .panel) { background: rgba(9, 24, 66, .82) !important; }
+:root[data-theme="playstation"] .modal .box { background: rgba(9, 24, 66, .96) !important; }
+:root[data-theme="playstation"] :is(.sub, .muted, .row > label, .row > label.lbl, .sliders label, .sl, .map label, .trio div, .duo div, small) { color: var(--p-muted) !important; }
+:root[data-theme="playstation"] :is(.warn, .err) { color: #ffc34d !important; }
+
+:root[data-theme="playstation"] :is(select, input[type=text], input[type=number], textarea) {
+  background: rgba(0, 0, 0, .28) !important; color: #fff !important; border: 1px solid rgba(255, 255, 255, .16) !important; border-radius: 8px !important; box-shadow: none !important;
+}
+:root[data-theme="playstation"] :is(select, input, textarea):focus { outline: none; box-shadow: var(--p-focus) !important; }
+:root[data-theme="playstation"] input[type=range], :root[data-theme="playstation"] input[type=checkbox] { accent-color: #ffffff !important; }
+:root[data-theme="playstation"] option, :root[data-theme="playstation"] optgroup { background: #0b1d47; color: #fff; }
+
+:root[data-theme="playstation"] .sw .t, :root[data-theme="playstation"] :is(.ce, .ed, .panel, body) button.sw { background: rgba(255, 255, 255, .22) !important; border: 0 !important; border-radius: 99px !important; box-shadow: none !important; }
+:root[data-theme="playstation"] .sw input:checked + .t, :root[data-theme="playstation"] :is(.ce, .ed, .panel, body) button.sw.on { background: var(--p-blue) !important; }
+:root[data-theme="playstation"] .sw .t::after, :root[data-theme="playstation"] button.sw::after { background: #fff !important; }
+
+:root[data-theme="playstation"] .pill { background: rgba(255, 255, 255, .1); color: var(--p-muted); border-radius: 99px; }
+:root[data-theme="playstation"] .pill.on { color: #fff; }
+:root[data-theme="playstation"] .state { background: rgba(0, 0, 0, .22) !important; color: var(--p-muted) !important; border-radius: 8px !important; }
+:root[data-theme="playstation"] .state.good { color: #9fd0ff !important; }
+:root[data-theme="playstation"] .faces img { background: #d6dbe6 !important; border: 0 !important; border-radius: 10px !important; }
+:root[data-theme="playstation"] :is(.plist .k, .it .k, .scr .key, .ce .key) { background: rgba(0, 0, 0, .3) !important; color: #fff !important; border: 1px solid rgba(255, 255, 255, .18) !important; border-radius: 6px !important; }
+:root[data-theme="playstation"] :is(.scr .key.wait, .ce .key.wait) { border-color: #fff !important; box-shadow: var(--p-focus); }
+:root[data-theme="playstation"] :is(.scr, .perf .pr) { background: rgba(255, 255, 255, .05) !important; border-radius: 10px !important; }
+:root[data-theme="playstation"] .scr.cur { box-shadow: inset 0 0 0 2px #fff !important; }
+:root[data-theme="playstation"] .capture { border: 1px solid #fff !important; color: #fff !important; border-radius: 10px !important; }
+:root[data-theme="playstation"] .perf .good { color: #9fd0ff !important; }
+:root[data-theme="playstation"] .dial { background: radial-gradient(circle, rgba(255, 255, 255, .14) 0 38%, rgba(255, 255, 255, .06) 39% 100%) !important; border: 1px solid var(--p-line) !important; }
+:root[data-theme="playstation"] .dial .cam { background: var(--p-blue) !important; }
+:root[data-theme="playstation"] .madeby { color: #7f8aa8; }
+:root[data-theme="playstation"] .toast { background: rgba(9, 24, 66, .95); color: #fff; border: 1px solid var(--p-line); border-radius: 12px; }
+:root[data-theme="playstation"] .card.hit { box-shadow: var(--p-focus) !important; }
+
+:root[data-theme="playstation"] body:has(#layout) { padding: 0 !important; }
+:root[data-theme="playstation"] header { margin: 0; padding: 18px 30px 4px; gap: 14px; }
+:root[data-theme="playstation"] header .logo { order: 10; width: 40px; height: 40px; padding: 2px; border-radius: 50% !important; background: rgba(255, 255, 255, .15) !important; }
+:root[data-theme="playstation"] header .sub { display: none; }
+:root[data-theme="playstation"] header .btn { padding: 6px 14px; font-size: 13px; }
+:root[data-theme="playstation"] .hclock { display: block; order: 9; font: 300 22px var(--p-font); color: #fff; font-variant-numeric: tabular-nums; margin: 0 2px 0 8px; }
+:root[data-theme="playstation"] #layout { flex-direction: column; gap: 0; }
+:root[data-theme="playstation"] #nav { width: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px; padding: 16px 30px 20px; overflow: visible; }
+:root[data-theme="playstation"] #nav button[data-go], :root[data-theme="playstation"] #nav button.mini {
+  flex: none; padding: 0 !important; gap: 14px; border: 0 !important; background: transparent !important; box-shadow: none !important; color: #fff !important;
+}
+:root[data-theme="playstation"] #nav .ni {
+  width: 58px; height: 58px; display: grid; place-items: center; border-radius: 12px; font-size: 24px;
+  background: rgba(255, 255, 255, .13); transition: width .15s, height .15s, box-shadow .15s, background-color .15s;
+}
+:root[data-theme="playstation"] #nav .ni .wi { width: 26px; height: 26px; border-radius: 0; background: currentColor; }
+:root[data-theme="playstation"] #nav button.mini { font-size: 0 !important; width: 58px; height: 58px; border-radius: 12px !important; background: rgba(255, 255, 255, .13) !important; justify-content: center; }
+:root[data-theme="playstation"] #nav button.mini .wi { width: 26px; height: 26px; background: #fff; }
+:root[data-theme="playstation"] #nav button[data-go]:hover .ni, :root[data-theme="playstation"] #nav button.mini:hover { box-shadow: var(--p-focus) !important; background: rgba(255, 255, 255, .2) !important; }
+:root[data-theme="playstation"] #nav button[data-go] > span:last-child { display: none; text-align: left; }
+:root[data-theme="playstation"] #nav button[data-go].active .ni { width: 82px; height: 82px; font-size: 32px; background: rgba(255, 255, 255, .22); box-shadow: var(--p-focus); }
+:root[data-theme="playstation"] #nav button[data-go].active .ni .wi { width: 34px; height: 34px; }
+:root[data-theme="playstation"] #nav button[data-go].active > span:last-child { display: block; padding-right: 10px; }
+:root[data-theme="playstation"] #nav button[data-go].active b { font: 400 20px var(--p-font); color: #fff; }
+:root[data-theme="playstation"] #nav button[data-go].active small { font-size: 12.5px; color: var(--p-muted); max-width: 200px; }
+:root[data-theme="playstation"] #nav .editbtn { margin: 0 0 0 14px; }
+:root[data-theme="playstation"] main { padding: 0 30px 30px; }
+
+:root[data-theme="playstation"] :is(.ed, .ce) { color: #fff !important; font-family: var(--p-font) !important; }
+:root[data-theme="playstation"] :is(#edHelp, #ceHelp, #help) { color: #d6dcec !important; text-shadow: 0 1px 2px #000 !important; }
+:root[data-theme="playstation"] #edHelp kbd { background: rgba(255, 255, 255, .12) !important; border-color: rgba(255, 255, 255, .25) !important; color: #fff; }
+:root[data-theme="playstation"] :is(#edTop .st, #ceTop .st, .st) { color: var(--p-muted) !important; }
+:root[data-theme="playstation"] .list button { background: transparent !important; border: 0 !important; box-shadow: none !important; border-radius: 8px !important; color: #fff !important; }
+:root[data-theme="playstation"] .list button:hover, :root[data-theme="playstation"] .it:hover { background: rgba(255, 255, 255, .08) !important; }
+:root[data-theme="playstation"] :is(.list button.on, .it.sel, .pre.on button[data-pre=load]) { background: #fff !important; color: #0b1d47 !important; border-color: transparent !important; border-radius: 8px !important; }
+:root[data-theme="playstation"] :is(.list button.on, .it.sel, .pre.on button[data-pre=load]) small { color: #3a4a70 !important; }
+:root[data-theme="playstation"] :is(.tex button, .texgrid button, .imgs button) { border-radius: 8px !important; }
+:root[data-theme="playstation"] :is(.tex button.on, .texgrid button.on, .imgs button.on) { border-color: #fff !important; box-shadow: 0 0 12px rgba(160, 200, 255, .6) !important; }
+:root[data-theme="playstation"] .src button.on { background: #fff !important; color: #0b1d47 !important; }
+:root[data-theme="playstation"] :is(.edModal, .modal) { background: rgba(2, 8, 32, .7) !important; }
+:root[data-theme="playstation"] .edModal textarea { background: rgba(0, 0, 0, .35) !important; color: #fff !important; }
+:root[data-theme="playstation"] .pressed span { background: #fff !important; color: #0b1d47 !important; border-radius: 99px; }
+:root[data-theme="playstation"] .map label.lit { color: #9fd0ff !important; }
+:root[data-theme="playstation"] #ceTime .track { background: rgba(0, 0, 0, .3) !important; border-color: var(--p-line) !important; border-radius: 8px !important; }
+:root[data-theme="playstation"] #ceTime .mk { background: rgba(255, 255, 255, .5) !important; border: 0 !important; border-radius: 4px !important; }
+:root[data-theme="playstation"] #ceTime .mk.on { background: #fff !important; }
+:root[data-theme="playstation"] #ceTime .head { background: var(--p-blue2) !important; }
+:root[data-theme="playstation"] .epages button { margin-left: 6px !important; }
+:root[data-theme="playstation"] .epages button:first-child { margin-left: 0 !important; }
+:root[data-theme="playstation"] :is(#edTop, #ceTop, #top) { border-radius: 22px !important; }
+:root[data-theme="playstation"] #edTop { left: 274px; right: 320px; }
+:root[data-theme="playstation"] #ceTop { left: 306px; right: 386px; }

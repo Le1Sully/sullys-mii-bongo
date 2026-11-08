@@ -37,7 +37,7 @@ Une icône de bouffon apparaît dans la zone de notification.
 
 **Double-cliquez sur l'icône** (ou clic droit → *Ouvrir les réglages de Sully's Mii-Bongo…*) pour ouvrir la
 **fenêtre de réglages**. À gauche, 5 pages (sous chacune, un résumé de vos réglages actuels) et des raccourcis
-vers les trois éditeurs ; la page ouverte la dernière fois est rouverte :
+vers l'**Éditeur** (il rouvre la dernière page utilisée : scène, personnage ou manettes) ; la page ouverte la dernière fois est rouverte :
 
 | Page | Contenu |
 |---|---|
@@ -46,7 +46,7 @@ vers les trois éditeurs ; la page ouverte la dernière fois est rouverte :
 | 🪟 Affichage | fenêtre sur le bureau (afficher, premier plan, verrouiller, taille, fond, **fluidité** : Fluide 60 img/s, **Auto** 60 pendant l'activité et 30 au repos, Économe 30 img/s) ; caméra (cadrage, vue orbitale) |
 | 🏠 Décor & scène | décor (vue, décorations, sol), écrans en direct (fluidité), éditeur de scène et vos objets |
 | ⌨️ Raccourcis | **tous les raccourcis clavier** au même endroit : en créer pour les réglages (changer d'instrument, instrument suivant, afficher / masquer ou verrouiller la fenêtre, cadrage, vue orbitale, décor, objets, micro, désactiver les extras, modèle de manette, fluidité, recharger), changer ou supprimer ceux des extras (avec *Appuyer* / *Maintenir*), interrupteur général, alerte si une combinaison sert deux fois |
-| 🎨 Thème | **Classique** (sombre), **Wii** (clair, boutons blancs arrondis, sélection bleue), **Carnet** (papier, encre, traits à main levée) ou **Notice** (autre disposition : onglets, sections numérotées, cases à cocher) : réglages, trois éditeurs et menu de l'icône |
+| 🎨 Thème | **Classique** (sombre), **Wii** (clair, boutons blancs arrondis, sélection bleue), **Carnet** (papier, encre, traits à main levée), **Notice** (onglets, sections numérotées, cases à cocher), **Windows**, **Xbox**, **Switch** ou **PlayStation** (chacun avec sa propre disposition) ; Wii, Windows et Switch existent aussi en **version sombre** : réglages, trois éditeurs et menu de l'icône |
 | 📺 OBS & système | URL pour OBS, démarrage avec Windows, ancien menu complet, **⚡ Performances** (images par seconde et saccades de chaque page qui affiche le Mii) |
 
 Relancer `Sully's Mii-Bongo.exe` alors qu'il tourne déjà ouvre aussi la fenêtre de réglages.
@@ -574,7 +574,25 @@ Réglages → **🎨 Thème** :
   gauche et réglages à droite. Les interrupteurs deviennent des **cases à cocher**, les choix des **boutons accolés**, et
   les modes de l'instrument une liste à cocher. Plus d'emojis dans les libellés (seuls les boutons à icône gardent une
   icône au trait fin). Les éditeurs se rangent en **panneaux collés aux bords**, avec une barre d'outils en haut et une
-  barre d'aide en bas (survolez-la pour la lire en entier). Les raccourcis vers les éditeurs passent dans la barre du bas.
+  barre d'aide en bas (survolez-la pour la lire en entier). Les raccourcis vers les éditeurs passent dans la barre du bas ;
+- **Windows** : dans l'esprit de l'application Paramètres. Fond « Mica », accent bleu, interrupteurs et champs façon
+  Windows 11, une fine barre de titre, un bloc profil et une **barre de recherche** en haut de la liste (tapez « micro »,
+  « OBS », « raccourci »… : la bonne page s'ouvre et les cartes trouvées sont entourées), un grand titre de page et les
+  réglages en cartes pleine largeur. Dans les éditeurs, panneaux ancrés aux bords, barre de commandes et onglets
+  soulignés de bleu ;
+- **Xbox** : sombre et vert, avatar rond, **horloge** en haut, les pages en **pastilles** sur une ligne (la page ouverte
+  en blanc), contour blanc lumineux au survol et grandes tuiles pour l'instrument ;
+- **Switch** : gris clair, cartes blanches très arrondies, boutons en pastilles, la sélection **entourée de cyan qui
+  pulse**, horloge et batterie en haut, les pages en **icônes rondes centrées en bas** (le nom de la page apparaît
+  au-dessus) et une barre « Ⓑ Retour · Ⓐ OK ».
+
+- **PlayStation** : bleu nuit en dégradé, panneaux en verre, boutons en pastilles blanches au survol lumineux, avatar et
+  horloge en haut à droite, et les pages en **tuiles carrées** sur une ligne : la tuile choisie grandit, entourée de
+  blanc, avec son nom à côté.
+
+L'interrupteur **🌙 Version sombre** (page Thème) passe Wii, Windows et Switch en sombre : Wii gris anthracite rayé,
+Windows en mode sombre de Windows 11 (accent bleu clair), Switch en gris foncé avec le contour cyan. Chaque thème a
+aussi son menu du clic droit sur l'icône, assorti (et sombre quand la version sombre est choisie).
 
 Il s'applique à la fenêtre de réglages, aux trois éditeurs (scène, personnage, manettes) et au menu du clic droit sur l'icône,
 tout de suite, y compris aux fenêtres déjà ouvertes. Le Mii, sa fenêtre et OBS ne changent pas.

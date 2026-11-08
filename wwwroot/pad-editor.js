@@ -16,7 +16,7 @@ const renderer = new THREE.WebGLRenderer({ antialias: true });
 renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.outputColorSpace = THREE.SRGBColorSpace;
-const themeBg = () => renderer.setClearColor({ wii: 0xe4e7ea, carnet: 0xebe2cf, notice: 0xe6e2d8 }[window.uiTheme?.()] ?? 0x1e1f26);
+const themeBg = () => renderer.setClearColor({ wii: 0xe4e7ea, carnet: 0xebe2cf, notice: 0xe6e2d8, windows: 0xe9edf2, xbox: 0x161616, switch: 0xe2e2e2, playstation: 0x0b1d47, 'wii-dark': 0x1d1f22, 'windows-dark': 0x1c1c1c, 'switch-dark': 0x262626 }[(window.uiTheme?.() || '') + (window.uiDark?.() ? '-dark' : '')] ?? 0x1e1f26);
 themeBg();
 addEventListener('uitheme', themeBg);
 document.body.prepend(renderer.domElement);
@@ -346,7 +346,7 @@ function connect() {
     let m; try { m = JSON.parse(e.data); } catch { return; }
     if (m.t === 'pad') { Object.assign(pad, m, { at: performance.now() }); }
     if (m.t === 'pads') { pad.ok = m.ok; pad.s = m.s; renderPadState(); }
-    if (m.t === 'cfg' && m.c?.theme) window.setUiTheme?.(m.c.theme);
+    if (m.t === 'cfg' && m.c?.theme) window.setUiTheme?.(m.c.theme, !!m.c.themeDark);
   };
   ws.onclose = () => setTimeout(connect, 2000);
 }

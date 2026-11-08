@@ -1,0 +1,151 @@
+:root[data-theme="xbox"] {
+  --x-bg: #0d0d0d;
+  --x-panel: #1c1c1c;
+  --x-panel2: #2a2a2a;
+  --x-line: #333333;
+  --x-text: #f2f2f2;
+  --x-muted: #a8a8a8;
+  --x-green: #107c10;
+  --x-green2: #1b9a1b;
+  --x-lime: #9bf00b;
+  --x-focus: 0 0 0 2px #ffffff, 0 0 14px 2px rgba(255, 255, 255, .35);
+  --x-font: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+  --bg: var(--x-bg); --card: var(--x-panel); --card2: var(--x-panel2); --line: var(--x-line);
+  --text: var(--x-text); --muted: var(--x-muted); --accent: var(--x-green); --accent2: var(--x-green2);
+  --ok: var(--x-green2); --warn: #ffb900;
+  color-scheme: dark;
+}
+:root[data-theme="xbox"] body {
+  background: radial-gradient(70% 60% at 85% 0%, rgba(16, 124, 16, .28) 0%, rgba(16, 124, 16, 0) 70%),
+    radial-gradient(60% 50% at 0% 100%, rgba(16, 124, 16, .14) 0%, rgba(16, 124, 16, 0) 70%), #0d0d0d !important;
+  color: var(--x-text) !important;
+  font-family: var(--x-font);
+}
+:root[data-theme="xbox"] ::selection { background: var(--x-green); color: #fff; }
+:root[data-theme="xbox"] h1 { font: 700 22px/1.1 var(--x-font); letter-spacing: -.01em; }
+:root[data-theme="xbox"] .card h2 { font: 600 15px var(--x-font); color: #fff !important; }
+:root[data-theme="xbox"] :is(.ed h3, .ce h3, .panel h3, h3) { color: var(--x-muted) !important; letter-spacing: .08em !important; }
+
+:root[data-theme="xbox"] :is(.btn, .seg button, .tile, .padpick, .scr .btn, .capture .mod,
+  .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button) {
+  background: var(--x-panel2) !important;
+  border: 0 !important;
+  border-radius: 4px !important;
+  color: var(--x-text) !important;
+  box-shadow: none !important;
+  font-weight: 600;
+  transition: box-shadow .1s, background-color .1s, transform .1s;
+}
+:root[data-theme="xbox"] :is(.btn, .seg button, .tile, .padpick, .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button):not(:disabled):is(:hover, :focus-visible) {
+  background: #3a3a3a !important; box-shadow: var(--x-focus) !important; outline: none;
+}
+:root[data-theme="xbox"] :is(.tile, .padpick):not(:disabled):hover { transform: scale(1.03); }
+:root[data-theme="xbox"] :is(.btn, .seg button, .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button):not(:disabled):active { transform: scale(.97); }
+:root[data-theme="xbox"] :is(.seg button.active, .tile.active, .padpick.active, .ed button.on, .ce button.on, .panel button.on):not(.tex button, .texgrid button, .imgs button, button.sw, .list button) {
+  background: var(--x-green) !important; color: #fff !important;
+}
+:root[data-theme="xbox"] :is(.seg button.active, .tile.active, .padpick.active, .ed button.on, .ce button.on, .panel button.on):not(.tex button, .texgrid button, .imgs button, button.sw, .list button):hover { background: var(--x-green2) !important; }
+:root[data-theme="xbox"] :is(.btn.primary, .ed button.primary, .ce button.primary, .panel button.primary, .modal button.primary):not(#t-x) { background: var(--x-green) !important; color: #fff !important; }
+:root[data-theme="xbox"] :is(.btn.primary, .ed button.primary, .ce button.primary, .panel button.primary, .modal button.primary):not(#t-x):not(:disabled):hover { background: var(--x-green2) !important; }
+:root[data-theme="xbox"] :is(.btn.danger, .danger) { color: #ff6b5e !important; }
+:root[data-theme="xbox"] button:disabled { opacity: .35; }
+
+:root[data-theme="xbox"] :is(.card, .ed.panel, .ed .panel, .ce.panel, .panel, .modal .box) {
+  background: rgba(28, 28, 28, .92) !important;
+  border: 1px solid #2c2c2c !important;
+  border-radius: 8px !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .45) !important;
+  color: var(--x-text) !important;
+}
+:root[data-theme="xbox"] :is(.sub, .muted, .row > label, .row > label.lbl, .sliders label, .sl, .map label, .trio div, .duo div, small) { color: var(--x-muted) !important; }
+:root[data-theme="xbox"] :is(.warn, .err) { color: #ffb900 !important; }
+
+:root[data-theme="xbox"] .tiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)) !important; gap: 8px !important; }
+:root[data-theme="xbox"] .tile { flex-direction: column !important; align-items: flex-start !important; justify-content: flex-end; min-height: 120px; padding: 12px 14px !important; gap: 6px !important; }
+:root[data-theme="xbox"] .tile .e { font-size: 34px !important; flex: 1; }
+:root[data-theme="xbox"] .tile .e .wi { width: 38px; height: 38px; }
+:root[data-theme="xbox"] .tile small { color: rgba(255, 255, 255, .7) !important; }
+
+:root[data-theme="xbox"] :is(select, input[type=text], input[type=number], textarea) {
+  background: #121212 !important; color: var(--x-text) !important; border: 1px solid #3c3c3c !important; border-radius: 4px !important; box-shadow: none !important;
+}
+:root[data-theme="xbox"] :is(select, input, textarea):focus { outline: none; box-shadow: var(--x-focus) !important; }
+:root[data-theme="xbox"] input[type=range], :root[data-theme="xbox"] input[type=checkbox] { accent-color: var(--x-green2) !important; }
+:root[data-theme="xbox"] option, :root[data-theme="xbox"] optgroup { background: #1c1c1c; color: var(--x-text); }
+
+:root[data-theme="xbox"] .sw .t { background: #3c3c3c !important; }
+:root[data-theme="xbox"] .sw input:checked + .t { background: var(--x-green) !important; }
+:root[data-theme="xbox"] .sw .t::after { background: #fff !important; }
+:root[data-theme="xbox"] :is(.ce, .ed, .panel, body) button.sw { background: #3c3c3c !important; border: 0 !important; border-radius: 99px !important; box-shadow: none !important; }
+:root[data-theme="xbox"] :is(.ce, .ed, .panel, body) button.sw.on { background: var(--x-green) !important; }
+
+:root[data-theme="xbox"] #nav { gap: 6px !important; }
+:root[data-theme="xbox"] #nav button { border: 0 !important; border-radius: 6px !important; background: rgba(255, 255, 255, .04) !important; color: var(--x-text) !important; padding: 10px 12px !important; transition: box-shadow .1s, background-color .1s; }
+:root[data-theme="xbox"] #nav button:hover { background: #2f2f2f !important; box-shadow: var(--x-focus) !important; }
+:root[data-theme="xbox"] #nav button.active { background: var(--x-green) !important; }
+:root[data-theme="xbox"] #nav button.active small { color: rgba(255, 255, 255, .8) !important; }
+:root[data-theme="xbox"] #nav b { font-weight: 600; color: #fff; }
+:root[data-theme="xbox"] #nav button.mini { background: transparent !important; color: var(--x-muted) !important; }
+:root[data-theme="xbox"] #nav button.mini:hover { color: #fff !important; }
+:root[data-theme="xbox"] #nav .navfoot { color: var(--x-muted); }
+:root[data-theme="xbox"] .logo { background: #1f1f1f !important; border-radius: 50% !important; box-shadow: 0 0 0 2px var(--x-green); }
+:root[data-theme="xbox"] .pill { background: #1f1f1f; color: var(--x-muted); border-radius: 99px; }
+:root[data-theme="xbox"] .pill.on { color: #fff; background: var(--x-green); }
+:root[data-theme="xbox"] .state { background: #141414 !important; color: var(--x-muted) !important; border-radius: 4px !important; }
+:root[data-theme="xbox"] .state.good { color: #8fe08f !important; box-shadow: inset 3px 0 0 var(--x-green2); }
+:root[data-theme="xbox"] .faces img { background: #d9d9d9 !important; border: 0 !important; border-radius: 6px !important; }
+:root[data-theme="xbox"] :is(.plist .k, .it .k, .scr .key, .ce .key) { background: #121212 !important; color: #e8e8e8 !important; border: 1px solid #3c3c3c !important; border-radius: 4px !important; }
+:root[data-theme="xbox"] :is(.scr .key.wait, .ce .key.wait) { border-color: var(--x-lime) !important; color: var(--x-lime) !important; }
+:root[data-theme="xbox"] :is(.scr, .perf .pr) { background: #232323 !important; border-radius: 6px !important; }
+:root[data-theme="xbox"] .scr.cur { box-shadow: inset 0 0 0 2px var(--x-green2) !important; }
+:root[data-theme="xbox"] .capture { border: 1px solid var(--x-lime) !important; color: var(--x-lime) !important; border-radius: 6px !important; }
+:root[data-theme="xbox"] .perf .good { color: #8fe08f !important; }
+:root[data-theme="xbox"] .dial { background: radial-gradient(circle, #2a2a2a 0 38%, #1f1f1f 39% 100%) !important; border: 1px solid #3c3c3c !important; }
+:root[data-theme="xbox"] .dial .cam { background: var(--x-green) !important; }
+:root[data-theme="xbox"] .madeby { color: #6e6e6e; }
+:root[data-theme="xbox"] .toast { background: #1f1f1f; color: #fff; border: 0; border-left: 4px solid var(--x-green); border-radius: 4px; }
+
+:root[data-theme="xbox"] :is(.ed, .ce) { color: var(--x-text) !important; font-family: var(--x-font) !important; }
+:root[data-theme="xbox"] :is(#edHelp, #ceHelp, #help) { color: #d0d0d0 !important; }
+:root[data-theme="xbox"] #edHelp kbd { background: #2a2a2a !important; border-color: #4a4a4a !important; color: #fff; }
+:root[data-theme="xbox"] .list button { background: transparent !important; border: 0 !important; box-shadow: none !important; border-radius: 4px !important; }
+:root[data-theme="xbox"] .list button:hover, :root[data-theme="xbox"] .it:hover { background: #2a2a2a !important; }
+:root[data-theme="xbox"] :is(.list button.on, .it.sel, .pre.on button[data-pre=load]) { background: var(--x-green) !important; border-color: transparent !important; color: #fff !important; border-radius: 4px !important; }
+:root[data-theme="xbox"] :is(.tex button, .texgrid button, .imgs button) { border-radius: 4px !important; }
+:root[data-theme="xbox"] :is(.tex button.on, .texgrid button.on, .imgs button.on) { border-color: #fff !important; box-shadow: 0 0 10px rgba(255, 255, 255, .45) !important; }
+:root[data-theme="xbox"] .src button.on { background: var(--x-green) !important; color: #fff !important; }
+:root[data-theme="xbox"] :is(.edModal, .modal) { background: rgba(0, 0, 0, .65) !important; }
+:root[data-theme="xbox"] .pressed span { background: var(--x-green) !important; color: #fff !important; }
+:root[data-theme="xbox"] .map label.lit { color: var(--x-lime) !important; }
+:root[data-theme="xbox"] #ceTime .track { background: #121212 !important; border-color: #3c3c3c !important; }
+:root[data-theme="xbox"] #ceTime .mk.on { background: var(--x-lime) !important; }
+:root[data-theme="xbox"] #ceTime .head { background: var(--x-green2) !important; }
+
+:root[data-theme="xbox"] body:has(#layout) { padding: 0 !important; }
+:root[data-theme="xbox"] header { margin: 0; padding: 16px 26px 12px; gap: 14px; }
+:root[data-theme="xbox"] header .logo { width: 46px; height: 46px; }
+:root[data-theme="xbox"] header h1 { font-size: 18px; }
+:root[data-theme="xbox"] header .sub { font-size: 12px; }
+:root[data-theme="xbox"] .hclock { display: block; font: 600 20px var(--x-font); color: #fff; margin: 0 10px 0 4px; font-variant-numeric: tabular-nums; }
+:root[data-theme="xbox"] #layout { flex-direction: column; gap: 0; }
+:root[data-theme="xbox"] #nav { width: auto; flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px !important; padding: 2px 26px 16px; overflow: visible; }
+:root[data-theme="xbox"] #nav button[data-go] { padding: 8px 18px 8px 14px !important; border-radius: 99px !important; background: rgba(255, 255, 255, .08) !important; gap: 8px; }
+:root[data-theme="xbox"] #nav button[data-go] small { display: none; }
+:root[data-theme="xbox"] #nav .ni { width: auto; font-size: 16px; }
+:root[data-theme="xbox"] #nav button[data-go].active { background: #fff !important; color: #111 !important; }
+:root[data-theme="xbox"] #nav button[data-go].active b { color: #111; }
+:root[data-theme="xbox"] #nav .navfoot { margin: 0 0 0 10px; padding-left: 16px; border-left: 1px solid #3a3a3a; line-height: 34px; }
+:root[data-theme="xbox"] #nav button.mini { padding: 8px 14px !important; border-radius: 99px !important; border: 1px solid #3a3a3a !important; }
+:root[data-theme="xbox"] main { padding: 0 26px 30px; }
+:root[data-theme="xbox"] .card.hit { box-shadow: var(--x-focus) !important; }
+:root[data-theme="xbox"] .epages button { border-radius: 99px !important; margin-left: 6px !important; }
+:root[data-theme="xbox"] .epages button:first-child { margin-left: 0 !important; }
+:root[data-theme="xbox"] .epages button.on { background: #fff !important; color: #111 !important; }
+:root[data-theme="xbox"] :is(#edTop, #ceTop, #top) { border-radius: 22px !important; }
+:root[data-theme="xbox"] #edTop { left: 274px; right: 320px; }
+:root[data-theme="xbox"] #ceTop { left: 306px; right: 386px; }
+@media (max-width: 900px) {
+  :root[data-theme="xbox"] header .sub { display: none; }
+  :root[data-theme="xbox"] header .btn { padding: 6px 12px; }
+}
+:root[data-theme="xbox"] #nav .editbtn { margin: 0 0 0 10px !important; }

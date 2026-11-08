@@ -254,3 +254,4 @@
 
 :root[data-theme="notice"] :is(#edLeft, #edRight, #edTop, #edHelp, #ceLeft, #ceRight, #ceTop, #ceTime, #ceHelp) { box-sizing: border-box; }
 :root[data-theme="notice"] body:has(#edRight[style*="none"]) :is(#edTop, #edHelp) { right: 0; }
+:root[data-theme="notice"] #nav .editbtn { margin: 0; padding-left: 0; border-left: 0; }

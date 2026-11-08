@@ -1,0 +1,270 @@
+:root[data-theme="windows"] {
+  --w-bg: #f3f3f3;
+  --w-card: #fbfbfb;
+  --w-card2: #ffffff;
+  --w-stroke: #e5e5e5;
+  --w-stroke2: #d1d1d1;
+  --w-text: #1b1b1b;
+  --w-muted: #5f5f5f;
+  --w-accent: #005fb8;
+  --w-accent2: #196ebf;
+  --w-accent-soft: #e5f0fa;
+  --w-red: #c42b1c;
+  --w-font: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --w-font-d: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  --bg: var(--w-bg); --card: var(--w-card); --card2: var(--w-card2); --line: var(--w-stroke);
+  --text: var(--w-text); --muted: var(--w-muted); --accent: var(--w-accent); --accent2: var(--w-accent2);
+  --ok: var(--w-accent); --warn: #9d5d00;
+  color-scheme: light;
+}
+:root[data-theme="windows"] body {
+  background: radial-gradient(120% 90% at 0% 0%, #e8eef6 0%, rgba(232, 238, 246, 0) 55%),
+    radial-gradient(90% 80% at 100% 100%, #efe9f1 0%, rgba(239, 233, 241, 0) 60%), #f3f3f3 !important;
+  color: var(--w-text) !important;
+  font-family: var(--w-font);
+}
+:root[data-theme="windows"] ::selection { background: var(--w-accent); color: #fff; }
+:root[data-theme="windows"] h1 { font: 600 20px/1.2 var(--w-font-d); color: var(--w-text); }
+:root[data-theme="windows"] .card h2 { font: 600 14px var(--w-font); color: var(--w-text) !important; }
+:root[data-theme="windows"] :is(.ed h3, .ce h3, .panel h3, h3) { color: var(--w-text) !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 13px !important; font-weight: 600 !important; }
+
+:root[data-theme="windows"] :is(.btn, .seg button, .tile, .padpick, .scr .btn, .capture .mod,
+  .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button) {
+  background: var(--w-card2) !important;
+  border: 1px solid var(--w-stroke) !important;
+  border-bottom-color: var(--w-stroke2) !important;
+  border-radius: 4px !important;
+  color: var(--w-text) !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  transition: background-color .08s;
+}
+:root[data-theme="windows"] :is(.btn, .seg button, .tile, .padpick, .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button, .primary, .active, .on):not(:disabled):hover { background: #f6f6f6 !important; }
+:root[data-theme="windows"] :is(.btn, .seg button, .tile, .padpick, .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button, .primary):not(:disabled):active { background: #f5f5f5 !important; color: #5d5d5d !important; border-bottom-color: var(--w-stroke) !important; }
+:root[data-theme="windows"] :is(.seg button.active, .ed button.on, .ce button.on, .panel button.on):not(.tex button, .texgrid button, .imgs button, button.sw, .list button) {
+  background: var(--w-accent) !important; border-color: #1a6fbd !important; border-bottom-color: #003e92 !important; color: #fff !important;
+}
+:root[data-theme="windows"] :is(.tile.active, .padpick.active) {
+  background: var(--w-accent-soft) !important; border-color: var(--w-accent) !important; box-shadow: inset 0 0 0 1px var(--w-accent) !important;
+}
+:root[data-theme="windows"] :is(.btn.primary, .ed button.primary, .ce button.primary, .panel button.primary, .modal button.primary):not(#t-x) {
+  background: var(--w-accent) !important; border-color: #1a6fbd !important; border-bottom-color: #003e92 !important; color: #fff !important;
+}
+:root[data-theme="windows"] :is(.btn.primary, .ed button.primary, .ce button.primary, .panel button.primary, .modal button.primary):not(#t-x):not(:disabled):hover { background: var(--w-accent2) !important; }
+:root[data-theme="windows"] :is(.btn.danger, .danger) { color: var(--w-red) !important; }
+:root[data-theme="windows"] button:disabled { opacity: .45; }
+
+:root[data-theme="windows"] :is(.card, .ed.panel, .ed .panel, .ce.panel, .panel, .modal .box) {
+  background: rgba(255, 255, 255, .78) !important;
+  border: 1px solid rgba(0, 0, 0, .07) !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, .04) !important;
+  color: var(--w-text) !important;
+}
+:root[data-theme="windows"] :is(.ed.panel, .ce.panel, .panel) { backdrop-filter: blur(24px) saturate(1.3); background: rgba(249, 249, 249, .86) !important; box-shadow: 0 8px 16px rgba(0, 0, 0, .14) !important; }
+:root[data-theme="windows"] :is(.sub, .muted, .row > label, .row > label.lbl, .sliders label, .sl, .map label, .trio div, .duo div, small) { color: var(--w-muted) !important; }
+:root[data-theme="windows"] :is(.warn, .err) { color: #9d5d00 !important; }
+
+:root[data-theme="windows"] :is(select, input[type=text], input[type=number], textarea) {
+  background: rgba(255, 255, 255, .9) !important; color: var(--w-text) !important;
+  border: 1px solid var(--w-stroke) !important; border-bottom: 1px solid #868686 !important; border-radius: 4px !important; box-shadow: none !important;
+}
+:root[data-theme="windows"] :is(select, input, textarea):focus { outline: none; background: #fff !important; border-bottom: 2px solid var(--w-accent) !important; }
+:root[data-theme="windows"] input[type=range], :root[data-theme="windows"] input[type=checkbox] { accent-color: var(--w-accent) !important; }
+:root[data-theme="windows"] option, :root[data-theme="windows"] optgroup { background: #fff; color: var(--w-text); }
+
+:root[data-theme="windows"] .sw .t { width: 40px; height: 20px; background: rgba(0, 0, 0, .03) !important; box-shadow: inset 0 0 0 1px #8a8a8a; }
+:root[data-theme="windows"] .sw .t::after { top: 5px; left: 5px; width: 10px; height: 10px; background: #5d5d5d !important; box-shadow: none; transition: left .12s, width .12s; }
+:root[data-theme="windows"] .sw input:checked + .t { background: var(--w-accent) !important; box-shadow: none; }
+:root[data-theme="windows"] .sw input:checked + .t::after { left: 24px; top: 4px; width: 12px; height: 12px; background: #fff !important; }
+:root[data-theme="windows"] :is(.ce, .ed, .panel, body) button.sw { background: rgba(0, 0, 0, .03) !important; border: 0 !important; border-radius: 99px !important; box-shadow: inset 0 0 0 1px #8a8a8a !important; }
+:root[data-theme="windows"] :is(.ce, .ed, .panel, body) button.sw::after { background: #5d5d5d !important; box-shadow: none !important; transform: scale(.8); }
+:root[data-theme="windows"] :is(.ce, .ed, .panel, body) button.sw.on { background: var(--w-accent) !important; box-shadow: none !important; }
+:root[data-theme="windows"] :is(.ce, .ed, .panel, body) button.sw.on::after { background: #fff !important; transform: none; }
+
+:root[data-theme="windows"] #nav button { position: relative; border: 0 !important; border-radius: 4px !important; background: transparent !important; color: var(--w-text) !important; padding: 8px 10px 8px 14px; }
+:root[data-theme="windows"] #nav button:hover { background: rgba(0, 0, 0, .04) !important; }
+:root[data-theme="windows"] #nav button.active { background: rgba(0, 0, 0, .055) !important; }
+:root[data-theme="windows"] #nav button.active::before { content: ""; position: absolute; left: 0; top: 50%; width: 3px; height: 16px; margin-top: -8px; border-radius: 3px; background: var(--w-accent); }
+:root[data-theme="windows"] #nav b { font-weight: 400; color: var(--w-text); }
+:root[data-theme="windows"] #nav button.active b { font-weight: 600; }
+:root[data-theme="windows"] #nav button.mini { color: var(--w-text) !important; }
+:root[data-theme="windows"] #nav .navfoot { color: var(--w-muted); text-transform: none; letter-spacing: 0; font-weight: 600; font-size: 12px; }
+:root[data-theme="windows"] .logo { background: transparent !important; border-radius: 6px !important; }
+:root[data-theme="windows"] .pill { background: rgba(255, 255, 255, .8); border: 1px solid var(--w-stroke); color: var(--w-muted); border-radius: 4px; }
+:root[data-theme="windows"] .pill.on { color: #0f7b0f; background: #dff6dd; border-color: #c6e7c4; }
+:root[data-theme="windows"] .state { background: #f6f6f6 !important; color: var(--w-muted) !important; border: 1px solid var(--w-stroke); border-radius: 4px !important; }
+:root[data-theme="windows"] .state.good { background: #dff6dd !important; color: #0f5a0f !important; border-color: #c6e7c4; }
+:root[data-theme="windows"] .faces img { background: #f3f3f3 !important; border-color: var(--w-stroke) !important; border-radius: 6px !important; }
+:root[data-theme="windows"] :is(.plist .k, .it .k, .scr .key, .ce .key) { background: #fff !important; color: var(--w-text) !important; border: 1px solid var(--w-stroke) !important; border-bottom-color: var(--w-stroke2) !important; border-radius: 4px !important; }
+:root[data-theme="windows"] :is(.scr .key.wait, .ce .key.wait) { border-color: var(--w-accent) !important; color: var(--w-accent) !important; }
+:root[data-theme="windows"] :is(.scr, .perf .pr) { background: rgba(255, 255, 255, .7) !important; border: 1px solid rgba(0, 0, 0, .05); border-radius: 6px !important; }
+:root[data-theme="windows"] .scr.cur { box-shadow: inset 3px 0 0 var(--w-accent) !important; }
+:root[data-theme="windows"] .capture { border: 1px solid var(--w-accent) !important; color: var(--w-accent) !important; background: var(--w-accent-soft); border-radius: 6px !important; }
+:root[data-theme="windows"] .perf .good { color: #0f7b0f !important; }
+:root[data-theme="windows"] .dial { background: radial-gradient(circle, #ffffff 0 38%, #f0f0f0 39% 100%) !important; border: 1px solid var(--w-stroke2) !important; }
+:root[data-theme="windows"] .dial .cam { background: var(--w-accent) !important; color: #fff; }
+:root[data-theme="windows"] details summary { color: var(--w-muted); }
+:root[data-theme="windows"] .madeby { color: #8a8a8a; }
+:root[data-theme="windows"] .toast { background: #f9f9f9; color: var(--w-text); border: 1px solid var(--w-stroke); border-radius: 8px; box-shadow: 0 8px 16px rgba(0, 0, 0, .14); }
+
+:root[data-theme="windows"] :is(.ed, .ce) { color: var(--w-text) !important; font-family: var(--w-font) !important; }
+:root[data-theme="windows"] :is(#edHelp, #ceHelp, #help) { color: #3d3d3d !important; text-shadow: 0 1px 0 rgba(255, 255, 255, .9) !important; }
+:root[data-theme="windows"] #edHelp kbd { background: #fff !important; border-color: var(--w-stroke2) !important; color: var(--w-text); }
+:root[data-theme="windows"] :is(#edTop .st, #ceTop .st, .st) { color: var(--w-muted) !important; }
+:root[data-theme="windows"] .list button { box-shadow: none !important; background: transparent !important; border-color: transparent !important; color: var(--w-text) !important; border-radius: 4px !important; }
+:root[data-theme="windows"] .list button:hover, :root[data-theme="windows"] .it:hover { background: rgba(0, 0, 0, .04) !important; }
+:root[data-theme="windows"] :is(.list button.on, .it.sel, .pre.on button[data-pre=load]) { background: rgba(0, 0, 0, .055) !important; border-color: transparent !important; box-shadow: inset 3px 0 0 var(--w-accent) !important; color: var(--w-text) !important; border-radius: 4px !important; }
+:root[data-theme="windows"] :is(.tex button, .texgrid button, .imgs button) { border-radius: 4px !important; box-shadow: 0 1px 2px rgba(0, 0, 0, .2) !important; }
+:root[data-theme="windows"] :is(.tex button.on, .texgrid button.on, .imgs button.on) { border-color: var(--w-accent) !important; box-shadow: 0 0 0 2px var(--w-accent) !important; }
+:root[data-theme="windows"] .src button.on { background: var(--w-accent-soft) !important; border-color: var(--w-accent) !important; color: var(--w-accent) !important; }
+:root[data-theme="windows"] :is(.edModal, .modal) { background: rgba(0, 0, 0, .3) !important; }
+:root[data-theme="windows"] .edModal textarea { background: #fff !important; color: var(--w-text) !important; font-family: "Cascadia Mono", Consolas, monospace !important; }
+:root[data-theme="windows"] .pressed span { background: var(--w-accent) !important; color: #fff !important; border-radius: 4px; }
+:root[data-theme="windows"] .map label.lit { color: var(--w-accent) !important; }
+:root[data-theme="windows"] #ceTime .track { background: #fff !important; border-color: var(--w-stroke2) !important; border-radius: 4px !important; }
+:root[data-theme="windows"] #ceTime .mk { background: #fff !important; border-color: #8a8a8a !important; border-radius: 3px !important; }
+:root[data-theme="windows"] #ceTime .mk.on { background: var(--w-accent) !important; border-color: var(--w-accent) !important; }
+:root[data-theme="windows"] #ceTime .head { background: var(--w-accent) !important; }
+
+:root[data-theme="windows"] body:has(#layout) { padding: 0 !important; }
+:root[data-theme="windows"] header { margin: 0; padding: 8px 14px 6px; gap: 10px; }
+:root[data-theme="windows"] header .logo { width: 20px; height: 20px; padding: 0; border-radius: 4px !important; }
+:root[data-theme="windows"] header h1 { font: 400 12px var(--w-font); }
+:root[data-theme="windows"] header .sub { display: none; }
+:root[data-theme="windows"] header .btn { padding: 4px 12px; font-size: 12.5px; }
+:root[data-theme="windows"] #layout { gap: 0; }
+:root[data-theme="windows"] #nav { width: 290px; padding: 4px 12px 20px 14px; gap: 2px; }
+:root[data-theme="windows"] #nav::before {
+  content: "Sully's Mii-Bongo"; display: block; flex: none; order: -2;
+  min-height: 64px; padding: 13px 0 0 76px; margin: 2px 0 0; font: 600 15px/1.3 var(--w-font-d); color: var(--w-text);
+  background: url("icon.png") left center / 62px 62px no-repeat;
+}
+:root[data-theme="windows"] .navsearch {
+  display: block; flex: none; width: 100%; margin: 0 0 10px; padding: 7px 34px 7px 11px; font: 13px var(--w-font);
+  background: rgba(255, 255, 255, .7) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235f5f5f' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6'/%3E%3Cpath d='M15 15l5 5'/%3E%3C/svg%3E") right 10px center / 15px no-repeat !important;
+}
+:root[data-theme="windows"] .navsearch::-webkit-search-cancel-button { display: none; }
+:root[data-theme="windows"] #nav button[data-go] small { display: none; }
+:root[data-theme="windows"] #nav button[data-go] { padding: 9px 10px 9px 14px; }
+:root[data-theme="windows"] #nav .ni { font-size: 16px; }
+:root[data-theme="windows"] #nav .ni .wi { width: 18px; height: 18px; }
+:root[data-theme="windows"] #nav .navfoot { margin: 14px 10px 4px 14px; }
+:root[data-theme="windows"] #nav button.mini { padding: 8px 10px 8px 14px; font-size: 13.5px; display: flex; align-items: center; gap: 12px; }
+:root[data-theme="windows"] main { padding: 0 24px 30px 10px; }
+:root[data-theme="windows"] .page { gap: 4px; }
+:root[data-theme="windows"] .page::before { display: block; font: 600 28px/1.2 var(--w-font-d); padding: 10px 0 18px; color: var(--w-text); }
+:root[data-theme="windows"] .page[data-page="instrument"]::before { content: "Instrument"; }
+:root[data-theme="windows"] .page[data-page="personnage"]::before { content: "Personnage"; }
+:root[data-theme="windows"] .page[data-page="affichage"]::before { content: "Affichage"; }
+:root[data-theme="windows"] .page[data-page="decor"]::before { content: "Décor et scène"; }
+:root[data-theme="windows"] .page[data-page="raccourcis"]::before { content: "Raccourcis"; }
+:root[data-theme="windows"] .page[data-page="theme"]::before { content: "Personnalisation"; }
+:root[data-theme="windows"] .page[data-page="systeme"]::before { content: "OBS et système"; }
+:root[data-theme="windows"] .grid { grid-template-columns: minmax(0, 1fr); gap: 4px; }
+:root[data-theme="windows"] .card { padding: 14px 18px 16px 18px; border-radius: 6px !important; }
+:root[data-theme="windows"] .card h2 { gap: 14px; margin-bottom: 10px; font-weight: 400 !important; font-size: 14px !important; }
+:root[data-theme="windows"] .card h2 .ico { font-size: 20px; width: 22px; text-align: center; }
+:root[data-theme="windows"] .card h2 .ico .wi { width: 20px; height: 20px; }
+:root[data-theme="windows"] .card > :not(h2) { margin-left: 36px; }
+:root[data-theme="windows"] .card .sw { min-height: 36px; margin: 0; border-top: 1px solid rgba(0, 0, 0, .05); }
+:root[data-theme="windows"] .card.hit { box-shadow: 0 0 0 2px var(--w-accent) !important; }
+:root[data-theme="windows"] .themes { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+@media (max-width: 760px) {
+  :root[data-theme="windows"] #nav { width: auto; padding: 4px 12px; }
+  :root[data-theme="windows"] #nav::before, :root[data-theme="windows"] #nav::after, :root[data-theme="windows"] .navsearch { display: none; }
+  :root[data-theme="windows"] .card > :not(h2) { margin-left: 0; }
+}
+
+:root[data-theme="windows"] :is(#edLeft, #edRight, #edTop, #edHelp, #ceLeft, #ceRight, #ceTop, #ceTime, #ceHelp) { box-sizing: border-box; }
+:root[data-theme="windows"] :is(#edLeft, #ceLeft, #left) { top: 0 !important; left: 0 !important; bottom: 0 !important; max-height: none !important; border-radius: 0 !important; border: 0 !important; border-right: 1px solid rgba(0, 0, 0, .08) !important; box-shadow: none !important; background: rgba(243, 243, 243, .92) !important; }
+:root[data-theme="windows"] #edLeft { width: 258px; }
+:root[data-theme="windows"] #ceLeft { width: 286px; }
+:root[data-theme="windows"] #left { width: 262px; }
+:root[data-theme="windows"] :is(#edRight, #ceRight, #right) { top: 0 !important; right: 0 !important; bottom: 0 !important; max-height: none !important; border-radius: 0 !important; border: 0 !important; border-left: 1px solid rgba(0, 0, 0, .08) !important; box-shadow: none !important; background: rgba(249, 249, 249, .95) !important; }
+:root[data-theme="windows"] #edRight { width: 300px; }
+:root[data-theme="windows"] #ceRight { width: 364px; }
+:root[data-theme="windows"] #right { width: 342px; }
+:root[data-theme="windows"] :is(#edTop, #ceTop, #top) { top: 0 !important; border-radius: 0 !important; border: 0 !important; border-bottom: 1px solid rgba(0, 0, 0, .08) !important; box-shadow: none !important; justify-content: flex-start !important; padding: 6px 10px !important; background: rgba(249, 249, 249, .9) !important; }
+:root[data-theme="windows"] #edTop { left: 258px; right: 300px; }
+:root[data-theme="windows"] body:has(#edRight[style*="none"]) #edTop { right: 0; }
+:root[data-theme="windows"] #ceTop { left: 286px; right: 364px; }
+:root[data-theme="windows"] #top { left: 262px; right: 342px; }
+:root[data-theme="windows"] #ceTime { left: 286px; right: 364px; }
+:root[data-theme="windows"] #ceHelp { left: 286px; right: 364px; }
+:root[data-theme="windows"] #help { left: 262px; right: 342px; }
+:root[data-theme="windows"] #edHelp { left: 258px; }
+:root[data-theme="windows"] body:has(#left) .madeby { right: 14px; }
+:root[data-theme="windows"] :is(#edTop, #ceTop, #top) button:not(.epages button):not(.on):not(.primary) { background: transparent !important; border-color: transparent !important; }
+:root[data-theme="windows"] :is(#edTop, #ceTop, #top) button:not(.epages button):not(.on):not(.primary):not(:disabled):hover { background: rgba(0, 0, 0, .05) !important; }
+:root[data-theme="windows"] .epages { margin-right: 18px; gap: 4px; }
+:root[data-theme="windows"] :is(#edTop, #ceTop, #top) .epages button { background: transparent !important; border: 0 !important; border-radius: 4px !important; color: var(--w-muted) !important; position: relative; font-weight: 400 !important; margin: 0 !important; }
+:root[data-theme="windows"] :is(#edTop, #ceTop, #top) .epages button:hover { background: rgba(0, 0, 0, .04) !important; color: var(--w-text) !important; }
+:root[data-theme="windows"] :is(#edTop, #ceTop, #top) .epages button.on { color: var(--w-text) !important; font-weight: 600 !important; background: transparent !important; }
+:root[data-theme="windows"] :is(#edTop, #ceTop, #top) .epages button.on::after { content: ""; position: absolute; left: 50%; bottom: 0; width: 16px; height: 3px; margin-left: -8px; border-radius: 3px; background: var(--w-accent); }
+:root[data-theme="windows"] #nav::after { content: "Fenêtre du Mii et source OBS"; order: -1; display: block; flex: none; margin: -30px 0 14px; padding-left: 76px; font: 12px var(--w-font); color: var(--w-muted); pointer-events: none; }
+:root[data-theme="windows"] body:has(#layout) .madeby { left: auto; right: 28px; }
+
+:root[data-theme="windows"][data-dark] {
+  --w-bg: #202020; --w-card: #2b2b2b; --w-card2: #2d2d2d; --w-stroke: rgba(255, 255, 255, .08); --w-stroke2: rgba(255, 255, 255, .05);
+  --w-text: #ffffff; --w-muted: #c5c5c5; --w-accent: #4cc2ff; --w-accent2: #47b1e8; --w-accent-soft: rgba(76, 194, 255, .14); --w-red: #ff99a4;
+  --warn: #fce100;
+  color-scheme: dark;
+}
+:root[data-theme="windows"][data-dark] body {
+  background: radial-gradient(120% 90% at 0% 0%, #1d2530 0%, rgba(29, 37, 48, 0) 55%), radial-gradient(90% 80% at 100% 100%, #2a2130 0%, rgba(42, 33, 48, 0) 60%), #202020 !important;
+}
+:root[data-theme="windows"][data-dark] :is(.btn, .seg button, .tile, .padpick, .scr .btn, .capture .mod,
+  .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button) {
+  background: rgba(255, 255, 255, .06) !important; border-color: rgba(255, 255, 255, .09) !important; border-bottom-color: rgba(255, 255, 255, .05) !important;
+}
+:root[data-theme="windows"][data-dark] :is(.btn, .seg button, .tile, .padpick, .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button, .primary, .active, .on):not(:disabled):hover { background: rgba(255, 255, 255, .09) !important; }
+:root[data-theme="windows"][data-dark] :is(.btn, .seg button, .tile, .padpick, .ed button, .ce button, .panel button, .modal button):not(.tex button, .texgrid button, .imgs button, button.sw, .list button, .primary):not(:disabled):active { background: rgba(255, 255, 255, .04) !important; color: #cfcfcf !important; }
+:root[data-theme="windows"][data-dark] :is(.seg button.active, .ed button.on, .ce button.on, .panel button.on):not(.tex button, .texgrid button, .imgs button, button.sw, .list button),
+:root[data-theme="windows"][data-dark] :is(.btn.primary, .ed button.primary, .ce button.primary, .panel button.primary, .modal button.primary):not(#t-x) {
+  background: var(--w-accent) !important; border-color: #5fcbff !important; border-bottom-color: #3a9fd6 !important; color: #000 !important;
+}
+:root[data-theme="windows"][data-dark] :is(.btn.primary, .ed button.primary, .ce button.primary, .panel button.primary, .modal button.primary):not(#t-x):not(:disabled):hover { background: var(--w-accent2) !important; }
+:root[data-theme="windows"][data-dark] :is(.tile.active, .padpick.active) { background: var(--w-accent-soft) !important; border-color: var(--w-accent) !important; }
+:root[data-theme="windows"][data-dark] :is(.card, .ed.panel, .ed .panel, .ce.panel, .panel, .modal .box) { background: rgba(255, 255, 255, .05) !important; border-color: rgba(0, 0, 0, .2) !important; box-shadow: 0 2px 4px rgba(0, 0, 0, .2) !important; }
+:root[data-theme="windows"][data-dark] :is(.ed.panel, .ce.panel, .panel), :root[data-theme="windows"][data-dark] .modal .box { background: rgba(40, 40, 40, .94) !important; }
+:root[data-theme="windows"][data-dark] :is(.warn, .err) { color: #fce100 !important; }
+:root[data-theme="windows"][data-dark] :is(select, input[type=text], input[type=number], textarea) { background: rgba(255, 255, 255, .06) !important; border-bottom-color: #9a9a9a !important; }
+:root[data-theme="windows"][data-dark] :is(select, input, textarea):focus { background: #1f1f1f !important; border-bottom-color: var(--w-accent) !important; }
+:root[data-theme="windows"][data-dark] option, :root[data-theme="windows"][data-dark] optgroup { background: #2b2b2b; color: #fff; }
+:root[data-theme="windows"][data-dark] .sw .t { background: rgba(0, 0, 0, .1) !important; box-shadow: inset 0 0 0 1px #cfcfcf; }
+:root[data-theme="windows"][data-dark] .sw .t::after { background: #cfcfcf !important; }
+:root[data-theme="windows"][data-dark] .sw input:checked + .t { background: var(--w-accent) !important; box-shadow: none; }
+:root[data-theme="windows"][data-dark] .sw input:checked + .t::after { background: #000 !important; }
+:root[data-theme="windows"][data-dark] :is(.ce, .ed, .panel, body) button.sw { background: rgba(0, 0, 0, .1) !important; box-shadow: inset 0 0 0 1px #cfcfcf !important; }
+:root[data-theme="windows"][data-dark] :is(.ce, .ed, .panel, body) button.sw::after { background: #cfcfcf !important; }
+:root[data-theme="windows"][data-dark] :is(.ce, .ed, .panel, body) button.sw.on { background: var(--w-accent) !important; box-shadow: none !important; }
+:root[data-theme="windows"][data-dark] :is(.ce, .ed, .panel, body) button.sw.on::after { background: #000 !important; }
+:root[data-theme="windows"][data-dark] #nav button:hover { background: rgba(255, 255, 255, .06) !important; }
+:root[data-theme="windows"][data-dark] #nav button.active { background: rgba(255, 255, 255, .09) !important; }
+:root[data-theme="windows"][data-dark] .pill { background: rgba(255, 255, 255, .06); }
+:root[data-theme="windows"][data-dark] .pill.on { color: #6ccb5f; background: rgba(108, 203, 95, .12); border-color: rgba(108, 203, 95, .3); }
+:root[data-theme="windows"][data-dark] .state { background: rgba(255, 255, 255, .04) !important; }
+:root[data-theme="windows"][data-dark] .state.good { background: rgba(108, 203, 95, .12) !important; color: #9be08f !important; border-color: rgba(108, 203, 95, .3); }
+:root[data-theme="windows"][data-dark] .faces img { background: #d4d4d4 !important; }
+:root[data-theme="windows"][data-dark] :is(.plist .k, .it .k, .scr .key, .ce .key) { background: rgba(255, 255, 255, .06) !important; }
+:root[data-theme="windows"][data-dark] :is(.scr, .perf .pr) { background: rgba(255, 255, 255, .04) !important; border-color: rgba(0, 0, 0, .2); }
+:root[data-theme="windows"][data-dark] .perf .good { color: #6ccb5f !important; }
+:root[data-theme="windows"][data-dark] .dial { background: radial-gradient(circle, #333333 0 38%, #2a2a2a 39% 100%) !important; border-color: rgba(255, 255, 255, .1) !important; }
+:root[data-theme="windows"][data-dark] .dial .cam { color: #000; }
+:root[data-theme="windows"][data-dark] .toast { background: #2b2b2b; color: #fff; border-color: rgba(255, 255, 255, .08); }
+:root[data-theme="windows"][data-dark] :is(#edHelp, #ceHelp, #help) { color: #e0e0e0 !important; text-shadow: 0 1px 2px #000 !important; }
+:root[data-theme="windows"][data-dark] #edHelp kbd { background: #2d2d2d !important; }
+:root[data-theme="windows"][data-dark] .list button:hover, :root[data-theme="windows"][data-dark] .it:hover { background: rgba(255, 255, 255, .06) !important; }
+:root[data-theme="windows"][data-dark] :is(.list button.on, .it.sel, .pre.on button[data-pre=load]) { background: rgba(255, 255, 255, .09) !important; }
+:root[data-theme="windows"][data-dark] .edModal textarea { background: #1c1c1c !important; }
+:root[data-theme="windows"][data-dark] .pressed span { color: #000 !important; }
+:root[data-theme="windows"][data-dark] #ceTime .track { background: #1c1c1c !important; }
+:root[data-theme="windows"][data-dark] #ceTime .mk { background: #2d2d2d !important; border-color: #9a9a9a !important; }
+:root[data-theme="windows"][data-dark] .navsearch { background-color: rgba(255, 255, 255, .06) !important; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23c5c5c5' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='10.5' cy='10.5' r='6'/%3E%3Cpath d='M15 15l5 5'/%3E%3C/svg%3E") !important; }
+:root[data-theme="windows"][data-dark] .card .sw { border-top-color: rgba(255, 255, 255, .05); }
+:root[data-theme="windows"][data-dark] :is(#edLeft, #ceLeft, #left) { background: rgba(32, 32, 32, .94) !important; border-right-color: rgba(0, 0, 0, .35) !important; }
+:root[data-theme="windows"][data-dark] :is(#edRight, #ceRight, #right) { background: rgba(40, 40, 40, .95) !important; border-left-color: rgba(0, 0, 0, .35) !important; }
+:root[data-theme="windows"][data-dark] :is(#edTop, #ceTop, #top) { background: rgba(40, 40, 40, .92) !important; border-bottom-color: rgba(0, 0, 0, .35) !important; }
+:root[data-theme="windows"][data-dark] :is(#edTop, #ceTop, #top) button:not(.epages button):not(.on):not(.primary):not(:disabled):hover { background: rgba(255, 255, 255, .06) !important; }
+:root[data-theme="windows"][data-dark] :is(#edTop, #ceTop, #top) .epages button:hover { background: rgba(255, 255, 255, .06) !important; }

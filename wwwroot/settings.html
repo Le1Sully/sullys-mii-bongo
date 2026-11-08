@@ -65,6 +65,24 @@
   .prev-notice i.on { background: #1b1b19; color: #f3f0e8; }
   .themepick .notice { font-family: Bahnschrift, "Segoe UI", sans-serif; letter-spacing: .02em; }
   .naved { display: contents; }
+  .navsearch, .hclock { display: none; }
+  #nav .editbtn { margin-top: 14px; }
+  .prev-ps { background: radial-gradient(90% 80% at 80% 0%, #2a5bd7 0%, rgba(42,91,215,0) 65%), linear-gradient(180deg, #0a2a6b, #020b24); border-radius: 10px;
+    flex-direction: row; align-items: center; justify-content: flex-start; gap: 10px; padding: 10px 16px; }
+  .prev-ps i.sq { width: 46px; height: 46px; flex: none; padding: 0; display: grid; place-items: center; border-radius: 9px; background: rgba(255,255,255,.14); color: #fff; font-size: 18px; position: relative; }
+  .prev-ps i.sq.on { width: 60px; height: 60px; box-shadow: 0 0 0 2px #fff, 0 0 14px rgba(255,255,255,.5); margin-right: 64px; }
+  .prev-ps i.sq.on b { position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%); font: 600 13px "Segoe UI", sans-serif; color: #fff; }
+  .prev-windows { background: radial-gradient(120% 90% at 0% 0%, #e8eef6, rgba(232,238,246,0) 60%), #f3f3f3; border: 1px solid #e0e0e0; border-radius: 8px; }
+  .prev-windows i { background: #fff; border: 1px solid #e5e5e5; border-bottom-color: #d1d1d1; border-radius: 4px; color: #1b1b1b; text-align: left; padding-left: 16px; position: relative;
+    font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif; }
+  .prev-windows i.on { background: #f0f0f0; border-color: transparent; font-weight: 600; }
+  .prev-windows i.on::before { content: ""; position: absolute; left: 5px; top: 50%; width: 3px; height: 14px; margin-top: -7px; border-radius: 3px; background: #005fb8; }
+  .prev-xbox { background: radial-gradient(70% 70% at 90% 0%, rgba(16,124,16,.4), rgba(16,124,16,0) 70%), #0d0d0d; border-radius: 8px; flex-direction: row; flex-wrap: wrap; align-content: center; }
+  .prev-xbox i { flex: 1 1 40%; background: #2a2a2a; color: #f2f2f2; border-radius: 4px; font-weight: 600; text-align: left; padding: 22px 10px 7px; font-family: "Segoe UI", sans-serif; }
+  .prev-xbox i.on { background: #107c10; box-shadow: 0 0 0 2px #fff, 0 0 12px 2px rgba(255,255,255,.35); }
+  .prev-switch { background: #ebebeb; border-radius: 14px; }
+  .prev-switch i { background: #fff; color: #2d2d2d; border-radius: 99px; font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.16); font-family: "Segoe UI", sans-serif; }
+  .prev-switch i.on { color: #0ab0d6; box-shadow: 0 0 0 3px #00c3e3, 0 0 0 6px rgba(0,195,227,.25); }
   .sclist { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 6px; }
   .scr.cur { box-shadow: 0 0 0 1.5px var(--accent) inset; }
   .scr .nm { flex: 1; min-width: 160px; display: flex; flex-direction: column; }
@@ -191,6 +209,7 @@
     <div class="sub">Tout s'applique immédiatement, à la fenêtre du Mii comme à OBS.</div>
   </div>
   <div class="grow"></div>
+  <span class="hclock" id="hclock"></span>
   <span id="pages" class="pill">…</span>
   <button class="btn" data-act="reload" title="Recharger la fenêtre du Mii et les sources OBS">↻ Recharger</button>
   <button class="btn danger" data-act="quit">Quitter</button>
@@ -198,6 +217,7 @@
 
 <div id="layout">
   <nav id="nav">
+    <input type="search" class="navsearch" id="navSearch" placeholder="Rechercher un paramètre" autocomplete="off">
     <button data-go="instrument"><span class="ni">🎹</span><span><b>Instrument</b><small id="navInstrument"></small></span></button>
     <button data-go="personnage"><span class="ni">🃏</span><span><b>Personnage</b><small id="navPersonnage"></small></span></button>
     <button data-go="affichage"><span class="ni">🪟</span><span><b>Affichage</b><small id="navAffichage"></small></span></button>
@@ -206,10 +226,7 @@
     <button data-go="theme"><span class="ni">🎨</span><span><b>Thème</b><small id="navTheme"></small></span></button>
     <button data-go="systeme"><span class="ni">📺</span><span><b>OBS &amp; système</b><small id="navSysteme"></small></span></button>
     <div class="naved">
-    <div class="navfoot">Éditeur</div>
-    <button class="mini" data-act="openCharEditor">🎭 Personnage…</button>
-    <button class="mini" data-act="openEditor">🧱 Scène…</button>
-    <button class="mini" data-act="openPadEditor">🎮 Manettes…</button>
+    <button class="mini editbtn" data-act="openEditors" title="Éditeur : scène, personnage et manettes">✏️ Éditeur…</button>
     </div>
   </nav>
 
@@ -458,19 +475,32 @@
       <h2><span class="ico">🎨</span>Thème de l'interface</h2>
       <div class="sub" style="margin-bottom:10px">Change l'apparence de cette fenêtre, des trois éditeurs (scène, personnage, manettes) et du menu de l'icône.
         Le Mii, sa fenêtre et OBS ne changent pas.</div>
+      <label class="sw" style="margin-bottom:12px">🌙 Version sombre (thèmes Wii, Windows et Switch)<input type="checkbox" data-tog="themeSombre"><span class="t"></span></label>
       <div class="themes" data-set="theme">
         <button class="padpick themepick" data-v="classique">
           <span class="prev prev-classic"><i>✏️ Ouvrir l'éditeur</i><i class="on">🎮 Manette</i><i>⚙️ Réglages</i></span>
           <b>Classique</b><small>sombre, touches rouges</small></button>
         <button class="padpick themepick" data-v="wii">
           <span class="prev prev-wii" data-wii-icons><i>🙂 Créer un Mii</i><i class="on">🔧 Paramètres</i><i>🏠 Accueil</i></span>
-          <b>Wii</b><small>clair, boutons blancs arrondis</small></button>
+          <b>Wii</b><small>boutons blancs arrondis · 🌙 existe en sombre</small></button>
         <button class="padpick themepick" data-v="carnet">
           <span class="prev prev-carnet icons-carnet" data-wii-icons><i>✏️ Mes notes</i><i class="on">🎨 Dessins</i><i>📁 Ranger</i></span>
           <b class="hand">Carnet</b><small>papier, encre, traits à main levée</small></button>
         <button class="padpick themepick" data-v="notice">
           <span class="prev prev-notice"><i data-n="01">Instrument</i><i data-n="02" class="on">Personnage</i><i data-n="03">Affichage</i></span>
           <b class="notice">Notice</b><small>onglets, sections numérotées, sans emojis</small></button>
+        <button class="padpick themepick" data-v="windows">
+          <span class="prev prev-windows icons-fluent" data-wii-icons><i>🏠 Accueil</i><i class="on">🎨 Personnalisation</i><i>⚙️ Système</i></span>
+          <b>Windows</b><small>fond Mica, accent bleu · 🌙 existe en sombre</small></button>
+        <button class="padpick themepick" data-v="xbox">
+          <span class="prev prev-xbox" data-wii-icons><i>🎮 Jeux</i><i class="on">🏠 Accueil</i><i>👥 Amis</i><i>⚙️ Réglages</i></span>
+          <b>Xbox</b><small>sombre, vert, tuiles et contour lumineux</small></button>
+        <button class="padpick themepick" data-v="switch">
+          <span class="prev prev-switch" data-wii-icons><i>🙂 Utilisateur</i><i class="on">⚙️ Paramètres</i><i>🖼 Album</i></span>
+          <b>Switch</b><small>pastilles rondes, contour cyan · 🌙 existe en sombre</small></button>
+        <button class="padpick themepick" data-v="playstation">
+          <span class="prev prev-ps" data-wii-icons><i class="sq">🎮</i><i class="sq on">🏠<b>Accueil</b></i><i class="sq">⚙️</i><i class="sq">🖼</i></span>
+          <b>PlayStation</b><small>bleu nuit, tuiles carrées, contour blanc</small></button>
       </div>
     </section>
   </div>
@@ -520,6 +550,21 @@
     if (page === 'affichage') post({ type: 'listApps' });
   }
   document.querySelectorAll('#nav [data-go]').forEach(b => b.addEventListener('click', () => go(b.dataset.go)));
+  const plain = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  $('#navSearch')?.addEventListener('input', e => {
+    const q = plain(e.target.value.trim());
+    document.querySelectorAll('.card.hit').forEach(c => c.classList.remove('hit'));
+    if (q.length < 2) return;
+    const hits = [...document.querySelectorAll('.page .card')].filter(c => !c.hidden && c.style.display !== 'none' && plain(c.textContent).includes(q));
+    if (!hits.length) return;
+    const page = hits[0].closest('.page').dataset.page;
+    go(page);
+    hits.filter(c => c.closest('.page').dataset.page === page).forEach(c => c.classList.add('hit'));
+    hits[0].scrollIntoView({ block: 'nearest' });
+  });
+  $('#navSearch')?.addEventListener('keydown', e => { if (e.key === 'Escape') { e.target.value = ''; e.target.dispatchEvent(new Event('input')); } });
+  const clockTick = () => { const c = $('#hclock'); if (c) c.textContent = new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }); };
+  clockTick(); setInterval(clockTick, 15000);
   document.addEventListener('click', e => { const b = e.target.closest('[data-imp]'); if (b) post({ type: 'import', kind: b.dataset.imp }); });
   let toastTimer = null;
   function toast(text) {
@@ -769,6 +814,7 @@
     });
   });
   document.querySelectorAll('[data-tog]').forEach(cb => cb.addEventListener('change', () => set(cb.dataset.tog, cb.checked)));
+  $('[data-tog="themeSombre"]')?.addEventListener('change', e => window.setUiTheme?.(window.uiTheme?.(), e.target.checked));
   document.querySelectorAll('[data-act]').forEach(b => b.addEventListener('click', () => {
     if (b.dataset.act === 'quit' && !confirm("Quitter Sully's Mii-Bongo ?")) return;
     post({ type: 'action', name: b.dataset.act });
@@ -851,8 +897,9 @@
     mark('padModel', c.PadModel || '8bitdo');
     mark('fluidite', c.Fluidite || 'auto');
     mark('theme', c.Theme || 'classique');
-    window.setUiTheme?.(c.Theme);
-    $('#navTheme').textContent = { wii: 'Wii', carnet: 'Carnet', notice: 'Notice' }[c.Theme] || 'Classique';
+    window.setUiTheme?.(c.Theme, !!c.ThemeSombre);
+    $('#navTheme').textContent = ({ wii: 'Wii', carnet: 'Carnet', notice: 'Notice', windows: 'Windows', xbox: 'Xbox', switch: 'Switch', playstation: 'PlayStation' }[c.Theme] || 'Classique')
+      + (c.ThemeSombre && ['wii', 'windows', 'switch'].includes(c.Theme) ? ' · sombre' : '');
     renderPresets(s);
     renderGames(s);
     const persos = s.pads || [], hidden = c.HiddenPads || [];
@@ -871,7 +918,7 @@
     mark('size', sizes.reduce((a, b) => Math.abs(b - c.Size) < Math.abs(a - c.Size) ? b : a));
     const tog = { showWindow: s.windowVisible, topMost: c.TopMost, clickThrough: c.ClickThrough, decor: c.Decor,
                   micEnabled: c.MicEnabled, vrMirror: c.VrMirror, startup: s.startup, showObjects: c.ShowObjects, hideOccluders: c.HideOccluders,
-                  shortcutsEnabled: c.RaccourcisActifs, padMinis: c.PadMinis, calmGames: c.TeteCalmeJeux };
+                  shortcutsEnabled: c.RaccourcisActifs, padMinis: c.PadMinis, calmGames: c.TeteCalmeJeux, themeSombre: c.ThemeSombre };
     for (const [k, v] of Object.entries(tog)) { const cb = document.querySelector(`[data-tog="${k}"]`); if (cb) cb.checked = !!v; }
     document.querySelectorAll('[data-deco]').forEach(b => b.classList.toggle('active', c.Decorations.includes(b.dataset.deco)));
     $('#decorHint').style.display = c.Decor ? 'none' : '';

@@ -255,8 +255,8 @@ sealed class SullysMiiBongoContext : ApplicationContext
     ContextMenuStrip BuildTrayMenu()
     {
         var menu = _settings.MenuStyle == "full" ? BuildFullMenu() : BuildMenu();
-        ThemeMenu.Apply(menu, _settings.Theme);
-        menu.Opened += (_, _) => ThemeMenu.Apply(menu, _settings.Theme);
+        ThemeMenu.Apply(menu, _settings.Theme, _settings.ThemeSombre);
+        menu.Opened += (_, _) => ThemeMenu.Apply(menu, _settings.Theme, _settings.ThemeSombre);
         return menu;
     }
 
@@ -1108,13 +1108,20 @@ sealed class SullysMiiBongoContext : ApplicationContext
                 if (S() is { } spd) { AppPaths.DeleteScenePreset(spd); PresetsChanged(); }
                 break;
             case "theme":
-                if (S() is { } th && Allowed("classique", "wii", "carnet", "notice").Contains(th))
+                if (S() is { } th && Allowed("classique", "wii", "carnet", "notice", "windows", "xbox", "switch", "playstation").Contains(th))
                 {
                     _settings.Theme = th;
                     var oldMenu = _tray.ContextMenuStrip; _tray.ContextMenuStrip = BuildTrayMenu(); oldMenu?.Dispose();
                     _server.Publish(_server.ConfigMessage());
                 }
                 break;
+            case "themeSombre":
+            {
+                _settings.ThemeSombre = B();
+                var oldMenu = _tray.ContextMenuStrip; _tray.ContextMenuStrip = BuildTrayMenu(); oldMenu?.Dispose();
+                _server.Publish(_server.ConfigMessage());
+                break;
+            }
             case "hideOccluders": _settings.HideOccluders = B(); PageSettingsChanged(); break;
             case "face":
                 if (S() is { } fc && (fc == "" || Directory.Exists(Path.Combine(AppPaths.FacesDir, Path.GetFileName(fc)))))
@@ -1218,6 +1225,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
                 Process.Start(new ProcessStartInfo("explorer.exe", $"\"{AppPaths.MiiDir}\"") { UseShellExecute = true });
                 break;
             case "openEditor": OpenEditor(); break;
+            case "openEditors": OpenEditors(_editorPage); break;
             case "openCharEditor": OpenCharEditor(); break;
             case "openPerso":
                 Directory.CreateDirectory(AppPaths.PersoDir);
