@@ -11,10 +11,10 @@ sealed class Updater
     public const string Repo = "Le1Sully/sullys-mii-bongo-releases";
     const string ExeName = "Sully's Mii-Bongo.exe";
 
-    static readonly HttpClient Http = MakeClient();
-
     public static Version Current { get; } = ReadCurrent();
     public static string CurrentText => $"{Current.Major}.{Current.Minor}.{Current.Build}";
+
+    static readonly HttpClient Http = MakeClient();
 
     public static bool CanInstall =>
         Environment.ProcessPath is { } p
