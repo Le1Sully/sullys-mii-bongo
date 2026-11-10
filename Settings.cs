@@ -19,6 +19,11 @@ sealed class Settings
     public string View { get; set; } = "bust";
     public string Mode { get; set; } = "keyboard";
     public bool VrMirror { get; set; } = false;
+    public bool SuiviTete { get; set; }
+    public bool SuiviMains { get; set; }
+    public string Camera { get; set; } = "";
+    public string SuiviSource { get; set; } = "cam";
+    string TrackFlags => (SuiviTete ? "t" : "") + (SuiviMains ? "m" : "");
     public int WheelRange { get; set; } = 900;
     public bool MicEnabled { get; set; } = true;
     public string? MicDeviceId { get; set; }
@@ -34,6 +39,8 @@ sealed class Settings
     public List<string> HiddenPads { get; set; } = new();
     public bool PadMinis { get; set; } = false;
     public bool TeteCalmeJeux { get; set; } = true;
+    public bool ClavierGlisse { get; set; } = true;
+    public double TailleSouris { get; set; } = 1;
     public List<string> Jeux { get; set; } = new();
     public string Theme { get; set; } = "classique";
     public bool ThemeSombre { get; set; }
@@ -57,6 +64,9 @@ sealed class Settings
         padModel = PadModel, face = Face, objects = ShowObjects, occlude = HideOccluders,
         fps = Fluidite,
         minis = PadMinis,
+        track = TrackFlags,
+        kbSlide = ClavierGlisse,
+        mouseSize = Math.Round(TailleSouris, 2),
         theme = Theme,
         themeDark = ThemeSombre,
         orbit = new { on = Orbit, az = Math.Round(OrbitAz), el = Math.Round(OrbitEl), zoom = Math.Round(OrbitZoom, 2) },
@@ -65,9 +75,10 @@ sealed class Settings
     public string Query(string bg) =>
         $"bg={Uri.EscapeDataString(bg)}&model={Uri.EscapeDataString(Model)}&view={View}&mode={Mode}" + (VrMirror ? "&mirror=1" : "")
         + $"&pad={Uri.EscapeDataString(PadModel)}&face={Uri.EscapeDataString(Face)}" + (ShowObjects ? "" : "&objs=0") + (HideOccluders ? "" : "&occ=0")
-        + $"&fps={Fluidite}" + (PadMinis ? "&minis=1" : "")
+        + $"&fps={Fluidite}" + (PadMinis ? "&minis=1" : "") + (TrackFlags.Length > 0 ? "&track=" + TrackFlags : "")
         + (Orbit ? FormattableString.Invariant($"&orbit=1&oaz={Math.Round(OrbitAz)}&oel={Math.Round(OrbitEl)}&oz={Math.Round(OrbitZoom, 2)}") : "")
-        + (ScreenFps > 0 ? "" : "&slive=0")
+        + (ScreenFps > 0 ? "" : "&slive=0") + (ClavierGlisse ? "" : "&kbs=0")
+        + (Math.Abs(TailleSouris - 1) < 0.005 ? "" : FormattableString.Invariant($"&ms={Math.Round(TailleSouris, 2)}"))
         + (Decor ? $"&decor=1&dview={DecorView}&deco={Uri.EscapeDataString(DecoList)}" + $"&floor={Floor}" : "");
 
     public sealed class Raccourci

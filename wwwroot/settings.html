@@ -183,6 +183,7 @@
   .sliders label { display: grid; grid-template-columns: 1fr auto; font-size: 12.5px; color: var(--muted); gap: 2px 8px; }
   .sliders output { color: var(--text); font-variant-numeric: tabular-nums; }
   .sliders input { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+  .upd-notes { white-space: pre-line; max-height: 180px; overflow: auto; margin: 6px 0; }
   .off .orbit, .off #orbitPresets { opacity: .45; }
   .faces { display: flex; gap: 8px; flex-wrap: wrap; margin: 4px 0 8px; }
   .faces figure { margin: 0; text-align: center; font-size: 11px; color: var(--muted); }
@@ -244,8 +245,12 @@
     </section>
 
     <section class="card wide" id="cardHint">
-      <h2><span class="ico">✅</span>Rien à régler</h2>
+      <h2 id="hintTitle"><span class="ico">✅</span>Rien à régler</h2>
       <div class="sub" id="hintText"></div>
+      <label class="sw" id="kbSlideRow">Le clavier glisse devant le Mii quand il tape à deux mains<input type="checkbox" data-tog="kbSlide"><span class="t"></span></label>
+      <div class="sliders" id="mouseSizeRow">
+        <label>Taille de la souris <output id="mouseSizeOut"></output><input type="range" id="mouseSize" min="60" max="300" step="5"></label>
+      </div>
     </section>
 
     <section class="card wide" id="cardPad">
@@ -305,6 +310,28 @@
           <div class="seg" data-set="micFloor" data-num><button data-v="-40">Faible</button><button data-v="-48">Normale</button><button data-v="-56">Haute</button></div></div>
         <div class="row"><label class="lbl">Micro</label><select id="micDevice"></select></div>
         <div class="err" id="micError"></div>
+      </section>
+
+      <section class="card" id="cardTrack">
+        <h2><span class="ico">🎯</span>Suivi de la tête et des mains</h2>
+        <div class="row"><label class="lbl">Source</label>
+          <div class="seg" data-set="trackSource"><button data-v="cam">📷 Webcam</button><button data-v="steamvr">🥽 SteamVR</button></div></div>
+        <label class="sw">La tête suit la vôtre<input type="checkbox" data-tog="trackHead"><span class="t"></span></label>
+        <label class="sw">Les mains suivent vos mains<input type="checkbox" data-tog="trackHands"><span class="t"></span></label>
+        <label class="sw">Effet miroir<input type="checkbox" data-tog="vrMirror"><span class="t"></span></label>
+        <div class="row" data-src="cam"><label class="lbl">Caméra</label><select id="camDevice"></select></div>
+        <div class="state" id="trackState"></div>
+        <div class="row"><button class="btn" data-act="vrRecenter">Recentrer (regardez votre écran)</button></div>
+        <div class="sub">Une seule source à la fois : choisir SteamVR éteint la webcam, et inversement. Marche dans tous les
+          modes sauf Debout (là, c'est toujours le casque VR). Une main non suivie reprend son geste habituel, la main sur la
+          souris la reprend dès que vous la bougez ; les animations restent prioritaires.</div>
+        <div class="sub" data-src="cam">Placez la webcam face à vous, épaules dans le champ, et levez les mains devant vous pour
+          qu'elles soient vues.</div>
+        <div class="sub" data-src="steamvr">Lancez SteamVR avec le casque et les manettes allumés : la tête suit le casque, les
+          mains suivent les manettes.</div>
+        <div class="sub" data-src="cam">🔒 <b>Confidentialité</b> : l'image de la caméra n'est jamais affichée, ni enregistrée, ni envoyée sur
+          Internet. Elle est analysée sur ce PC dans une fenêtre invisible, et seul le mouvement (tête, mains) arrive au Mii.
+          La caméra s'éteint dès que les deux options sont décochées, que SteamVR est choisi ou que le Mii n'est affiché nulle part.</div>
       </section>
 
       <section class="card wide" id="cardPerso">
@@ -519,6 +546,19 @@
         <label class="sw">Lancer au démarrage de Windows<input type="checkbox" data-tog="startup"><span class="t"></span></label>
         <div class="row"><button class="btn" id="menuFull" title="Revenir à l'ancien menu contextuel complet (clic droit sur l'icône)">☰ Menu contextuel classique</button></div>
         <div class="sub">Clic droit sur l'icône de l'appli (barre des tâches) : raccourcis vers les éditeurs et Quitter.</div>
+      </section>
+
+      <section class="card">
+        <h2><span class="ico">🔄</span>Mises à jour</h2>
+        <div class="state" id="updState"></div>
+        <div class="row">
+          <button class="btn primary" data-act="updateCheck" id="updCheck">Rechercher une mise à jour</button>
+          <button class="btn primary" data-act="updateInstall" id="updInstall" hidden>Installer et redémarrer</button>
+          <button class="btn" data-act="updatePage" id="updPage" hidden>Voir sur GitHub</button>
+        </div>
+        <div class="sub upd-notes" id="updNotes" hidden></div>
+        <div class="sub">Version installée : <b id="updCurrent"></b>. L'appli cherche seulement quand vous cliquez. Une mise à jour
+          remplace uniquement l'appli : vos réglages, Mii, visages, scènes et objets sont conservés.</div>
       </section>
 
       <section class="card wide">
@@ -829,7 +869,7 @@
       set('menuStyle', 'full');
   });
   const orb = { on: false, az: 30, el: 18, zoom: 1 };
-  let orbPending = null, orbTimer = null, orbTouchedAt = 0;
+  let orbPending = null, orbTimer = null, orbTouchedAt = 0, mouseSizeTouchedAt = 0;
   function sendOrbit(patch) {
     Object.assign(orb, patch);
     orbPending = { ...(orbPending || {}), ...patch };
@@ -850,6 +890,13 @@
     $('#cardOrbit').classList.toggle('off', !orb.on);
   }
   $('#orbitOn').addEventListener('change', e => sendOrbit({ on: e.target.checked }));
+  let mouseSizeTimer = null;
+  $('#mouseSize').addEventListener('input', e => {
+    mouseSizeTouchedAt = Date.now();
+    $('#mouseSizeOut').textContent = e.target.value + ' %';
+    clearTimeout(mouseSizeTimer);
+    mouseSizeTimer = setTimeout(() => set('mouseSize', e.target.value / 100), 60);
+  });
   $('#az').addEventListener('input', e => sendOrbit({ on: true, az: +e.target.value }));
   $('#el').addEventListener('input', e => sendOrbit({ on: true, el: +e.target.value }));
   $('#zoom').addEventListener('input', e => sendOrbit({ on: true, zoom: e.target.value / 100 }));
@@ -869,6 +916,7 @@
 
   $('#padPersos').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (b) set('padModel', b.dataset.v); });
   $('#micDevice').addEventListener('change', e => set('micDevice', e.target.value));
+  $('#camDevice').addEventListener('change', e => set('camera', e.target.value));
   $('#model').addEventListener('change', e => set('model', e.target.value));
   $('#face').addEventListener('change', e => set('face', e.target.value));
   $('#persoList').addEventListener('change', e => { const cb = e.target.closest('[data-perso]'); if (cb) set('persoItem', `${cb.dataset.perso}:${cb.checked ? 'on' : 'off'}`); });
@@ -897,6 +945,9 @@
     mark('padModel', c.PadModel || '8bitdo');
     mark('fluidite', c.Fluidite || 'auto');
     mark('theme', c.Theme || 'classique');
+    const src = c.SuiviSource === 'steamvr' ? 'steamvr' : 'cam';
+    mark('trackSource', src);
+    document.querySelectorAll('[data-src]').forEach(el => { el.hidden = el.dataset.src !== src; });
     window.setUiTheme?.(c.Theme, !!c.ThemeSombre);
     $('#navTheme').textContent = ({ wii: 'Wii', carnet: 'Carnet', notice: 'Notice', windows: 'Windows', xbox: 'Xbox', switch: 'Switch', playstation: 'PlayStation' }[c.Theme] || 'Classique')
       + (c.ThemeSombre && ['wii', 'windows', 'switch'].includes(c.Theme) ? ' · sombre' : '');
@@ -918,8 +969,9 @@
     mark('size', sizes.reduce((a, b) => Math.abs(b - c.Size) < Math.abs(a - c.Size) ? b : a));
     const tog = { showWindow: s.windowVisible, topMost: c.TopMost, clickThrough: c.ClickThrough, decor: c.Decor,
                   micEnabled: c.MicEnabled, vrMirror: c.VrMirror, startup: s.startup, showObjects: c.ShowObjects, hideOccluders: c.HideOccluders,
-                  shortcutsEnabled: c.RaccourcisActifs, padMinis: c.PadMinis, calmGames: c.TeteCalmeJeux, themeSombre: c.ThemeSombre };
-    for (const [k, v] of Object.entries(tog)) { const cb = document.querySelector(`[data-tog="${k}"]`); if (cb) cb.checked = !!v; }
+                  shortcutsEnabled: c.RaccourcisActifs, padMinis: c.PadMinis, calmGames: c.TeteCalmeJeux, themeSombre: c.ThemeSombre, kbSlide: c.ClavierGlisse,
+                  trackHead: c.SuiviTete, trackHands: c.SuiviMains };
+    for (const [k, v] of Object.entries(tog)) document.querySelectorAll(`[data-tog="${k}"]`).forEach(cb => { cb.checked = !!v; });
     document.querySelectorAll('[data-deco]').forEach(b => b.classList.toggle('active', c.Decorations.includes(b.dataset.deco)));
     $('#decorHint').style.display = c.Decor ? 'none' : '';
     fillSelect($('#micDevice'), [{ v: '', t: 'Micro par défaut de Windows' }, ...s.micDevices.map(d => ({ v: d.id, t: d.name }))], c.MicDeviceId || '');
@@ -965,6 +1017,10 @@
     stateBox($('#wheelState'), 'État : ' + s.status.wheel, /connecté/.test(s.status.wheel));
     stateBox($('#padState'), 'État : ' + s.status.pad, /connectée/.test(s.status.pad));
     stateBox($('#vrState'), 'État : ' + s.status.vr, /suivi|connecté/.test(s.status.vr));
+    stateBox($('#trackState'), 'État : ' + s.status.track, /^suivi actif/.test(s.status.track));
+    const cams = s.status.cameras || [];
+    fillSelect($('#camDevice'), [{ v: '', t: 'Automatique (première vraie webcam)' }, ...cams.map(n => ({ v: n, t: n })),
+      ...(c.Camera && !cams.includes(c.Camera) ? [{ v: c.Camera, t: c.Camera + ' (non détectée)' }] : [])], c.Camera || '');
     stateBox($('#screensState'), 'Capture des écrans : ' + s.status.screens, /img\/s/.test(s.status.screens));
     $('#cardWheel').hidden = c.Mode !== 'wheel';
     $('#cardPad').hidden = c.Mode !== 'pad';
@@ -972,7 +1028,24 @@
     $('#cardHint').hidden = !['keyboard', 'bongo'].includes(c.Mode);
     $('#hintText').textContent = c.Mode === 'bongo'
       ? 'Le Mii tape sur ses bongos quand vous tapez au clavier ou cliquez (gauche / droite).'
-      : 'Le Mii tape sur son clavier quand vous tapez, et sa souris suit la vôtre. Rien à brancher ni à régler.';
+      : 'Le Mii tape sur son clavier quand vous tapez, et sa souris suit la vôtre. Rien à brancher.';
+    $('#kbSlideRow').hidden = $('#mouseSizeRow').hidden = c.Mode !== 'keyboard';
+    const up = s.update || {};
+    $('#updCurrent').textContent = up.current || '?';
+    stateBox($('#updState'), up.status ? 'État : ' + up.status : 'Cliquez pour vérifier si une nouvelle version existe.', /^à jour|installée/.test(up.status || ''));
+    $('#updCheck').disabled = !!up.busy;
+    $('#updInstall').hidden = !up.available;
+    $('#updInstall').disabled = !!up.busy || !up.canInstall;
+    $('#updInstall').title = up.canInstall ? '' : 'Installation automatique indisponible dans une version de développement';
+    $('#updPage').hidden = !up.latest;
+    const notes = up.available && up.notes ? up.notes.split(/\n#+\s*Installation/)[0].replace(/^#+\s*/gm, '').replace(/\*\*/g, '').replace(/`/g, '').trim() : '';
+    $('#updNotes').hidden = !notes;
+    $('#updNotes').textContent = notes ? 'Nouveautés de la version ' + up.latest + ' :\n' + notes : '';
+    if (Date.now() - mouseSizeTouchedAt > 1500) {
+      $('#mouseSize').value = Math.round((c.TailleSouris || 1) * 100);
+      $('#mouseSizeOut').textContent = $('#mouseSize').value + ' %';
+    }
+    $('#hintTitle').innerHTML = c.Mode === 'keyboard' ? '<span class="ico">⌨️</span>Clavier + souris' : '<span class="ico">✅</span>Rien à régler';
     $('#decorBody').classList.toggle('dim', !c.Decor);
     const modes = { keyboard: 'Clavier + souris', bongo: 'Bongos', pad: 'Manette', wheel: 'Volant', vr: 'Debout (VR)' };
     const nOn = (s.perso || []).filter(p => p.on).length;

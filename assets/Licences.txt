@@ -7,6 +7,8 @@ Audio (niveau du micro) : NAudio — licence MIT — https://github.com/naudio/N
 Volant : Vortice.DirectInput — licence MIT — https://github.com/amerkoleci/Vortice.Windows
 Manettes PlayStation (HID) : HidSharp — licence Apache 2.0 — https://www.zer7.com/software/hidsharp
 Casque VR : OpenVR v2.5.1 de Valve — licence BSD-3 (texte complet dans « OpenVR (Valve, BSD-3).txt »)
+Suivi webcam : MediaPipe Tasks Vision 0.10.21 de Google, avec les modèles Pose Landmarker (lite) et Face Landmarker
+  — licence Apache 2.0 — https://github.com/google-ai-edge/mediapipe
 Affichage web : Microsoft Edge WebView2 — https://developer.microsoft.com/microsoft-edge/webview2/
 
 Modèle de manette 8BitDo : « 8BitDo Ultimate 2C Controller — Low Poly » par Isshan

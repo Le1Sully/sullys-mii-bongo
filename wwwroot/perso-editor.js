@@ -100,11 +100,13 @@ export async function startCharEditor(mii) {
     saveTimer = setTimeout(() => { savePending = false; host?.postMessage({ type: 'savePerso', data }); setStatus('✓ Enregistré'); }, 300);
   };
   onLeavePage(() => { if (savePending) { clearTimeout(saveTimer); savePending = false; host?.postMessage({ type: 'savePerso', data }); } });
-  let tab = 'apparence', akey = 0, playStart = 0;
+  let tab = 'apparence', akey = 0, playStart = 0, aobj = null;
   const isAnim = it => it?.type === 'animation';
   const setPreview = () => {
+    char.animFocus = null;
     if (tab === 'physique') { char.preview = null; char.animPreview = null; return; }
     const it = sel();
+    if (tab === 'animations' && isAnim(it) && aobj && !playStart && it.objets?.some(o => o.id === aobj)) char.animFocus = it.id + ':' + aobj;
     char.preview = isAnim(it) ? null : selected;
     if (!isAnim(it) || tab !== 'animations') char.animPreview = null;
     else if (playStart) char.animPreview = { item: it, mode: 'play', start: playStart };
@@ -140,17 +142,30 @@ export async function startCharEditor(mii) {
   const { scene } = mii;
   const r3 = v => Math.round(v * 1000) / 1000;
   const anchorQ = it => {
+    if (it.point === 'libre') return rig.root.getWorldQuaternion(new THREE.Quaternion());
     const a = rig.anchors?.[it.point] || rig.anchors?.tete;
     return a ? a.bone.getWorldQuaternion(new THREE.Quaternion()).multiply(a.restInv) : new THREE.Quaternion();
   };
   const rotQ = r => new THREE.Quaternion().setFromEuler(new THREE.Euler(...(r || [0, 0, 0]).map(v => THREE.MathUtils.degToRad(+v || 0)), 'YXZ'));
   let gStart = null;
+  const gTarget = () => {
+    const it = sel();
+    if (tab === 'apparence' && it?.type === 'objet') return { o: it, group: char.objs.get(it.id)?.group, anim: false };
+    if (tab === 'animations' && isAnim(it) && aobj && !playStart) {
+      const o = it.objets?.find(x => x.id === aobj);
+      return o ? { o, group: char.animObjs.get(it.id + ':' + aobj)?.group, anim: true } : null;
+    }
+    return null;
+  };
   const objGizmo = new Gizmo({
     scene, camera, canvas,
-    onStart: () => { const it = sel(); gStart = it && { pos: [...(it.pos || [0, 0, 0])], rot: [...(it.rot || [0, 0, 0])], taille: +it.taille || 0.15, aq: anchorQ(it) }; },
+    onStart: () => {
+      const g = gTarget(), it = g?.o;
+      gStart = it && { pos: [...(it.pos || [0, 0, 0])], rot: [...(it.rot || [0, 0, 0])], taille: +it.taille || 0.15, aq: anchorQ(g.anim ? { ...it, point: mii.animAnchorKey(it.point) } : it) };
+    },
     onChange: ev => {
-      const it = sel();
-      if (!it || !gStart || it.type !== 'objet') return;
+      const g = gTarget(), it = g?.o;
+      if (!it || !gStart) return;
       const inv = gStart.aq.clone().invert();
       if (ev.kind === 'move') {
         const d = ev.delta.clone().applyQuaternion(inv).divideScalar(H);
@@ -161,18 +176,23 @@ export async function startCharEditor(mii) {
         it.rot = [e.x, e.y, e.z].map(r => Math.round(THREE.MathUtils.radToDeg(r)));
       } else if (ev.kind === 'scale') it.taille = r3(Math.max(0.005, gStart.taille * ev.factor));
       mii.applyCharacter(data);
-      syncObjectFields(it);
+      if (g.anim) syncAnimObjFields(it); else syncObjectFields(it);
     },
     onEnd: () => { gStart = null; save(); },
   });
   objGizmo.setModes({ center: true });
   objGizmo.setTarget(() => {
-    const it = sel();
-    if (!it || it.type !== 'objet' || tab !== 'apparence') return null;
-    const o = char.objs.get(it.id);
-    if (!o || !o.group.visible) return null;
-    return { position: o.group.getWorldPosition(V()), quaternion: o.group.getWorldQuaternion(new THREE.Quaternion()) };
+    const g = gTarget();
+    if (!g?.group || !g.group.visible) return null;
+    return { position: g.group.getWorldPosition(V()), quaternion: g.group.getWorldQuaternion(new THREE.Quaternion()) };
   });
+  function syncAnimObjFields(o) {
+    for (const inp of right.querySelectorAll('[data-aov]')) {
+      const v = (o[inp.dataset.aov] || [0, 0, 0])[+inp.dataset.i];
+      inp.value = inp.type === 'number' ? fmt(v) : v;
+    }
+    for (const inp of right.querySelectorAll('[data-aof="taille"]')) inp.value = inp.type === 'number' ? fmt(+o.taille) : +o.taille;
+  }
   function syncObjectFields(it) {
     for (const inp of right.querySelectorAll('[data-v3]')) {
       const v = (it[inp.dataset.v3] || [0, 0, 0])[+inp.dataset.i];
@@ -735,6 +755,8 @@ export async function startCharEditor(mii) {
     #ceTime .mk { position: absolute; top: 15px; width: 14px; height: 22px; margin-left: -7px; border-radius: 4px; background: #9b9bab; border: 1px solid #000; cursor: ew-resize; }
     #ceTime .mk.on { background: #ffd23f; }
     #ceTime .head { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: #d63a45; pointer-events: none; }
+    #ceTime .ob { position: absolute; height: 4px; border-radius: 2px; background: #3fb6ff; opacity: .75; pointer-events: none; }
+    #ceTime .ob.on { background: #ffd23f; opacity: 1; }
     #ceTime .dur { color: #9b9bab; font-size: 12px; white-space: nowrap; min-width: 64px; text-align: right; }
     .ce label.chk { display: flex; align-items: center; gap: 6px; margin: 10px 0 2px; color: inherit; font-weight: 600; cursor: pointer; }
   `;
@@ -828,7 +850,7 @@ export async function startCharEditor(mii) {
   }
   function select(id, keepView = false) {
     if (capturing) cancelCapture();
-    selected = id; akey = 0; playStart = 0;
+    selected = id; akey = 0; playStart = 0; aobj = null;
     const it = sel();
     if (it) tab = isAnim(it) ? 'animations' : 'apparence';
     setPreview();
@@ -958,6 +980,7 @@ export async function startCharEditor(mii) {
       ${sl('En avant', 'data-ab', 0, -25, 30, 1, k.buste[0])}
       ${sl('Pencher ← →', 'data-ab', 1, -25, 25, 1, k.buste[1])}
       <div class="grid2" style="margin-top:8px"><button data-k="copyPrev" ${akey ? '' : 'disabled'} title="Remettre la même pose que la clé d'avant">⧉ Pose d'avant</button><button data-k="mirror" title="Échanger gauche et droite dans toute l'animation">⇋ Miroir</button></div>
+      ${animObjPanel(it, k)}
       <h3>Copier / coller</h3>
       <div class="grid2"><button data-k="copy" title="Copier la pose de cette clé (Ctrl+C)">📋 Copier la clé</button><button data-k="pasteHere" ${keyClip ? '' : 'disabled'} title="Remplacer la pose de cette clé, en gardant son moment (Ctrl+V)">📥 Coller sur cette clé</button>
         <button data-k="pasteNew" ${keyClip ? '' : 'disabled'} title="Ajouter la pose copiée comme nouvelle clé, juste après celle-ci (Ctrl+Maj+V)" style="grid-column:1/-1">➕ Coller en nouvelle clé</button></div>
@@ -981,6 +1004,89 @@ export async function startCharEditor(mii) {
       <div class="row"><select data-f="mii"><option value="">Tous les Mii</option><option value="${esc(lists.mii)}" ${it.mii === lists.mii ? 'selected' : ''}>Seulement ${esc(lists.mii.replace(/\.(glb|gltf|fbx|obj|dae|3mf|stl|ply|zip)$/i, ''))}</option>${it.mii && it.mii !== lists.mii ? `<option value="${esc(it.mii)}" selected>Seulement ${esc(it.mii)}</option>` : ''}</select></div>
       <div class="grid2" style="margin-top:12px"><button data-x="dup">⧉ Dupliquer</button><button data-x="del" class="danger">🗑 Supprimer</button></div>`;
   }
+  const OBJ_POINTS = { tete: POINTS.tete, corps: POINTS.corps, taille: POINTS.taille, mainG: "✋ Main gauche (à l'écran)", mainD: "🤚 Main droite (à l'écran)", libre: '📍 Libre (dans la scène)' };
+  function animObjPanel(it, k) {
+    const objs = it.objets || [];
+    const o = objs.find(x => x.id === aobj);
+    const list = objs.map(x => `<div class="it ${x.id === aobj ? 'sel' : ''}" data-aoid="${esc(x.id)}"><span>${x.point === 'libre' ? '📍' : '🎩'}</span><span class="n">${esc(x.nom || 'Objet')}</span>
+      <span class="k" title="Apparaît · disparaît">${fmtS(+x.de || 0)} → ${x.a == null || x.a === '' ? 'fin' : fmtS(+x.a)}</span></div>`).join('');
+    let form = '';
+    if (o) {
+      const sl = (lbl, attr, i, min, max, step, v) => `<div class="sl"><span>${lbl}</span><input type="range" ${attr} data-i="${i}" min="${min}" max="${max}" step="${step}" value="${v}"><input type="number" ${attr} data-i="${i}" min="${min}" max="${max}" step="${step}" value="${fmt(v)}"></div>`;
+      const forms = FORMS.map(f => `<option value="forme:${f}" ${o.modele === 'forme:' + f ? 'selected' : ''}>${SHAPES[f].icon} ${SHAPES[f].label}</option>`).join('');
+      const models = lists.models.map(f => `<option value="${esc(f)}" ${o.modele === f ? 'selected' : ''}>📦 ${esc(f.replace(/\.(glb|gltf|fbx|obj|dae|3mf|stl|ply|zip)$/i, ''))}</option>`).join('');
+      const missing = o.modele && !o.modele.startsWith('forme:') && !lists.models.includes(o.modele) ? `<option value="${esc(o.modele)}" selected>⚠ ${esc(o.modele)} (introuvable)</option>` : '';
+      const isForm = (o.modele || '').startsWith('forme:');
+      const texs = Object.entries(TEXTURES).map(([kk, t]) => `<option value="${kk}" ${o.texture === kk ? 'selected' : ''}>${t.label}</option>`).join('');
+      const free = o.point === 'libre', R2 = free ? 2 : 0.6;
+      const p = o.pos || [0, 0, 0], r = o.rot || [0, 0, 0];
+      form = `<div class="row"><label>Nom</label><input type="text" data-aof="nom" value="${esc(o.nom || '')}" maxlength="60"></div>
+        <div class="row"><select data-aof="modele"><optgroup label="Vos modèles (dossier Accessoires)">${models || '<option disabled>— aucun : importez un modèle 3D —</option>'}</optgroup><optgroup label="Formes simples">${forms}</optgroup>${missing}</select></div>
+        <button data-imp="accessoires" style="width:100%" title="Choisir un modèle 3D sur le PC : il est copié dans Personnage\\Accessoires">📥 Importer un modèle 3D…</button>
+        ${isForm ? `<div class="row"><label>Couleur</label><input type="color" data-aof="couleur" value="${esc(o.couleur || '#ffffff')}"><select data-aof="texture">${texs}</select></div>` : ''}
+        <div class="seg" data-aoseg="point" style="margin-top:6px">${Object.entries(OBJ_POINTS).map(([v, t]) => `<button data-v="${v}" class="${(o.point || 'mainD') === v ? 'on' : ''}">${t}</button>`).join('')}</div>
+        <p class="muted">${free ? "Libre : posé dans la scène, à côté du Mii (il ne suit pas ses mouvements)." : "Accroché : il suit la partie du Mii choisie."} Flèches, arcs et boules : le placer, le tourner, l'agrandir.</p>
+        ${sl('← Gauche · Droite →', 'data-aov="pos"', 0, -R2, R2, 0.005, +p[0] || 0)}
+        ${sl('↓ Bas · Haut ↑', 'data-aov="pos"', 1, free ? -0.5 : -R2, R2, 0.005, +p[1] || 0)}
+        ${sl('↙ Arrière · Avant ↗', 'data-aov="pos"', 2, -R2, R2, 0.005, +p[2] || 0)}
+        ${sl('Pencher', 'data-aov="rot"', 0, -180, 180, 1, +r[0] || 0)}
+        ${sl('Tourner', 'data-aov="rot"', 1, -180, 180, 1, +r[1] || 0)}
+        ${sl('Incliner', 'data-aov="rot"', 2, -180, 180, 1, +r[2] || 0)}
+        <div class="sl"><span>Taille</span><input type="range" data-aof="taille" min="0.02" max="${free ? 2 : 1}" step="0.005" value="${+o.taille || 0.15}"><input type="number" data-aof="taille" min="0.02" max="3" step="0.005" value="${fmt(+o.taille || 0.15)}"></div>
+        <div class="row"><label>Apparaît à</label><input type="number" data-aof="de" min="0" max="10" step="0.05" value="${fmt(+o.de || 0)}" style="width:70px"><span class="muted">s</span><button data-ao="deKey" title="Le moment de la clé affichée (${fmtS(k.t)})">⏱ Clé actuelle</button></div>
+        <div class="row"><label>Disparaît à</label><input type="number" data-aof="a" min="0" max="10" step="0.05" value="${o.a == null || o.a === '' ? '' : fmt(+o.a)}" placeholder="fin" style="width:70px"><span class="muted">s</span><button data-ao="aKey" title="Le moment de la clé affichée (${fmtS(k.t)})">⏱ Clé actuelle</button><button data-ao="aEnd" title="Reste jusqu'à la fin de l'animation">Fin</button></div>
+        <div class="grid2"><button data-ao="dup">⧉ Dupliquer</button><button data-ao="del" class="danger">🗑 Retirer</button></div>`;
+    }
+    return `<h3>Objets qui apparaissent</h3>
+      <div class="items">${list || '<div class="muted">Aucun. Un objet peut apparaître dans la main, sur la tête… ou n\'importe où dans la scène, le temps du geste (pancarte, confettis, tasse…).</div>'}</div>
+      <button data-ao="add" style="width:100%;margin-top:6px">🎩 + Objet dans l'animation</button>
+      ${form}`;
+  }
+  function onAnimObjClick(e, it) {
+    const row = e.target.closest('[data-aoid]');
+    if (row) { aobj = aobj === row.dataset.aoid ? null : row.dataset.aoid; setPreview(); renderRight(); return true; }
+    const segB = e.target.closest('[data-aoseg] [data-v]');
+    const o = it.objets?.find(x => x.id === aobj);
+    if (segB && o) {
+      const v = segB.dataset.v;
+      if (o.point !== v) { o.point = v; o.pos = [0, v === 'libre' ? 0.3 : 0, v === 'libre' ? 0.35 : 0]; o.rot = [0, 0, 0]; o.taille = v === 'libre' ? 0.2 : (POINT_DEFAULTS[v]?.taille || 0.12); }
+      mii.applyCharacter(data); setPreview(); save(); renderRight(); renderTimeline();
+      return true;
+    }
+    const a = e.target.closest('[data-ao]')?.dataset.ao;
+    if (!a) return false;
+    const k = it.cles[akey];
+    if (a === 'add') {
+      it.objets = Array.isArray(it.objets) ? it.objets : [];
+      const n = it.objets.length + 1;
+      const o2 = { id: newId(), nom: 'Objet ' + n, modele: lists.models[0] || 'forme:cube', couleur: '#e8574a', texture: 'uni', point: 'mainD', pos: [0, 0, 0], rot: [0, 0, 0], taille: 0.09, de: k?.t ?? 0, a: null };
+      it.objets.push(o2); aobj = o2.id;
+    }
+    if (o && a === 'deKey') o.de = k?.t ?? 0;
+    if (o && a === 'aKey') o.a = k?.t ?? null;
+    if (o && a === 'aEnd') o.a = null;
+    if (o && a === 'dup') { const c = JSON.parse(JSON.stringify(o)); c.id = newId(); c.nom = (o.nom || 'Objet') + ' (copie)'; it.objets.splice(it.objets.indexOf(o) + 1, 0, c); aobj = c.id; }
+    if (o && a === 'del') { it.objets.splice(it.objets.indexOf(o), 1); aobj = null; }
+    mii.applyCharacter(data); setPreview(); save(); renderRight(); renderTimeline();
+    return true;
+  }
+  function onAnimObjField(t, it, final) {
+    const o = it.objets?.find(x => x.id === aobj);
+    if (!o) return false;
+    if (t.dataset.aov) {
+      const f = t.dataset.aov, v = +t.value || 0;
+      o[f] = (o[f] || [0, 0, 0]).slice(); o[f][+t.dataset.i] = v; syncPair(t, v);
+    } else if (t.dataset.aof) {
+      const f = t.dataset.aof;
+      if (f === 'taille') { o.taille = Math.max(0.005, +t.value || 0.15); syncPair(t, o.taille); }
+      else if (f === 'de') o.de = Math.max(0, Math.min(10, +t.value || 0));
+      else if (f === 'a') o.a = t.value === '' ? null : Math.max(0, Math.min(10, +t.value || 0));
+      else o[f] = t.value;
+      if (final && ['modele', 'de', 'a', 'nom'].includes(f)) { mii.applyCharacter(data); save(); renderRight(); renderTimeline(); return true; }
+    } else return false;
+    mii.applyCharacter(data); save();
+    return true;
+  }
   function sortKeys(it, keep) {
     it.cles.sort((a, b) => a.t - b.t);
     akey = Math.max(0, it.cles.indexOf(keep));
@@ -1003,6 +1109,7 @@ export async function startCharEditor(mii) {
     setStatus('📺 ' + (it.nom || 'Animation') + ' : jouée sur le Mii');
   }
   function onAnimClick(e, it) {
+    if (onAnimObjClick(e, it)) return true;
     const k = e.target.closest('[data-k]')?.dataset.k;
     if (!k) return false;
     const ks = it.cles, cur = ks[akey];
@@ -1069,6 +1176,7 @@ export async function startCharEditor(mii) {
     if (key === 'v') { e.preventDefault(); pasteKey(it, e.shiftKey); }
   });
   function onAnimField(t, it, final) {
+    if (onAnimObjField(t, it, final)) return true;
     const ks = it.cles, k = ks[akey];
     if (!k) return false;
     if (t.dataset.f === 'tplPick') {
@@ -1107,7 +1215,8 @@ export async function startCharEditor(mii) {
     span = Math.max(2, Math.ceil((dur + 0.5) * 2) / 2);
     const ticks = Array.from({ length: Math.floor(span / 0.5) + 1 }, (_, i) => i * 0.5)
       .map(s => `<div class="tick" style="left:${s / span * 100}%"><i>${Number.isInteger(s) ? s + ' s' : ''}</i></div>`).join('');
-    const marks = it.cles.map((c, i) => `<div class="mk ${i === akey ? 'on' : ''}" data-mk="${i}" style="left:${c.t / span * 100}%" title="Clé ${i + 1} : ${fmtS(c.t)}"></div>`).join('');
+    const marks = it.cles.map((c, i) => `<div class="mk ${i === akey ? 'on' : ''}" data-mk="${i}" style="left:${c.t / span * 100}%" title="Clé ${i + 1} : ${fmtS(c.t)}"></div>`).join('')
+      + (it.objets || []).map((o, i) => { const de = +o.de || 0, fin = o.a == null || o.a === '' ? Math.max(dur, de) : +o.a; return `<div class="ob ${o.id === aobj ? 'on' : ''}" style="left:${de / span * 100}%;width:${Math.max(0.5, (fin - de) / span * 100)}%;bottom:${2 + (i % 3) * 5}px" title="${esc(o.nom || 'Objet')} : ${fmtS(de)} → ${o.a == null || o.a === '' ? 'fin' : fmtS(fin)}"></div>`; }).join('');
     timeline.innerHTML = `<button data-tl="play" class="${playStart ? 'on' : ''}">${playStart ? '⏹ Arrêter' : '▶ Aperçu'}</button>
       <div class="track" title="Glissez une clé pour changer son moment · double-clic : nouvelle clé à cet endroit">${ticks}${marks}<div class="head" style="display:none"></div></div>
       <span class="dur">${fmtS(dur)}</span>
@@ -1284,7 +1393,9 @@ export async function startCharEditor(mii) {
       fetchAll(false).then(() => {
         const f = m.files[0];
         if (m.kind === 'accessoires') {
+          const animObj = isAnim(target) ? target.objets?.find(o => o.id === aobj) : null;
           if (target?.type === 'objet') { target.modele = f; save(); }
+          else if (animObj) { animObj.modele = f; animObj.nom = f.replace(/\.(glb|gltf|fbx|obj|dae|3mf|stl|ply|zip)$/i, ''); mii.applyCharacter(data); save(); }
           else { addItem('objet'); const it = sel(); if (it) { it.modele = f; it.nom = f.replace(/\.(glb|gltf|fbx|obj|dae|3mf|stl|ply|zip)$/i, ''); save(); } }
         }
         if (m.kind === 'expressions') {

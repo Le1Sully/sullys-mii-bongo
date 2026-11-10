@@ -338,6 +338,17 @@ Les jeux en plein écran « exclusif » peuvent apparaître noirs : utilisez le 
 - Chaque touche fait taper la main gauche (côté écran) **à l'endroit de la touche** sur le clavier 3D,
   qui s'allume en rouge (position physique : marche en AZERTY comme en QWERTY).
 - La souris 3D suit votre curseur ; les boutons s'allument et la main appuie quand vous cliquez.
+- **Deux mains** : quand la souris est au repos, le Mii tape comme vous, avec les deux mains : la main de la souris
+  la lâche pour taper les touches de droite (Y, H, N et à droite, Entrée, flèches…), l'autre main garde les touches de
+  gauche, et la barre d'espace se tape du côté de la main libre. Tant que vous utilisez la souris, la main gauche tape
+  seule et va jusqu'aux touches de droite. La main revient sur la souris dès que vous la bougez ou cliquez, ou après
+  4 secondes sans taper.
+- **Clavier qui glisse** : quand le Mii tape à deux mains, il fait glisser son clavier devant lui (sans toucher la
+  souris), puis le remet à sa place en reprenant la souris. Désactivable dans Réglages → Instrument, carte
+  **⌨️ Clavier + souris**.
+- La souris 3D a une vraie forme : coque bombée, deux boutons séparés qui s'enfoncent au clic, molette qui tourne
+  quand vous faites défiler. Sa taille se règle de 60 à 300 % (curseur **Taille de la souris** dans la même carte) ;
+  la main du Mii reste posée dessus.
 
 **Mode bongos**
 - Moitié gauche du clavier → bongo de gauche ; le reste → bongo de droite ; Espace alterne.
@@ -514,6 +525,13 @@ suivent en direct.
   une fois) ou *En boucle* (un interrupteur, comme les autres extras). *Joue tant que la touche est enfoncée* est aussi
   possible.
 - **📺 Jouer sur le Mii** la joue tout de suite dans la fenêtre du Mii et dans OBS.
+- **Objets qui apparaissent** : *🎩 + Objet dans l'animation* ajoute un objet (un modèle 3D du dossier
+  `Personnage\Accessoires`, à importer avec 📥, ou une forme simple) qui n'existe que pendant le geste : une pancarte dans
+  la main, une couronne sur la tête, un gâteau sur le bureau… Il peut être **accroché** (tête, corps, taille, main gauche
+  ou droite *à l'écran*, comme les mains des clés) et suit alors le Mii, ou **libre** : posé dans la scène à côté du Mii.
+  On le place avec les flèches, arcs et boules (ou les curseurs), et on choisit quand il **apparaît** et **disparaît**
+  (en secondes, ou *⏱ Clé actuelle*, ou *Fin*) ; il surgit et s'efface avec un petit effet. Les objets choisis sont
+  toujours visibles dans l'éditeur pour les placer, et leurs moments sont marqués en bleu sur la frise.
 
 Les animations sont enregistrées dans `Personnage\Personnage.json` avec les autres extras. Elles ne s'appliquent pas en
 mode Debout (VR), où les bras suivent le casque et les manettes.
@@ -542,6 +560,35 @@ de la boule. Faites une zone par partie (⧉ *Dupliquer*) pour que chacune bouge
 Les pièces du modèle n'ont pas besoin d'être séparées : la zone déforme seulement ce qui est dans la boule ou colorié. Les zones
 sont enregistrées dans `Personnage\Personnage.json` (`physique`), liées au Mii sur lequel elles ont été posées, et
 s'appliquent à la fenêtre du Mii comme à OBS. Pour un objet accroché, activez-le (ou *👁 Tout montrer*) avant de cliquer.
+
+## Suivi de la tête et des mains (webcam ou SteamVR)
+
+Réglages → **Personnage** → carte **🎯 Suivi de la tête et des mains**, dans tous les modes sauf Debout (là, c'est
+toujours le casque VR qui pilote le Mii) :
+
+- **Source** : **📷 Webcam** ou **🥽 SteamVR**. Une seule à la fois : choisir SteamVR éteint la webcam, et inversement ;
+- **La tête suit la vôtre** : la tête du Mii tourne, se lève et se penche comme la vôtre (ou comme le casque) ;
+- **Les mains suivent vos mains** : la main du Mii va où est la vôtre (ou la manette), par rapport à vos épaules, à
+  l'échelle de ses bras. Une main non suivie reprend en douceur son geste habituel (taper, frapper les bongos…) ; les
+  animations restent prioritaires ;
+- **Effet miroir** : le Mii bouge comme votre reflet au lieu de vous faire face ;
+- **Caméra** (webcam) : « Automatique » prend la première vraie webcam (les caméras virtuelles comme OBS Virtual Camera
+  sont ignorées), ou choisissez-en une. Un téléphone utilisé comme webcam (Camo…) marche aussi ;
+- **Recentrer** : regardez votre écran et cliquez, pour régler le « tout droit » de la tête ;
+- **La souris reste prioritaire** (mode clavier) : quand vous bougez la souris, ou que votre main revient à l'endroit où
+  vous l'utilisez, la main du Mii repasse sur sa souris. Cet endroit est appris tout seul pendant que vous bougez la
+  souris, et retenu pour la suite.
+
+**Webcam** : placez-la face à vous, épaules dans le champ. Le visage donne l'orientation la plus précise ; s'il est caché
+(casque VR sur la tête), la tête est estimée avec le nez et les oreilles.
+
+**SteamVR** : lancez SteamVR avec le casque et les manettes allumés ; la tête suit le casque, les mains suivent les
+manettes.
+
+**Confidentialité** (webcam) : l'image n'est jamais affichée, ni enregistrée, ni envoyée sur Internet. Elle est analysée sur le PC
+par [MediaPipe](https://ai.google.dev/edge/mediapipe) dans une fenêtre invisible qui n'a ni vidéo ni dessin, et seul le
+mouvement (tête, mains) arrive au Mii. Les pages du Mii (fenêtre, OBS) n'ont pas accès à la caméra. La caméra s'éteint
+dès que les deux options sont décochées, que SteamVR est choisi ou que le Mii n'est affiché nulle part.
 
 ## Mini Mii sur la manette
 
@@ -698,6 +745,7 @@ Icône : `assets/MiiBongo.ico` (16 à 256 px), rendue depuis le modèle 3D du Mi
 Rendu 3D : [three.js](https://threejs.org) r160 (licence MIT, inclus dans `wwwroot/vendor`).
 Audio : [NAudio](https://github.com/naudio/NAudio) (licence MIT).
 VR : [OpenVR](https://github.com/ValveSoftware/openvr) v2.5.1 de Valve (licence BSD-3, dans `OpenVR/`).
+Suivi webcam : [MediaPipe Tasks Vision](https://github.com/google-ai-edge/mediapipe) 0.10.21 et ses modèles Pose Landmarker lite et Face Landmarker de Google (licence Apache 2.0, dans `wwwroot/vendor/mediapipe`).
 
 Pour tester le mode VR sans casque : ouvrez `http://localhost:7878/?mode=vr&bg=dark`,
 puis tapez `mii.simVR()` dans la console du navigateur (F12).

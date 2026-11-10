@@ -39,6 +39,7 @@ sealed class SettingsForm : Form
         s.AreDefaultContextMenusEnabled = false;
         s.IsStatusBarEnabled = false;
         s.AreDevToolsEnabled = true;
+        _web.CoreWebView2.PermissionRequested += (_, e) => { if (e.PermissionKind == CoreWebView2PermissionKind.Camera) e.State = CoreWebView2PermissionState.Deny; };
         _web.CoreWebView2.WebMessageReceived += (_, e) =>
         {
             if (!e.Source.StartsWith(_origin + "/", StringComparison.OrdinalIgnoreCase)) return;

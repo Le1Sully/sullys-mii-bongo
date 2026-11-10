@@ -26,6 +26,9 @@ if (FOLLOW) {
     params.set('occ', c.occlude === false ? '0' : '1');
     if (c.fps) params.set('fps', c.fps);
     params.set('minis', c.minis ? '1' : '0');
+    params.set('track', c.track || '');
+    params.set('kbs', c.kbSlide === false ? '0' : '1');
+    if (c.mouseSize) params.set('ms', c.mouseSize);
     if (c.orbit) { params.set('orbit', c.orbit.on ? '1' : '0'); params.set('oaz', c.orbit.az); params.set('oel', c.orbit.el); params.set('oz', c.orbit.zoom); }
   } catch { }
 }
@@ -50,6 +53,10 @@ const CFG = {
   occlude: params.get('occ') !== '0',
   fps: ['60', '30'].includes(params.get('fps')) ? params.get('fps') : 'auto',
   minis: params.get('minis') === '1',
+  trackHead: (params.get('track') || '').includes('t'),
+  trackHands: (params.get('track') || '').includes('m'),
+  kbSlide: params.get('kbs') !== '0',
+  mouseSize: THREE.MathUtils.clamp(+params.get('ms') || 1, 0.6, 3),
   editor: params.get('editor') === '1',
   perso: params.get('perso') === '1',
 };
@@ -253,22 +260,49 @@ function findKey(kb, x, row) {
     keys.reduce((a, b) => Math.abs(a.cx - x) < Math.abs(b.cx - x) ? a : b);
 }
 
+function mouseShape(R) {
+  return (nx, ny, nz) => [
+    nx * (1 - 0.16 * nz) * (1 - 0.06 * Math.max(0, ny)) * R * 0.6,
+    ny > 0 ? ny * (0.42 - 0.12 * nz - 0.04 * nz * nz) * R : ny * 0.1 * R,
+    nz * R,
+  ];
+}
 function makeMouse(size) {
   const g = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.SphereGeometry(size * 0.5, 24, 16), mat(0xf4f4f6, { roughness: 0.35 }));
-  body.scale.set(0.62, 0.42, 1);
-  body.position.y = size * 0.12;
-  g.add(body);
-  const btnMat = () => mat(0xdcdce2, { roughness: 0.35, emissive: 0xd42b2b, emissiveIntensity: 0 });
-  const btnL = new THREE.Mesh(new THREE.SphereGeometry(size * 0.5, 16, 12, 0, Math.PI, 0, Math.PI / 2), btnMat());
-  const btnR = btnL.clone(); btnR.material = btnMat();
-  for (const [b, s] of [[btnL, -1], [btnR, 1]]) {
-    b.scale.set(0.3, 0.44, 0.5);
-    b.rotation.y = s > 0 ? 0 : Math.PI;
-    b.position.set(s * size * 0.155, size * 0.125, size * 0.18);
-    g.add(b);
+  const R = size * 0.5, lift = R * 0.1, shape = mouseShape(R);
+  const part = (geo, material) => {
+    const p = geo.attributes.position;
+    for (let i = 0; i < p.count; i++) {
+      const [x, y, z] = shape(p.getX(i) / R, p.getY(i) / R, p.getZ(i) / R);
+      p.setXYZ(i, x, y + lift, z);
+    }
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, material);
+    g.add(m);
+    return m;
+  };
+  const shell = mat(0xf2f2f4, { roughness: 0.3 });
+  part(new THREE.SphereGeometry(R, 24, 12, Math.PI, Math.PI, 0, Math.PI / 2), shell);
+  part(new THREE.SphereGeometry(R, 32, 4, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2), mat(0x3a3a42, { roughness: 0.7, side: THREE.DoubleSide }));
+  const btnMat = () => mat(0xe4e4ea, { roughness: 0.28, emissive: 0xd42b2b, emissiveIntensity: 0 });
+  const left = part(new THREE.SphereGeometry(R, 12, 12, 0, Math.PI / 2 - 0.035, 0, Math.PI / 2), btnMat());
+  const right = part(new THREE.SphereGeometry(R, 12, 12, Math.PI / 2 + 0.035, Math.PI / 2 - 0.035, 0, Math.PI / 2), btnMat());
+  for (const b of [left, right]) b.userData.baseY = b.position.y;
+  const wz = 0.36, top = shape(0, Math.sqrt(1 - wz * wz), wz)[1] + lift;
+  const wheel = new THREE.Group();
+  wheel.position.set(0, top - R * 0.06, wz * R);
+  const tire = new THREE.Mesh(new THREE.CylinderGeometry(R * 0.13, R * 0.13, R * 0.1, 24), mat(0x26262c, { roughness: 0.9 }));
+  tire.rotation.z = Math.PI / 2;
+  wheel.add(tire);
+  for (let i = 0; i < 12; i++) {
+    const rib = new THREE.Mesh(new THREE.BoxGeometry(R * 0.1, R * 0.02, R * 0.03), tire.material);
+    const a = (i / 12) * Math.PI * 2;
+    rib.position.set(0, Math.cos(a) * R * 0.135, Math.sin(a) * R * 0.135);
+    rib.rotation.x = -a;
+    wheel.add(rib);
   }
-  g.userData = { left: btnL.position.x < btnR.position.x ? btnL : btnR, right: btnL.position.x < btnR.position.x ? btnR : btnL, size };
+  g.add(wheel);
+  g.userData = { left, right, wheel, size };
   return g;
 }
 
@@ -321,7 +355,8 @@ const state = {
     L: { held: 0, downUntil: 0, h: 0, wasDown: false },
     R: { held: 0, downUntil: 0, h: 0, wasDown: false },
   },
-  typing: { x: 6, row: 3, cx: 6, crow: 3, last: -10, heldKeys: new Map() },
+  typing: { x: 6, row: 3, cx: 6, crow: 3, last: -10, heldKeys: new Map(), both: false, bothAt: 0, two: 0,
+            rx: 8.25, rrow: 3, rcx: 8.25, rcrow: 3, rlast: -10 },
   click: { L: 0, R: 0, M: 0 },
   bounce: 0, bounceVel: 0, wheel: 0, mic: 0, micAt: 0,
   vr: { at: 0 }, vrRecenter: false, vrOk: null,
@@ -1941,6 +1976,74 @@ function solveVR(t, dt) {
   }
 }
 
+const trk = { bodyYaw: null, headQ: new THREE.Quaternion(), w: 0, hw: { L: 0, R: 0 }, tgt: { L: null, R: null }, onMouse: false, mouseSpot: null, spotSaved: 0 };
+try { const s = JSON.parse(localStorage.getItem('mii.mouseSpot') || 'null'); if (Array.isArray(s) && s.length === 3) trk.mouseSpot = V(s[0], s[1], s[2]); } catch { }
+
+function handOnMouse(p, now) {
+  const active = now - (state.mouse.at || 0) < 450;
+  if (active) {
+    trk.mouseSpot = trk.mouseSpot ? trk.mouseSpot.lerp(p, 0.04) : p.clone();
+    if (now - trk.spotSaved > 3000) {
+      trk.spotSaved = now;
+      try { localStorage.setItem('mii.mouseSpot', JSON.stringify(trk.mouseSpot.toArray().map(v => +v.toFixed(3)))); } catch { }
+    }
+  }
+  const dist = trk.mouseSpot ? p.distanceTo(trk.mouseSpot) : Infinity;
+  trk.onMouse = active || dist < (trk.onMouse ? 0.18 : 0.12);
+  return trk.onMouse;
+}
+function applyTracking(dt) {
+  if (VR || rig.minis || !(CFG.trackHead || CFG.trackHands) || !rig.arms?.L) return;
+  const d = state.vr;
+  const live = !!d.h && performance.now() - d.at < 500;
+  trk.w = damp(trk.w, live ? 1 : 0, 6, dt);
+  if (!live) { trk.hw.L = damp(trk.hw.L, 0, 6, dt); trk.hw.R = damp(trk.hw.R, 0, 6, dt); }
+  if (trk.w < 0.003 && trk.hw.L < 0.003 && trk.hw.R < 0.003) return;
+  const rootQ = rig.root.getWorldQuaternion(new THREE.Quaternion()), rootInv = rootQ.clone().invert();
+  if (live) {
+    const hp = V(d.h[0], d.h[1], d.h[2]);
+    const hq = new THREE.Quaternion(d.h[3], d.h[4], d.h[5], d.h[6]);
+    const yaw = yawOf(hq);
+    if (d.cam) { trk.bodyYaw = 0; state.vrRecenter = false; }
+    else {
+      if (trk.bodyYaw === null || state.vrRecenter) { trk.bodyYaw = yaw; state.vrRecenter = false; trk.headQ.identity(); }
+      const diff = wrapAngle(yaw - trk.bodyYaw), dead = 0.9;
+      if (Math.abs(diff) > dead) trk.bodyYaw += diff - Math.sign(diff) * dead;
+    }
+    const bodyInv = qAxis(AY, -trk.bodyYaw);
+    const toMiiDir = v => { const o = v.clone().applyQuaternion(bodyInv); if (CFG.mirror) o.x = -o.x; return o.applyQuaternion(R_VR); };
+    const toMiiRot = q => { let o = bodyInv.clone().multiply(q); if (CFG.mirror) o = mirrorQ(o); return o; };
+    trk.headQ.slerp(R_VR.clone().multiply(toMiiRot(hq)).multiply(R_VR_INV), 1 - Math.exp(-25 * dt));
+    trk.live = { hp, toMiiDir };
+  }
+  if (CFG.trackHead && trk.w > 0.003) {
+    const target = rootQ.clone().multiply(trk.headQ).multiply(rootInv);
+    const cur = rig.bones.Head.getWorldQuaternion(new THREE.Quaternion());
+    rotateWorld(rig.bones.Head, cur.slerp(target, trk.w));
+  }
+  if (!CFG.trackHands) return;
+  const shL = worldPos(rig.arms.L.upper), shR = worldPos(rig.arms.R.upper);
+  const shoulderMid = shL.add(shR).multiplyScalar(0.5);
+  const s = rig.unit / 0.62;
+  const mouseSide = PHYSICAL ? 'L' : 'R', now = performance.now();
+  for (const side of ['L', 'R']) {
+    const key = (side === 'R') !== CFG.mirror ? 'l' : 'r';
+    let c = live ? d[key] : null;
+    if (c && KEYBOARD && side === mouseSide && handOnMouse(V(c[0], c[1], c[2]), now)) c = null;
+    else if (side === mouseSide) trk.onMouse = false;
+    if (c && trk.live) {
+      const userShoulders = trk.live.hp.clone().add(V(0, -0.24, 0.09).applyQuaternion(qAxis(AY, trk.bodyYaw)));
+      const dir = trk.live.toMiiDir(V(c[0], c[1], c[2]).sub(userShoulders)).multiplyScalar(s).applyQuaternion(rootQ);
+      const target = shoulderMid.clone().add(dir);
+      trk.tgt[side] = trk.tgt[side] ? trk.tgt[side].lerp(target, 1 - Math.exp(-30 * dt)) : target;
+      trk.hw[side] = damp(trk.hw[side], 1, 8, dt);
+    } else trk.hw[side] = damp(trk.hw[side], 0, 6, dt);
+    if (!trk.tgt[side] || trk.hw[side] < 0.003) continue;
+    const arm = rig.arms[side];
+    solveIK(arm, worldPos(arm.end).lerp(trk.tgt[side], trk.hw[side]));
+  }
+}
+
 function placeController(ctrl, arm, q, trigger) {
   const wrist = worldPos(arm.end);
   const fore = wrist.clone().sub(worldPos(arm.lower)).normalize();
@@ -2066,7 +2169,7 @@ function updateFace(t, dt) {
 }
 
 const char = { items: [], on: new Set(), order: [], expr: new Map(), objs: new Map(), rev: Date.now(), preview: null, seq: 0, showAll: false,
-  anims: new Map(), once: new Map(), loopStart: new Map(), animPreview: null };
+  anims: new Map(), once: new Map(), loopStart: new Map(), animPreview: null, animObjs: new Map(), animFocus: null };
 const charOn = id => char.showAll || char.on.has(id) || char.preview === id;
 let miiMeshes = null;
 function physTargets() {
@@ -2124,6 +2227,7 @@ function applyCharacter(data) {
   }
   face.key = '';
   char.anims = new Map(items.filter(i => i.type === 'animation').map(i => [i.id, normalizeAnim(i)]));
+  syncAnimObjs(items);
   for (const [id, o] of char.objs) {
     const it = byId.get(id);
     if (!it || it.type !== 'objet' || objectSig(it) !== o.sig) { scene.remove(o.group); disposeObject(o.group); char.objs.delete(id); }
@@ -2177,7 +2281,11 @@ function updateAttachments() {
   if (!char.objs.size || !rig.anchors) return;
   if (rig.minis) { for (const o of char.objs.values()) o.group.visible = false; return; }
   let any = false;
-  for (const o of char.objs.values()) { o.group.visible = charOn(o.item.id); any ||= o.group.visible; }
+  for (const o of char.objs.values()) {
+    const v = charOn(o.item.id);
+    if (v !== o.group.visible) shadowBurst(600);
+    o.group.visible = v; any ||= v;
+  }
   if (!any) return;
   rig.root.updateMatrixWorld(true);
   const H = rig.sceneUnit || rig.modelBox?.getSize(V()).y || 1;
@@ -2192,6 +2300,66 @@ function updateAttachments() {
     o.group.position.copy(_ap).add(_ao);
     o.group.quaternion.copy(_aq).multiply(o.rotQ);
     o.group.scale.setScalar(H * Math.max(0.005, +it.taille || 0.15));
+  }
+}
+
+function syncAnimObjs(items) {
+  const want = new Map();
+  for (const it of items) if (it.type === 'animation') for (const o of Array.isArray(it.objets) ? it.objets : []) if (o?.id) want.set(it.id + ':' + o.id, { o, anim: it.id });
+  for (const [k, e] of char.animObjs) {
+    const w = want.get(k);
+    if (!w || objectSig(w.o) !== e.sig) { scene.remove(e.group); disposeObject(e.group); char.animObjs.delete(k); }
+  }
+  for (const [k, w] of want) {
+    let e = char.animObjs.get(k);
+    if (!e) { e = buildCharObject(w.o); e.anim = w.anim; char.animObjs.set(k, e); }
+    e.item = w.o;
+    const [rx, ry, rz] = (w.o.rot || [0, 0, 0]).map(v => THREE.MathUtils.degToRad(+v || 0));
+    e.rotQ = new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz, 'YXZ'));
+  }
+}
+
+let screenHands = null;
+function animAnchorKey(point) {
+  if (point !== 'mainG' && point !== 'mainD') return point;
+  if (!screenHands && rig.anchors?.mainG && rig.anchors?.mainD) {
+    const xg = worldPos(rig.anchors.mainG.bone).x, xd = worldPos(rig.anchors.mainD.bone).x;
+    screenHands = xg < xd ? { mainG: 'mainG', mainD: 'mainD' } : { mainG: 'mainD', mainD: 'mainG' };
+  }
+  return screenHands ? screenHands[point] : point;
+}
+
+function updateAnimObjects(now) {
+  if (!char.animObjs.size || !rig.anchors) return;
+  const cur = rig.minis ? null : currentAnim(now);
+  const H = sceneH();
+  let rootQ = null, ready = false;
+  for (const [k, e] of char.animObjs) {
+    const o = e.item;
+    let s = 0;
+    if (char.animFocus === k) s = 1;
+    else if (cur && cur.a.id === e.anim) {
+      const de = Math.max(0, +o.de || 0);
+      const fin = Math.min(o.a == null || o.a === '' ? Infinity : +o.a, cur.a.duree > 0 ? cur.a.duree : Infinity);
+      if (cur.t >= de && cur.t <= fin) s = Math.max(0, Math.min(1, (cur.t - de) / 0.15 + (de === 0 ? 1 : 0), (fin - cur.t) / 0.15));
+    }
+    e.group.visible = s > 0.002;
+    if (!e.group.visible) continue;
+    if (!ready) { rig.root.updateMatrixWorld(true); ready = true; }
+    e.group.traverse(n => { if (n.isMesh) n.userData.noShadow = true; });
+    if (o.point === 'libre') {
+      rootQ ||= rig.root.getWorldQuaternion(new THREE.Quaternion());
+      _aq.copy(rootQ); _ap.copy(rig.bodyBase);
+    } else {
+      const a = rig.anchors[animAnchorKey(o.point)] || rig.anchors.tete;
+      a.bone.getWorldQuaternion(_aq).multiply(a.restInv);
+      _ap.copy(a.local); a.bone.localToWorld(_ap);
+    }
+    const p = o.pos || [0, 0, 0];
+    _ao.set(+p[0] || 0, +p[1] || 0, +p[2] || 0).multiplyScalar(H).applyQuaternion(_aq);
+    e.group.position.copy(_ap).add(_ao);
+    e.group.quaternion.copy(_aq).multiply(e.rotQ);
+    e.group.scale.setScalar(H * Math.max(0.005, +o.taille || 0.15) * s);
   }
 }
 
@@ -2913,32 +3081,48 @@ function release(side) {
   h.held = Math.max(0, h.held - 1);
 }
 
+const HAND_SPLIT = 6.6, MOUSE_REST_MS = 300, BACK_TO_MOUSE_MS = 4000;
+function typeKey(x, row) {
+  const ty = state.typing, now = performance.now();
+  const k = rig.keyboard ? findKey(rig.keyboard, x, row) : null;
+  const cx = k ? k.cx : x;
+  const mouseFree = now - (state.mouse.at || 0) > MOUSE_REST_MS && !state.click.L && !state.click.R && !state.click.M;
+  if (ty.both && (state.mouse.at || 0) > ty.bothAt) ty.both = false;
+  const wide = k && k.x1 - k.x0 >= 4;
+  let side = 'L';
+  if (wide) side = ty.both && state.hands.R.held === 0 ? 'R' : 'L';
+  else if (cx >= HAND_SPLIT && (ty.both || mouseFree)) side = 'R';
+  if (side === 'R' && !ty.both) { ty.both = true; ty.bothAt = now; }
+  const px = wide ? THREE.MathUtils.clamp(side === 'R' ? ty.rcx : ty.cx, k.x0 + 0.6, k.x1 - 0.6) : cx;
+  if (side === 'R') Object.assign(ty, { rx: px, rrow: row, rlast: now });
+  else Object.assign(ty, { x: px, row, last: now });
+  if (k) { k.held++; k.lit = 1; }
+  ty.heldKeys.set(`${x}:${row}`, { k, side });
+  press(side);
+}
+
 let lastActivity = 0;
 const PASSIVE_EVENTS = new Set(['cfg', 'pads', 'drvs', 'vrs', 'scene', 'perso', 'persoOn', 'vrc', 'game']);
 function onEvent(ev) {
   if (!PASSIVE_EVENTS.has(ev.t)) lastActivity = performance.now();
   switch (ev.t) {
     case 'kd':
-      if (KEYBOARD) {
-        const x = ev.x ?? (ev.s === 'L' ? 4 : 11), row = ev.r ?? 3;
-        Object.assign(state.typing, { x, row, last: performance.now() });
-        if (rig.keyboard) {
-          const k = findKey(rig.keyboard, x, row);
-          k.held++; k.lit = 1;
-          state.typing.heldKeys.set(`${x}:${row}`, k);
-        }
-        press('L');
-      } else press(sideSwap(ev.s));
+      if (KEYBOARD) typeKey(ev.x ?? (ev.s === 'L' ? 4 : 11), ev.r ?? 3);
+      else press(sideSwap(ev.s));
       break;
     case 'ku':
       if (KEYBOARD) {
         const id = `${ev.x ?? (ev.s === 'L' ? 4 : 11)}:${ev.r ?? 3}`;
-        const k = state.typing.heldKeys.get(id);
-        if (k) { k.held = Math.max(0, k.held - 1); state.typing.heldKeys.delete(id); }
-        release('L');
+        const e = state.typing.heldKeys.get(id);
+        if (e) {
+          if (e.k) e.k.held = Math.max(0, e.k.held - 1);
+          state.typing.heldKeys.delete(id);
+          release(e.side);
+        } else release('L');
       } else release(sideSwap(ev.s));
       break;
     case 'md':
+      state.mouse.at = performance.now();
       if (KEYBOARD) { state.click[ev.b] = 1; press('R'); }
       else if (ev.b === 'M') { press('L'); press('R'); } else press(sideSwap(ev.b === 'L' ? 'R' : 'L'));
       break;
@@ -2953,11 +3137,15 @@ function onEvent(ev) {
         state.nudge.y = push(ev.y - state.mouse.y, state.nudge.y);
       }
       state.mouse.x = ev.x; state.mouse.y = ev.y; state.mouse.s = ev.s ?? -1;
+      state.mouse.at = performance.now();
       break;
     case 'game': state.game = !!ev.on; break;
-    case 'wh': state.wheel = THREE.MathUtils.clamp(state.wheel + ev.d * 0.5, -1, 1); break;
+    case 'wh':
+      state.wheel = THREE.MathUtils.clamp(state.wheel + ev.d * 0.5, -1, 1);
+      if (rig.mouse?.userData.wheel) rig.mouse.userData.wheel.rotation.x -= ev.d * 0.5;
+      break;
     case 'mic': state.mic = ev.v; state.micAt = performance.now(); break;
-    case 'vr': Object.assign(state.vr, { h: ev.h, l: ev.l, r: ev.r, tl: ev.tl, tr: ev.tr, at: performance.now() }); break;
+    case 'vr': Object.assign(state.vr, { h: ev.h, l: ev.l, r: ev.r, tl: ev.tl, tr: ev.tr, cam: !!ev.cam, at: performance.now() }); break;
     case 'vrc': state.vrRecenter = true; status('VR recentrée'); break;
     case 'cfg':
       if (ev.c?.orbit && (FOLLOW || CFG.inApp) && !CFG.editor && !CFG.perso) setOrbit(ev.c.orbit, false);
@@ -2967,8 +3155,10 @@ function onEvent(ev) {
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
       if (ev.c?.theme && (CFG.editor || CFG.perso)) window.setUiTheme?.(ev.c.theme, !!ev.c.themeDark);
+      if (ev.c && 'kbSlide' in ev.c) CFG.kbSlide = ev.c.kbSlide !== false;
+      if (ev.c && 'mouseSize' in ev.c) CFG.mouseSize = THREE.MathUtils.clamp(+ev.c.mouseSize || 1, 0.6, 3);
       if (FOLLOW && ev.c) {
-        const strip = c => { const { orbit: _o, fps: _f, theme: _t, themeDark: _d, ...rest } = c; return JSON.stringify(rest); };
+        const strip = c => { const { orbit: _o, fps: _f, theme: _t, themeDark: _d, kbSlide: _k, mouseSize: _m, ...rest } = c; return JSON.stringify(rest); };
         let before = null;
         try { before = followedCfg && strip(JSON.parse(followedCfg)); } catch { }
         if (strip(ev.c) !== before) location.reload();
@@ -3164,6 +3354,21 @@ function updateHands(now) {
   }
 }
 
+function slideKeyboard(ty) {
+  const kb = rig.keyboard, kd = kb.userData;
+  kd.home ||= { pos: kb.position.clone(), rot: kb.rotation.y };
+  ty.slide = damp(ty.slide || 0, ty.both && CFG.kbSlide ? 1 : 0, 4, clockDt);
+  const e = ty.slide * ty.slide * (3 - 2 * ty.slide);
+  const s = PHYSICAL ? -1 : 1, half = kd.width / 2;
+  const mouseEdge = rig.mouse.position.x * s - rig.mouse.userData.size * 0.35 * CFG.mouseSize;
+  const centerA = Math.min(0, mouseEdge - half - kd.u * 0.4);
+  const overPad = centerA + half > rig.pad.center.x * s - rig.pad.w / 2;
+  const lift = overPad ? Math.max(0, rig.pad.y - kd.home.pos.y) : 0;
+  kb.position.set(THREE.MathUtils.lerp(kd.home.pos.x, centerA * s, e), kd.home.pos.y + lift * e, kd.home.pos.z);
+  kb.rotation.y = kd.home.rot * (1 - e);
+  kb.updateMatrixWorld(true);
+}
+
 function solveArms(t, now) {
   const u = rig.unit;
   if (!KEYBOARD) {
@@ -3176,8 +3381,17 @@ function solveArms(t, now) {
   }
 
   const ty = state.typing;
+  if (ty.both) {
+    const quiet = now - Math.max(ty.last, ty.rlast) > BACK_TO_MOUSE_MS && state.hands.R.held === 0;
+    if ((state.mouse.at || 0) > ty.bothAt || quiet) ty.both = false;
+  }
+  ty.two = damp(ty.two, ty.both ? 1 : 0, ty.both ? 14 : 10, clockDt);
+  slideKeyboard(ty);
+
   const idle = now - ty.last > 1500;
-  const tx = idle ? 5.5 : ty.x, trow = idle ? 3.2 : ty.row;
+  let tx = idle ? (ty.both ? 5.25 : 5.5) : ty.x;
+  const trow = idle ? (ty.both ? 3 : 3.2) : ty.row;
+  if (ty.both) tx = Math.min(tx, HAND_SPLIT - 0.3);
   ty.cx = damp(ty.cx, tx, idle ? 3 : 32, clockDt);
   ty.crow = damp(ty.crow, trow, idle ? 3 : 32, clockDt);
   const hk = state.hands.L.h;
@@ -3192,9 +3406,23 @@ function solveArms(t, now) {
   const mpos = V(p.center.x + sx * mx * p.w * 0.72, p.y, p.center.z - my * p.d * 0.62);
   rig.mouse.position.lerp(mpos, 1 - Math.exp(-25 * clockDt));
   rig.mouse.rotation.y = -sx * mx * 0.25;
+  rig.mouse.scale.setScalar(CFG.mouseSize);
   const hm = state.hands.R.h;
-  const onMouse = rig.mouse.position.clone().add(V(0, u * (0.17 - 0.035 * hm), -u * 0.02));
-  solveIK(PHYSICAL ? rig.arms.L : rig.arms.R, onMouse);
+  const msz = rig.mouse.userData.size, grow = CFG.mouseSize - 1;
+  let mouseHand = rig.mouse.position.clone().add(V(0, u * (0.17 - 0.035 * hm * (ty.both ? 0 : 1)) + msz * 0.26 * grow, -u * 0.02 - msz * 0.15 * grow));
+  if (ty.two > 0.003) {
+    const ridle = now - ty.rlast > 1500;
+    const rtx = Math.max(ridle ? 8.25 : ty.rx, HAND_SPLIT + 0.3), rtrow = ridle ? 3 : ty.rrow;
+    if (ty.two < 0.05) { ty.rcx = rtx; ty.rcrow = rtrow; }
+    ty.rcx = damp(ty.rcx, rtx, ridle ? 3 : 32, clockDt);
+    ty.rcrow = damp(ty.rcrow, rtrow, ridle ? 3 : 32, clockDt);
+    const press = ty.both ? hm : 0;
+    const rKey = keyAt(ty.rcx, ty.rcrow).add(V(0, u * 0.1, -u * 0.06));
+    const rHover = rKey.clone().add(V(0, u * 0.24, -u * 0.08));
+    const rBob = V(0, Math.sin(t * 3 + 1.7) * u * 0.015 * (1 - press), 0);
+    mouseHand.lerp(rHover.lerp(rKey, press).add(rBob), ty.two).add(V(0, u * 0.12 * Math.sin(Math.PI * ty.two), 0));
+  }
+  solveIK(PHYSICAL ? rig.arms.L : rig.arms.R, mouseHand);
 
   for (const k of rig.keyboard.userData.keys) {
     k.lit = k.held > 0 ? 1 : damp(k.lit, 0, 8, clockDt);
@@ -3204,6 +3432,9 @@ function solveArms(t, now) {
   const [btnL, btnR] = PHYSICAL ? [rig.mouse.userData.right, rig.mouse.userData.left] : [rig.mouse.userData.left, rig.mouse.userData.right];
   btnL.material.emissiveIntensity = state.click.L || state.click.M ? 0.9 : 0;
   btnR.material.emissiveIntensity = state.click.R || state.click.M ? 0.9 : 0;
+  const dip = rig.mouse.userData.size * 0.012;
+  btnL.position.y = (btnL.userData.baseY || 0) - (state.click.L || state.click.M ? dip : 0);
+  btnR.position.y = (btnR.userData.baseY || 0) - (state.click.R || state.click.M ? dip : 0);
 }
 
 let clockDt = 0;
@@ -3242,10 +3473,12 @@ function animate() {
       solveSeatedLegs();
       if (rig.minis) updateMinis(t, dt);
       lookAtMouseScreen(dt);
+      applyTracking(dt);
       updateAnim(now, dt);
       updateFace(t, dt);
       updateNotes(dt);
       updateAttachments();
+      updateAnimObjects(now);
       jiggle.update(dt, sceneH());
       updateOccluders(dt);
       shadowTick(now);
@@ -3262,7 +3495,7 @@ function animate() {
 
     const lean = 0.12 + (rig.extraLean || 0) + Math.sin(t * 1.3) * 0.015 - state.bounce * 0.05;
     const sway = KEYBOARD
-      ? Math.sin(t * 0.9) * 0.02 + (state.typing.cx - 7.5) * (PHYSICAL ? -0.004 : 0.004)
+      ? Math.sin(t * 0.9) * 0.02 + (THREE.MathUtils.lerp(state.typing.cx, 7.5, state.typing.two) - 7.5) * (PHYSICAL ? -0.004 : 0.004)
       : Math.sin(t * 0.9) * 0.03 + (state.hands.R.h - state.hands.L.h) * 0.04;
     rotateWorld(rig.bones.Spine_1, qAxis(AX, lean).multiply(qAxis(AZ, -sway)));
 
@@ -3286,12 +3519,14 @@ function animate() {
     }
 
     lookAtMouseScreen(dt);
+    applyTracking(dt);
     updateAnim(now, dt);
     updateFace(t, dt);
   }
 
   updateNotes(dt);
   updateAttachments();
+  if (rig.root) updateAnimObjects(performance.now());
   if (rig.root) jiggle.update(dt, sceneH());
   updateOccluders(dt);
   shadowTick(now);
@@ -3385,7 +3620,7 @@ loadModel()
 animate();
 
 window.mii = { THREE, scene, camera, orthoCam, rig, state, face, onEvent, CFG, onScreenFrame, renderer, frameCamera, loadUserScene, applyBase, screenMaterial, sceneScreenCtx, refreshScreenTargets, userScreens,
-  char, applyCharacter, setCharacterOn, loadCharacter, playAnim, normalizeAnim, sampleAnim, jiggle, physTargets, sceneH,
+  char, applyCharacter, setCharacterOn, loadCharacter, playAnim, normalizeAnim, sampleAnim, jiggle, physTargets, sceneH, currentAnim, animAnchorKey,
   reloadExpressions() {
     char.rev = Date.now();
     for (const e of char.expr.values()) e.src = null;

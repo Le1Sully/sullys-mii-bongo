@@ -60,6 +60,7 @@ sealed class OverlayForm : Form
         s.AreDevToolsEnabled = true;
         s.IsStatusBarEnabled = false;
         _web.CoreWebView2.WebMessageReceived += OnWebMessage;
+        _web.CoreWebView2.PermissionRequested += (_, e) => { if (e.PermissionKind == CoreWebView2PermissionKind.Camera) e.State = CoreWebView2PermissionState.Deny; };
         Navigate();
     }
 

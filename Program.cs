@@ -8,11 +8,17 @@ static class Program
 {
     public const string OpenSettingsSignal = "SullysMiiBongo_OpenSettings";
     public const string OpenEditorSignal = "SullysMiiBongo_OpenEditor";
-    public static bool StartWithEditor, StartWithPadEditor;
+    public static bool StartWithEditor, StartWithPadEditor, JustUpdated;
 
     [STAThread]
     static void Main(string[] args)
     {
+        int after = Array.IndexOf(args, "--after-update");
+        if (after >= 0 && after + 1 < args.Length && int.TryParse(args[after + 1], out var oldPid))
+        {
+            Updater.WaitForExit(oldPid);
+            JustUpdated = true;
+        }
         using var mutex = new Mutex(true, "SullysMiiBongo_SingleInstance", out bool first);
         if (!first)
         {
@@ -43,6 +49,7 @@ static class Program
 
         StartWithEditor = args.Contains("--editor");
         StartWithPadEditor = args.Contains("--manettes");
+        Updater.CleanupOld();
         AppPaths.MigrateOldSettings();
         AppPaths.RegisterNativeResolver();
 
@@ -58,6 +65,8 @@ sealed class SullysMiiBongoContext : ApplicationContext
     readonly InputHooks _hooks;
     readonly MicCapture _mic = new();
     readonly VrTracker _vr = new();
+    CamTracker? _cam;
+    readonly Updater _updater = new();
 
     WheelReader? _wheel;
     readonly GamepadReader _pad = new();
@@ -71,7 +80,8 @@ sealed class SullysMiiBongoContext : ApplicationContext
     void UpdateVrTracker()
     {
         bool shown = MiiDisplayed;
-        if (_settings.Mode == "vr" && shown) _vr.Start(); else _vr.Stop();
+        if (shown && (_settings.Mode == "vr" || SteamWanted)) _vr.Start(); else _vr.Stop();
+        if (CamWanted && shown) _cam?.Start(_settings.Camera, _settings.SuiviTete, _settings.SuiviMains); else _cam?.Stop();
         if (_wheel != null)
         {
             _wheel.RangeDegrees = _settings.WheelRange;
@@ -90,6 +100,17 @@ sealed class SullysMiiBongoContext : ApplicationContext
         (_screens.Width, _screens.Height) = cinema ? (854, 480) : (640, 360);
         if (_settings.ScreenFps > 0 && needed > 0 && shown) _screens.Start(); else _screens.Stop();
     }
+
+    bool TrackWanted => (_settings.SuiviTete || _settings.SuiviMains) && _settings.Mode != "vr";
+    bool UseSteam => _settings.SuiviSource == "steamvr";
+    bool CamWanted => TrackWanted && !UseSteam;
+    bool SteamWanted => TrackWanted && UseSteam;
+
+    string TrackState => !(_settings.SuiviTete || _settings.SuiviMains) ? (UseSteam ? "suivi désactivé" : "suivi désactivé (caméra éteinte)")
+        : _settings.Mode == "vr" ? "inactif en mode Debout : c'est le casque VR qui pilote le Mii"
+        : !MiiDisplayed ? (UseSteam ? "en pause (le Mii n'est affiché nulle part)" : "en pause (le Mii n'est affiché nulle part), caméra éteinte")
+        : UseSteam ? (_vr.Status == "casque suivi" ? "suivi actif : SteamVR (casque et manettes)" : _vr.Status.Contains("SteamVR") ? _vr.Status : "SteamVR : " + _vr.Status)
+        : _cam?.Status ?? "arrêté";
 
     string ReaderState(string mode, string status, string hint) =>
         _settings.Mode != mode ? hint : MiiDisplayed ? status : "en pause (le Mii n'est affiché nulle part)";
@@ -158,6 +179,8 @@ sealed class SullysMiiBongoContext : ApplicationContext
         if (_settings.ShowWindow) _overlay.Show();
 
         _vr.Message += _server.Publish;
+        _cam = new CamTracker(_server.Url);
+        _cam.Message += _server.Publish;
         _wheel = new WheelReader(_overlay.Handle);
         _wheel.Message += _server.Publish;
         _pad.Message += _server.Publish;
@@ -166,7 +189,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
         _server.StatusProvider = () => System.Text.Json.JsonSerializer.Serialize(new
         {
             mode = _settings.Mode, pages = _server.ClientCount,
-            volant = _wheel?.Status, volantAxes = _wheel?.RawAxes, manette = _pad.Status, casque = _vr.Status, ecrans = _screens.Status,
+            volant = _wheel?.Status, volantAxes = _wheel?.RawAxes, manette = _pad.Status, casque = _vr.Status, suivi = TrackState, cameras = _cam?.Cameras, ecrans = _screens.Status,
             fluidite = _server.Perf.Values.Select(v => System.Text.Json.JsonDocument.Parse(v).RootElement.Clone()).ToArray(),
             ecartSourisMaxMs = Interlocked.Exchange(ref _maxMouseGap, 0), dureeEtatReglagesMs = _lastPushMs,
         });
@@ -197,6 +220,9 @@ sealed class SullysMiiBongoContext : ApplicationContext
         }) { IsBackground = true, Name = "OpenEditorSignal" }.Start();
         if (Program.StartWithEditor) ui?.Post(_ => OpenEditor(), null);
         if (Program.StartWithPadEditor) ui?.Post(_ => OpenPadEditor(), null);
+        _updater.Changed += () => { try { _overlay?.BeginInvoke(PushState); } catch { } };
+        if (Program.JustUpdated)
+            _tray.ShowBalloonTip(4000, AppPaths.Name, $"Mise à jour installée : version {Updater.CurrentText}.", ToolTipIcon.Info);
     }
 
     void CheckGame(int tick)
@@ -948,12 +974,19 @@ sealed class SullysMiiBongoContext : ApplicationContext
             micDevices = _micDevicesCache.Select(d => new { id = d.Id, name = d.Name }),
             micError = _settings.MicEnabled ? _mic.Error : null,
             obsUrl = ObsUrl,
+            update = new
+            {
+                current = Updater.CurrentText, latest = _updater.Latest, status = _updater.Status, available = _updater.Available,
+                busy = _updater.Busy, notes = _updater.Notes, canInstall = Updater.CanInstall,
+            },
             status = new
             {
                 pages = _server.ClientCount,
                 wheel = ReaderState("wheel", _wheel?.Status ?? "", "choisissez l'instrument Volant"),
                 vr = ReaderState("vr", _vr.Status, "choisissez l'instrument Debout (casque VR)"),
                 pad = ReaderState("pad", _pad.Status, "choisissez l'instrument Manette"),
+                track = TrackState,
+                cameras = _cam?.Cameras ?? [],
                 screens = _screens.Status,
             },
         });
@@ -1047,6 +1080,14 @@ sealed class SullysMiiBongoContext : ApplicationContext
             case "micDevice": _settings.MicDeviceId = string.IsNullOrEmpty(S()) ? null : S(); _settings.Save(); if (_settings.MicEnabled) StartMic(); break;
             case "wheelRange": _settings.WheelRange = Math.Clamp(I(), 180, 1080); if (_wheel != null) _wheel.RangeDegrees = _settings.WheelRange; break;
             case "vrMirror": _settings.VrMirror = B(); PageSettingsChanged(); break;
+            case "trackHead": _settings.SuiviTete = B(); PageSettingsChanged(); UpdateVrTracker(); break;
+            case "trackHands": _settings.SuiviMains = B(); PageSettingsChanged(); UpdateVrTracker(); break;
+            case "camera":
+                if (S() is { } cam && cam.Length < 300) { _settings.Camera = cam; _settings.Save(); UpdateVrTracker(); }
+                break;
+            case "trackSource":
+                if (S() is "cam" or "steamvr") { _settings.SuiviSource = S()!; _settings.Save(); UpdateVrTracker(); }
+                break;
             case "padModel":
                 if (S() is { } pm && (Allowed("8bitdo", "xbox", "xbox25").Contains(pm)
                     || pm.StartsWith("perso:") && File.Exists(Path.Combine(AppPaths.ManettesDir, Path.GetFileName(pm[6..])))))
@@ -1071,6 +1112,10 @@ sealed class SullysMiiBongoContext : ApplicationContext
             case "showObjects": _settings.ShowObjects = B(); PageSettingsChanged(); UpdateVrTracker(); break;
             case "padMinis": _settings.PadMinis = B(); PageSettingsChanged(); break;
             case "calmGames": _settings.TeteCalmeJeux = B(); break;
+            case "kbSlide": _settings.ClavierGlisse = B(); _settings.Save(); _server.Publish(_server.ConfigMessage()); break;
+            case "mouseSize":
+                if (double.IsFinite(D())) { _settings.TailleSouris = Math.Round(Math.Clamp(D(), 0.6, 3), 2); _settings.Save(); _server.Publish(_server.ConfigMessage()); }
+                break;
             case "gameAdd":
                 if (S() is { Length: > 0 and < 120 } ga && !_settings.Jeux.Contains(ga, StringComparer.OrdinalIgnoreCase))
                     _settings.Jeux = _settings.Jeux.Append(ga).ToList();
@@ -1263,9 +1308,35 @@ sealed class SullysMiiBongoContext : ApplicationContext
             case "reload": PageSettingsChanged(); break;
             case "refresh": RefreshSlowInfo(); ReloadPersoItems(); _padsCache = null; break;
             case "recalibrate": _wheel?.Recalibrate(); break;
-            case "vrRecenter": _server.Publish("{\"t\":\"vrc\"}"); break;
+            case "vrRecenter": _server.Publish("{\"t\":\"vrc\"}"); _cam?.Recenter(); break;
             case "quit": ExitThread(); break;
+            case "updateCheck": _ = _updater.CheckAsync(); break;
+            case "updateInstall": _ = InstallUpdate(); break;
+            case "updatePage":
+                var page = _updater.PageUrl ?? $"https://github.com/{Updater.Repo}/releases/latest";
+                if (page.StartsWith("https://github.com/", StringComparison.OrdinalIgnoreCase))
+                    Process.Start(new ProcessStartInfo(page) { UseShellExecute = true });
+                break;
         }
+    }
+
+    async Task InstallUpdate()
+    {
+        if (!await _updater.InstallAsync()) return;
+        try
+        {
+            Process.Start(new ProcessStartInfo(Environment.ProcessPath!, $"--after-update {Environment.ProcessId}")
+            {
+                UseShellExecute = false,
+                WorkingDirectory = Path.GetDirectoryName(Environment.ProcessPath!)!,
+            });
+        }
+        catch (Exception ex)
+        {
+            _tray.ShowBalloonTip(5000, AppPaths.Name, "Mise à jour installée, mais le redémarrage a échoué : relancez l'appli. (" + ex.Message + ")", ToolTipIcon.Warning);
+            return;
+        }
+        ExitThread();
     }
 
     void PageSettingsChanged()
@@ -1361,6 +1432,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
         _hooks.Dispose();
         _mic.Dispose();
         _vr.Dispose();
+        _cam?.Dispose();
         _wheel?.Dispose();
         _pad.Dispose();
         _screens.Dispose();
