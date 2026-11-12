@@ -70,7 +70,7 @@ export async function startCharEditor(mii) {
   const { camera, rig, renderer, char } = mii;
   const host = window.chrome?.webview;
   const canvas = renderer.domElement;
-  const H = rig.sceneUnit || rig.modelBox.getSize(V()).y || 1;
+  const H = mii.sceneH();
   POINT_DEFAULTS.tete.pos = [0, Math.round(((rig.headTop || 0.2) + POINT_DEFAULTS.tete.taille * 0.35) * 1000) / 1000, 0];
 
   let data = { format: 'sullys-mii-bongo-personnage', version: 1, items: [] };
@@ -773,7 +773,7 @@ export async function startCharEditor(mii) {
   const setStatus = t => { statusText = t; const s = top.querySelector('.st'); if (s) s.textContent = t; };
   function renderTop() {
     top.innerHTML = `${pageTabs('perso')}
-      <span class="tabs"><button data-tab="apparence" class="${tab === 'apparence' ? 'on' : ''}">🎭 Apparence</button><button data-tab="animations" class="${tab === 'animations' ? 'on' : ''}">👋 Animations</button><button data-tab="physique" class="${tab === 'physique' ? 'on' : ''}">🎈 Physique</button></span>
+      <span class="tabs"><button data-tab="apparence" class="${tab === 'apparence' ? 'on' : ''}">🎭 Apparence</button><button data-tab="animations" class="${tab === 'animations' ? 'on' : ''}">👋 Animations</button><button data-tab="physique" class="${tab === 'physique' ? 'on' : ''}">🎈 Physique</button><button data-os="1" title="Choisir les os du modèle 3D (pour les modèles qui ne sont pas des Mii)">🦴 Squelette</button></span>
       <button data-v="tete">🙂 Tête</button><button data-v="buste">👕 Buste</button><button data-v="corps">🧍 Corps entier</button>
       <button data-a="all" class="${char.showAll ? 'on' : ''}" title="Montrer tous les ajouts en même temps (aperçu, ici seulement)">👁 Tout montrer</button>
       <span class="st">${esc(statusText)}</span>`;
@@ -781,6 +781,14 @@ export async function startCharEditor(mii) {
   top.addEventListener('click', e => {
     const b = e.target.closest('button');
     if (!b) return;
+    if (b.dataset.os) {
+      const panels = [top, left, right, help, timeline];
+      const was = panels.map(p => p.style.display);
+      stopPick();
+      for (const p of panels) p.style.display = 'none';
+      import('./os-editor.js').then(m => m.startBoneEditor(mii, { onClose: () => panels.forEach((p, i) => { p.style.display = was[i]; }) }));
+      return;
+    }
     if (b.dataset.v) goView(b.dataset.v);
     if (b.dataset.tab === 'physique' && tab !== 'physique') {
       if (capturing) cancelCapture();

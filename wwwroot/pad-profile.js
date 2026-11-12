@@ -401,7 +401,7 @@ export function makeControls(built) {
       controls.push(ctl);
       if (info.stick === 'L') ls = ctl; else rs = ctl;
     } else if (info.trigger) {
-      triggers[info.trigger] = { apply: v => { p.obj.rotation.x = -v * 0.3; for (const m of p.mats) m.emissiveIntensity = v * (m.userData.glow ?? 0.5); }, part: p };
+      triggers[info.trigger] = { apply: v => { p.obj.rotation.x = -v * 0.3; for (const m of p.mats) m.emissiveIntensity = v * (m.userData.glow ?? 0.5); }, part: p, obj: p.obj };
     } else if (info.dpad) {
       dpadPart = p;
       for (const [name, [dx, dy]] of Object.entries(DPAD_DIRS)) {

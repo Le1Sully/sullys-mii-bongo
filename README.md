@@ -87,7 +87,8 @@ en hauteur, un peu derrière ou sur le côté de ce qui doit avoir une ombre. Ch
 plusieurs fois : une ou deux suffisent.
 
 **🖱️ Tapis de souris** (élément de base, mode clavier + souris) : matière, couleur, motif, largeur, profondeur, position,
-rotation, ou masqué. La souris du Mii garde sa **zone de mouvement d'origine** : seul le tapis change.
+rotation, ou masqué. Il reste toujours **posé sur la table**, même quand elle change de hauteur (autre personnage,
+chaise). La souris du Mii garde sa **zone de mouvement d'origine** : seul le tapis change.
 
 **Placer** :
 
@@ -134,7 +135,8 @@ affichée en entier (poster, tableau, logo) ; sur les autres formes, elle se ré
 En haut : *Annuler*, *Rétablir*, **🧲 Aimant** (pas de 0,05 et angles de 15°), *Masquer le Mii* (pour placer des objets
 derrière lui), *Tout voir*.
 
-- Unités : **1 = la hauteur du Mii** (la scène suit sa taille si vous changez de Mii). La hauteur 0 est le sol.
+- Unités : **1 = la hauteur du Mii debout**. La hauteur 0 est le sol. La scène ne bouge pas quand vous changez de
+  personnage, de cadrage (buste ou corps entier) ou de décor (chaise, cinéma) : vos objets restent au même endroit.
 - Chaque modification est **enregistrée toute seule** (`%APPDATA%\Sully's Mii-Bongo\scene.json`) et apparaît
   aussitôt dans la fenêtre du Mii et dans OBS, sans recharger.
 - Vos objets s'affichent dans toutes les vues (avec ou sans décor). Pour les masquer : réglages → *Afficher mes objets*.
@@ -242,6 +244,24 @@ souris** dans sa fenêtre (jeux de tir, caméra à la souris…). Pour un jeu en
 Réglages → *Affichage* → **Pendant les jeux** → choisissez-le dans la liste des programmes ouverts → *➕ Ajouter*.
 La carte indique aussi le jeu reconnu en ce moment. L'interrupteur *Tête calme* (et le raccourci *Tête calme pendant
 les jeux : oui / non*) désactive tout ça.
+
+### Jeux qui cachent le curseur (Minecraft, FPS, Roblox…)
+
+Beaucoup de jeux à la première ou à la troisième personne **cachent le curseur et le ramènent au centre** à chaque
+image (ou le bloquent sur place) pour tourner la caméra. Le curseur ne bouge alors presque plus, même quand vous
+bougez la souris. L'appli s'en rend compte toute seule, sans liste de jeux : le curseur est caché ou bloqué, et il
+reste immobile alors que la souris envoie des mouvements.
+
+Dans ce cas, le Mii suit les **mouvements de la souris** au lieu de la position du curseur :
+
+- sa souris 3D glisse sur le tapis dans le sens de vos mouvements, sans sortir du tapis, puis revient doucement au
+  centre quand vous arrêtez ;
+- avec *Tête calme* (réglage par défaut), ces jeux comptent comme des jeux : la tête bouge à peine et revient au
+  centre. Sans *Tête calme*, la tête suit la souris du Mii ;
+- en mode clavier à deux mains, la main revient sur la souris dès que vous la bougez, comme sur le bureau.
+
+Dès que le jeu montre de nouveau le curseur (menu, inventaire, pause, Alt+Tab), le Mii reprend la position du curseur
+comme d'habitude. Sur le bureau, rien ne change.
 
 ## Vue orbitale
 
@@ -434,7 +454,8 @@ Les palettes s'allument quand vous les tirez.
 - Cadrage *Corps entier* pour voir le baquet, les pieds et le pédalier.
 
 **Partout**
-- **Micro** → la bouche s'ouvre selon le volume de votre voix (4 niveaux), la tête hoche un peu.
+- **Micro** → la bouche s'ouvre selon le volume de votre voix (4 niveaux), la tête hoche un peu. Sur un autre
+  modèle 3D, c'est son os de mâchoire qui s'ouvre (voir *Autres personnages 3D*).
 - Le Mii **cligne des yeux** toutes les 2 à 6 secondes (parfois deux fois de suite).
 - **Molette** → petit hochement de tête. **Souris** → la tête suit le curseur.
 
@@ -667,8 +688,68 @@ Les raccourcis marchent même quand un jeu est au premier plan et ne bloquent pa
 ## Ajouter d'autres Mii
 
 Déposez vos modèles dans le dossier **`Mii`** (bouton 📁 de la section Personnage), puis *↻ Actualiser les listes*.
-Ils doivent avoir un squelette de Mii (os `Arm_1_L/R`, `Arm_2_L/R`, `Wrist_L/R`, `Head`, `Spine_1`) : un `.fbx` ou un
-`.dae` exporté avec ces os marche comme un `.glb`.
+Un modèle avec un squelette de Mii (os `Arm_1_L/R`, `Arm_2_L/R`, `Wrist_L/R`, `Head`, `Spine_1`, comme ceux exportés
+depuis Miitopia / Tomodachi) est reconnu tout seul : un `.fbx` ou un `.dae` exporté avec ces os marche comme un `.glb`.
+
+## Autres personnages 3D (Mixamo, VRoid, Blender…)
+
+Le **Mii reste le personnage conseillé** : c'est pour lui que tout est réglé (visage animé, proportions, objets
+d'exemple). Mais n'importe quel modèle 3D **riggé** (avec un squelette) peut aussi prendre sa place : déposez-le dans le
+dossier `Mii` et choisissez-le dans *Réglages → Personnage*. Il tape au clavier, joue des bongos, tient la manette ou le
+volant, porte le casque VR, suit la webcam / SteamVR, joue les animations et porte les objets accrochés, comme le Mii.
+
+**Os reconnus tout seuls** : l'appli lit les noms des os des conventions courantes et devine le reste par la forme du
+squelette :
+
+| Origine | Exemple de noms |
+|---|---|
+| Mixamo | `mixamorig:LeftArm`, `mixamorig:LeftForeArm`, `mixamorig:LeftHand`, `mixamorig:Head` |
+| VRoid / VRM | `J_Bip_L_UpperArm`, `J_Bip_L_LowerArm`, `J_Bip_L_Hand`, `J_Bip_C_Head` |
+| Blender (Rigify, métarig) | `upper_arm.L`, `forearm.L`, `hand.L` (les os `DEF-` sont préférés) |
+| Unreal / Unity | `upperarm_l`, `lowerarm_l`, `hand_l`, `thigh_l`, `calf_l` · `LeftUpperArm`, `LeftHand` |
+| 3ds Max (Biped), Character Creator | `Bip01 L UpperArm` · `CC_Base_L_Upperarm` |
+
+Le sens du modèle est deviné aussi (un modèle VRoid, qui regarde vers l'arrière, est retourné tout seul).
+
+**Vérifier ou corriger les os : éditeur de personnage → 🦴 Squelette.** Pour chaque rôle (tête, bas du dos, poitrine,
+bassin, mâchoire, bouche, bras, avant-bras, mains, cuisses, jambes, pieds), choisissez l'os dans la liste, ou cliquez 🎯 puis sur le
+modèle pour prendre l'os le plus proche. « Gauche » veut dire la gauche **du personnage**. Les points de couleur montrent
+le résultat sur le modèle (bleu = gauche, orange = droite, jaune = tête et dos).
+- **↩ Le modèle regarde vers l'arrière** : le tourne de 180° si l'appli s'est trompée de sens.
+- **💾 Enregistrer et recharger** : le réglage est gardé dans `Mii\<nom du modèle>.os.json` (à garder avec le modèle si
+  vous le partagez), puis la fenêtre et OBS se rechargent.
+- **✨ Détection auto** remet ce que l'appli avait reconnu, **↺ Oublier le réglage** met le fichier `.os.json` à la
+  corbeille.
+
+Si des os obligatoires manquent, le personnage ne bouge pas (message « squelette à régler ») et l'éditeur de personnage
+s'ouvre directement sur 🦴 Squelette. Les jambes ne servent que pour la chaise, le volant et le cinéma.
+
+**👄 Mâchoire, 👄 Bouche (haut) et 👄 Bouche (bas) (facultatifs)** : si le modèle a ces os, ils sont reconnus tout seuls
+et **la bouche bouge quand vous parlez au micro**, plus ou moins selon le volume de votre voix :
+- la mâchoire (`Jaw`, `mixamorig:Jaw`, `CC_Base_JawRoot`…) et le bas de la bouche (`LowerMouth`, `mouth_lower`,
+  `lip_lower`, `LowerLip`, `lowerJaw`…) s'ouvrent vers le bas ;
+- le haut de la bouche (`UpperMouth`, `mouth_upper`, `lip_upper`, `UpperLip`, `upperJaw`…) se soulève un peu.
+
+Un seul de ces os suffit. Si le bas de la bouche est accroché à la mâchoire, seule la mâchoire s'ouvre (la bouche ne
+s'ouvre pas deux fois plus). Les coins des lèvres (os gauche / droite) ne sont pas utilisés. Choisissez *— aucun —* dans
+🦴 Squelette pour garder la bouche fermée.
+
+Bon à savoir :
+- Le **visage animé** (bouches dessinées qui parlent, clignement des yeux, expressions) ne marche que sur les Mii. Les
+  autres modèles parlent seulement avec leurs os de mâchoire ou de bouche, s'ils en ont.
+- Les objets et animations faits pour le Mii (grosse tête, petits bras) peuvent demander d'être replacés : réglez-les
+  dans l'éditeur de personnage, avec *Seulement ce Mii* si besoin.
+- Le modèle est mis à l'échelle de la scène du Mii : il est agrandi ou rapetissé pour que ses mains arrivent sur la
+  même table que le Mii. La table, le tapis de souris, les écrans du décor et vos objets restent donc à la même place
+  qu'avec le Mii. Un modèle en centimètres (Mixamo) marche tel quel.
+- Plus ses bras sont longs par rapport à sa taille (Minecraft, personnage réaliste), plus la table arrive bas sur son
+  corps, et ses coudes restent le long du corps : la pose des bras est plus naturelle. Le Mii garde exactement sa pose.
+- Le bureau est à la taille du personnage : la table, le clavier, le tapis et la souris sont plus petits que ceux du
+  Mii (taille réglée sur ses bras), le clavier et le tapis sont rapprochés devant lui, et la table est juste assez
+  large pour eux. Vos
+  réglages de la table et du tapis (largeur, profondeur, place, matière) s'appliquent par-dessus, et vos objets ne
+  bougent pas : un objet posé au bord d'une table plus petite peut donc dépasser.
+- Un `.vrm` est un `.glb` : renommez-le en `.glb`.
 
 ## Formats 3D acceptés
 
@@ -702,8 +783,8 @@ décompresser. Les modèles sont remis à la bonne taille automatiquement (objet
 Un modèle qui a besoin d'autres fichiers (`.obj` avec son `.mtl`, `.fbx` / `.dae` avec leurs textures, `.gltf` avec son
 `.bin`) est rangé avec eux dans un **.zip** : l'appli lit le modèle, retrouve les fichiers qu'il utilise (à côté, dans un
 sous-dossier ou dans un dossier `Textures` voisin) et les emporte.
-Le script attend un squelette de type Mii (os `Arm_1_L/R`, `Arm_2_L/R`, `Wrist_L/R`, `Head`, `Spine_1`),
-comme les modèles exportés depuis Miitopia / Tomodachi.
+Pour le personnage, le plus simple est un Mii (squelette de Mii, comme les modèles exportés depuis Miitopia / Tomodachi) ;
+les autres modèles riggés marchent aussi (voir *Autres personnages 3D*).
 
 ## Confidentialité
 

@@ -31,7 +31,7 @@ static class GameDetector
     static uint _pid;
     static string _name = "";
 
-    public static string? Detect(IReadOnlyCollection<string> games)
+    public static string? Detect(IReadOnlyCollection<string> games, bool captured = false)
     {
         var h = GetForegroundWindow();
         if (h == IntPtr.Zero || IsIconic(h)) return null;
@@ -44,7 +44,7 @@ static class GameDetector
         if (name.Length == 0) return null;
         if (games.Any(g => string.Equals(g, name, StringComparison.OrdinalIgnoreCase))) return name;
         if (NeverGames.Contains(name)) return null;
-        return Fullscreen(h) || CursorClipped() ? name : null;
+        return captured || Fullscreen(h) || CursorClipped() ? name : null;
     }
 
     public static string[] OpenApps() =>

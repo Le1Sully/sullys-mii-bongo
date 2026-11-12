@@ -6,7 +6,8 @@ qui joue au clavier, à la manette ou aux bongos, entouré d'un décor fait de f
 
 ## Repère et unités
 
-- **1 unité = la hauteur du Mii.** Le Mii est petit et a une grosse tête : imagine qu'il mesure environ 1 m.
+- **1 unité = la hauteur du Mii debout.** Le Mii est petit et a une grosse tête : imagine qu'il mesure environ 1 m.
+  Cette unité ne change pas avec le personnage choisi ni avec la vue.
 - **Origine (0, 0, 0)** : au sol, sous les pieds du Mii. **y** = hauteur (0 = le sol).
 - **x** : `+x` = à **gauche** du Mii (à droite de l'image quand on le regarde de face), `-x` = à sa **droite**.
 - **z** : le Mii **regarde vers +z**. `+z` = devant lui (son bureau, ses écrans), `-z` = derrière lui.

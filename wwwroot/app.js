@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from './vendor/three/examples/jsm/loaders/GLTFLoader.js';
 import { loadModel3D } from './model-loader.js';
+import { UPPER, LEGS, osFileName, detectBones, applyBones, headBoxOf } from './squelette.js';
 import { Jiggle, meshesOf, findMesh } from './physics.js';
 import { mergeGeometries } from './vendor/three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildController, makeControls, PAD_WIDTH } from './pad-profile.js';
@@ -347,10 +348,11 @@ function updateNotes(dt) {
   }
 }
 
-const rig = { root: null, bones: {}, rest: new Map(), arms: {}, drums: {}, unit: 1, bodyBase: new THREE.Vector3(), props: [] };
+const MII_REACH = 0.185, MII_DESK = 0.275, MII_SHOULDER_Z = 0.024, MII_DROP = 0.72, MII_SHOULDER_W = 0.12;
+const rig = { root: null, bones: {}, rest: new Map(), arms: {}, drums: {}, unit: 1, sceneUnit: 1, charUnit: 1, deskDrop: MII_DROP, bodyBase: new THREE.Vector3(), props: [] };
 
 const state = {
-  mouse: { x: 0.5, y: 0.5 }, look: { x: 0, y: 0 }, game: false, nudge: { x: 0, y: 0 },
+  mouse: { x: 0.5, y: 0.5 }, look: { x: 0, y: 0 }, game: false, nudge: { x: 0, y: 0 }, rel: { on: false, x: 0, y: 0 },
   hands: {
     L: { held: 0, downUntil: 0, h: 0, wasDown: false },
     R: { held: 0, downUntil: 0, h: 0, wasDown: false },
@@ -372,7 +374,7 @@ function findBone(name) {
   return found;
 }
 
-function addProp(obj, frame = true) { scene.add(obj); if (frame) rig.props.push(obj); return obj; }
+function addProp(obj, frame = true) { scene.add(obj); if (frame === 'full') obj.userData.fullOnly = true; if (frame === true || (frame === 'full' && CFG.view === 'full')) rig.props.push(obj); return obj; }
 
 async function fetchSceneData() {
   try {
@@ -385,7 +387,25 @@ async function loadModel() {
   rig.sceneData = await fetchSceneData();
   status(`Chargement de ${CFG.model}…`, 0);
   const gltf = await loadModel3D('./mii/' + encodeURIComponent(CFG.model));
-  const root = gltf.scene;
+  let root = gltf.scene;
+  let osFile = null;
+  try {
+    const r = await fetch('./mii/' + encodeURIComponent(osFileName(CFG.model)), { cache: 'no-store' });
+    if (r.ok) osFile = await r.json();
+  } catch { }
+  const native = UPPER.every(n => { let f = false; root.traverse(o => { if (o.name === n) f = true; }); return f; });
+  rig.custom = !!osFile || !native;
+  if (rig.custom) {
+    const auto = detectBones(root);
+    const os = { ...auto.os, ...(osFile?.os || {}) };
+    const demiTour = osFile && 'demiTour' in osFile ? !!osFile.demiTour : auto.demiTour;
+    rig.squelette = { os, demiTour, auto, fichier: !!osFile, problemes: applyBones(root, os) };
+    const inner = root;
+    root = new THREE.Group();
+    root.name = 'Personnage';
+    root.add(inner);
+    if (demiTour) inner.quaternion.premultiply(new THREE.Quaternion().setFromAxisAngle(V(0, 1, 0), Math.PI));
+  }
   rig.root = root;
   scene.add(root);
   root.traverse(o => {
@@ -406,7 +426,38 @@ async function loadModel() {
   root.position.z -= c.z;
   root.position.y -= box.min.y;
   root.updateMatrixWorld(true);
-  if (CFG.decor && CFG.decos.has('chair') && !VR && !WHEEL && !CINEMA) {
+
+  const chair = CFG.decor && CFG.decos.has('chair') && !VR && !WHEEL && !CINEMA;
+  const names = [...UPPER, ...(WHEEL || CINEMA_SEATED || chair ? LEGS : [])];
+  for (const n of names) rig.bones[n] = findBone(n);
+  const missing = names.filter(n => !rig.bones[n]);
+  if (missing.length) {
+    if (!rig.custom) { status('Os manquants : ' + missing.join(', '), 0); throw new Error('squelette non reconnu'); }
+    rig.modelBox = new THREE.Box3().setFromObject(root);
+    rig.boneFail = missing;
+    status(`Os à régler pour ${CFG.model} : ouvrez l'éditeur de personnage → 🦴 Squelette`, 0);
+    if (CFG.perso) return;
+    throw new Error('squelette à régler (éditeur de personnage → 🦴 Squelette)');
+  }
+
+  {
+    const sL = worldPos(rig.bones.Arm_1_L), sR = worldPos(rig.bones.Arm_1_R);
+    const armReach = sL.distanceTo(worldPos(rig.bones.Arm_2_L)) + worldPos(rig.bones.Arm_2_L).distanceTo(worldPos(rig.bones.Wrist_L));
+    const k = THREE.MathUtils.clamp(MII_DESK / Math.max((sL.y + sR.y) / 2 - armReach * MII_DROP, 0.05), 0.2, 2);
+    rig.fitted = rig.custom || Math.abs(k - 1) > 0.15;
+    if (rig.fitted) {
+      const height = new THREE.Box3().setFromObject(root).getSize(V()).y || 1;
+      rig.deskDrop = MII_DROP + 0.1 * THREE.MathUtils.clamp((armReach / height - 0.2) / 0.1, 0, 1);
+      const k = THREE.MathUtils.clamp(MII_DESK / Math.max((sL.y + sR.y) / 2 - armReach * rig.deskDrop, 0.05), 0.2, 2);
+      root.scale.multiplyScalar(k);
+      root.position.multiplyScalar(k);
+      root.position.z += MII_SHOULDER_Z - k * (sL.z + sR.z) / 2;
+      root.updateMatrixWorld(true);
+      rig.charUnit = k;
+    }
+  }
+
+  if (chair) {
     const hip = worldPos(findBone('Leg_1_L')), knee = worldPos(findBone('Leg_2_L')), ankle = worldPos(findBone('Ankle_L'));
     const shin = knee.distanceTo(ankle);
     rig.floorAnkleY = ankle.y;
@@ -418,18 +469,21 @@ async function loadModel() {
   rig.modelBox = new THREE.Box3().setFromObject(root);
   if (rig.seated) rig.modelBox.min.y = 0;
 
-  const names = ['Spine_1', 'Head', 'Arm_1_L', 'Arm_2_L', 'Wrist_L', 'Arm_1_R', 'Arm_2_R', 'Wrist_R'];
-  for (const n of names) rig.bones[n] = findBone(n);
-  const missing = names.filter(n => !rig.bones[n]);
-  if (missing.length) { status('Os manquants : ' + missing.join(', '), 0); throw new Error('squelette non reconnu'); }
-
   root.traverse(o => { if (o.isBone) rig.rest.set(o, o.quaternion.clone()); });
+  rig.jaw = rig.custom ? setupJaw() : null;
 
   rig.headRestWorldQ = rig.bones.Head.getWorldQuaternion(new THREE.Quaternion());
   let faceBox = null;
   root.traverse(o => { if (o.isMesh && (o.name === 'Faceline' || o.parent?.name === 'Faceline')) faceBox = new THREE.Box3().setFromObject(o); });
+  if (!faceBox && rig.custom) {
+    const hb = headBoxOf(root, rig.bones.Head);
+    if (hb) rig.headBox = faceBox = hb;
+  }
+  rig.mouths = rig.custom ? setupMouths() : null;
   const eyeWorld = faceBox
-    ? V(0, faceBox.min.y + (faceBox.max.y - faceBox.min.y) * 0.66, faceBox.max.z - 0.02)
+    ? rig.headBox
+      ? V((faceBox.min.x + faceBox.max.x) / 2, faceBox.min.y + (faceBox.max.y - faceBox.min.y) * 0.58, faceBox.max.z - (faceBox.max.y - faceBox.min.y) * 0.08)
+      : V(0, faceBox.min.y + (faceBox.max.y - faceBox.min.y) * 0.66, faceBox.max.z - 0.02)
     : worldPos(rig.bones.Head).add(V(0, 0.2, 0.15));
   rig.eyeLocal = rig.bones.Head.worldToLocal(eyeWorld);
 
@@ -471,8 +525,8 @@ async function loadModel() {
   const [left, right] = armA.shoulder.x < armB.shoulder.x ? [armA, armB] : [armB, armA];
   rig.arms = { L: left, R: right };
   const reach = rig.unit = left.lenA + left.lenB;
-  left.pole = V(-1, -0.6, -0.3).normalize();
-  right.pole = V(1, -0.6, -0.3).normalize();
+  left.pole = (rig.fitted ? V(-0.4, -1, -0.2) : V(-1, -0.6, -0.3)).normalize();
+  right.pole = (rig.fitted ? V(0.4, -1, -0.2) : V(1, -0.6, -0.3)).normalize();
 
   if (rig.seated) {
     const chain = (a, b, c, side) => {
@@ -549,8 +603,16 @@ function buildDrums(left, right, reach) {
   rig.focusBottom = L.y - reach * 0.42;
 }
 
+const sceneReach = reach => rig.fitted ? MII_REACH : reach;
+const deskWidth = (left, right, reach) => {
+  const sw = Math.abs(right.shoulder.x - left.shoulder.x);
+  return rig.fitted ? Math.max(Math.min(MII_REACH * 3.4 * sw / MII_SHOULDER_W, reach * 2.6), reach * 2.3) : reach * 3.4;
+};
+const sceneTop = () => rig.fitted ? (rig.cinema ? 0.808 : rig.seated ? 0.892 : 1) : rig.modelBox.max.y;
+
 function buildDesk(left, right, reach) {
-  const deskY = rig.cinema ? Math.max(left.shoulder.y - reach * 0.72, rig.hipY + reach * 0.45) : left.shoulder.y - reach * 0.72;
+  const fu = rig.fitted ? reach * 0.85 : reach;
+  const deskY = rig.cinema ? Math.max(left.shoulder.y - reach * rig.deskDrop, rig.hipY + reach * 0.45) : left.shoulder.y - reach * rig.deskDrop;
   const zBody = left.shoulder.z;
 
   if (rig.cinema) {
@@ -564,35 +626,36 @@ function buildDesk(left, right, reach) {
     const post = addProp(new THREE.Mesh(new THREE.BoxGeometry(reach * 0.08, deskY - rig.hipY, reach * 0.08), metal));
     post.position.set(armX, (deskY + rig.hipY) / 2 - thick, tray.position.z);
   } else {
-  const deskW = reach * 3.4, deskD = reach * 1.5, thick = reach * 0.12;
-  const desk = addProp(new THREE.Mesh(new THREE.BoxGeometry(deskW, thick, deskD), mat(0xc98a4b, { roughness: 0.7 })), CFG.view === 'full');
-  desk.position.set(0, deskY - thick / 2, zBody + reach * 0.35 + deskD / 2);
+  const tu = fu;
+  const deskW = deskWidth(left, right, fu), deskD = tu * 1.5, thick = tu * 0.12;
+  const desk = addProp(new THREE.Mesh(new THREE.BoxGeometry(deskW, thick, deskD), mat(0xc98a4b, { roughness: 0.7 })), 'full');
+  desk.position.set(0, deskY - thick / 2, zBody + tu * 0.35 + deskD / 2);
   const legMat = mat(0x8a5a2b, { roughness: 0.7 });
   const legs = [];
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const leg = addProp(new THREE.Mesh(new THREE.BoxGeometry(reach * 0.12, deskY - thick, reach * 0.12), legMat), CFG.view === 'full');
-    leg.position.set(sx * (deskW / 2 - reach * 0.12), (deskY - thick) / 2, desk.position.z + sz * (deskD / 2 - reach * 0.12));
+    const leg = addProp(new THREE.Mesh(new THREE.BoxGeometry(tu * 0.12, deskY - thick, tu * 0.12), legMat), 'full');
+    leg.position.set(sx * (deskW / 2 - tu * 0.12), (deskY - thick) / 2, desk.position.z + sz * (deskD / 2 - tu * 0.12));
     leg.userData.corner = [sx, sz];
     legs.push(leg);
   }
-  rig.table = { desk, legs, legMat, deskW, deskD, thick, deskY, back: zBody + reach * 0.35, leg: reach * 0.12 };
+  rig.table = { desk, legs, legMat, deskW, deskD, thick, deskY, back: zBody + tu * 0.35, leg: tu * 0.12 };
   }
 
-  const kbW = reach * 1.15;
+  const kbW = fu * 1.15;
   const kb = addProp(makeKeyboard(kbW));
-  kb.position.set((left.shoulder.x - reach * 0.22) * (PHYSICAL ? -1 : 1), deskY, zBody + reach * 0.62);
+  kb.position.set((rig.fitted ? -fu * 0.5 : left.shoulder.x - reach * 0.22) * (PHYSICAL ? -1 : 1), deskY, zBody + reach * 0.62);
   kb.rotation.y = PHYSICAL ? -0.12 : 0.12;
   kb.updateMatrixWorld(true);
   rig.keyboard = kb;
 
-  const padW = reach * 0.95, padD = reach * 0.78;
-  const pad = addProp(new THREE.Mesh(new THREE.BoxGeometry(padW, reach * 0.015, padD), mat(0x6a2a8a, { roughness: 0.9 })));
+  const padW = fu * 0.95, padD = fu * 0.78;
+  const pad = addProp(new THREE.Mesh(new THREE.BoxGeometry(padW, fu * 0.015, padD), mat(0x6a2a8a, { roughness: 0.9 })));
   if (rig.table) rig.table.pad = pad;
-  pad.position.set((right.shoulder.x + reach * 0.5) * (PHYSICAL ? -1 : 1), deskY + reach * 0.008, zBody + reach * 0.6);
-  const mouse = addProp(makeMouse(reach * 0.2));
-  mouse.position.copy(pad.position).setY(deskY + reach * 0.015);
-  rig.pad = { center: pad.position.clone(), w: padW, d: padD, y: deskY + reach * 0.015 };
-  if (rig.table) rig.table.padBase = { pos: pad.position.clone(), w: padW, d: padD, thick: reach * 0.015 };
+  pad.position.set((rig.fitted ? fu * 0.6 : right.shoulder.x + reach * 0.5) * (PHYSICAL ? -1 : 1), deskY + fu * 0.008, zBody + reach * 0.6);
+  const mouse = addProp(makeMouse(fu * 0.2));
+  mouse.position.copy(pad.position).setY(deskY + fu * 0.015);
+  rig.pad = { center: pad.position.clone(), w: padW, d: padD, y: deskY + fu * 0.015 };
+  if (rig.table) rig.table.padBase = { pos: pad.position.clone(), w: padW, d: padD, thick: fu * 0.015 };
   rig.mouse = mouse;
 
   rig.focusBottom = deskY - reach * 0.25;
@@ -604,7 +667,7 @@ function applyPad(base) {
   const T = rig.table, P = T?.pad, B = T?.padBase;
   if (!P || !B) return;
   const p = base?.pad || {};
-  const us = rig.sceneUnit ||= rig.modelBox.getSize(V()).y || 1;
+  const us = rig.sceneUnit;
   const w = B.w * (+p.w || 1), d = B.d * (+p.d || 1);
   const color = p.color || base?.table?.padColor || '#6a2a8a', tex = p.tex || 'uni', texScale = +p.texScale || 1;
   const key = JSON.stringify([w, d, tex, color, texScale]);
@@ -616,7 +679,7 @@ function applyPad(base) {
     if (P.material !== P.userData.baseMat) P.material.dispose();
     P.material = tex === 'uni' && texScale === 1 ? (P.userData.baseMat.color.set(color), P.userData.baseMat) : makeMaterial({ tex, color, texScale });
   }
-  if (p.pos) P.position.set(p.pos[0] * us, p.pos[1] * us, p.pos[2] * us); else P.position.copy(B.pos);
+  if (p.pos) P.position.set(p.pos[0] * us, B.pos.y, p.pos[2] * us); else P.position.copy(B.pos);
   P.rotation.set(...(p.rot || [0, 0, 0]).map(THREE.MathUtils.degToRad), 'YXZ');
   P.visible = !p.hidden;
 }
@@ -640,7 +703,7 @@ setInterval(updateShadowFlags, 1200);
 function applyTable(t) {
   const T = rig.table; if (!T) return;
   t = { tex: 'uni', color: '#c98a4b', texScale: 1, legColor: '#8a5a2b', padColor: '#6a2a8a', width: 1, depth: 1, hidden: false, ...(t || {}) };
-  const us = rig.sceneUnit ||= rig.modelBox.getSize(V()).y || 1;
+  const us = rig.sceneUnit;
   const w = T.deskW * t.width, d = T.deskD * t.depth;
   const key = JSON.stringify([t.tex, t.color, t.texScale, t.width, t.depth]);
   if (T.key !== key) {
@@ -762,13 +825,14 @@ function buildGamepad(left, right, reach) {
   const deskY = left.shoulder.y - u * 0.75;
   const zBody = left.shoulder.z;
 
-  const deskW = u * 3.4, deskD = u * 1.6, thick = u * 0.12;
-  const desk = addProp(new THREE.Mesh(new THREE.BoxGeometry(deskW, thick, deskD), mat(0xc98a4b, { roughness: 0.7 })), CFG.view === 'full');
-  desk.position.set(0, deskY - thick / 2, zBody + u * 0.35 + deskD / 2);
+  const tu = u;
+  const deskW = deskWidth(left, right, u), deskD = tu * 1.6, thick = tu * 0.12;
+  const desk = addProp(new THREE.Mesh(new THREE.BoxGeometry(deskW, thick, deskD), mat(0xc98a4b, { roughness: 0.7 })), 'full');
+  desk.position.set(0, deskY - thick / 2, zBody + tu * 0.35 + deskD / 2);
   const legMat = mat(0x8a5a2b, { roughness: 0.7 });
   for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-    const leg = addProp(new THREE.Mesh(new THREE.BoxGeometry(u * 0.12, deskY - thick, u * 0.12), legMat), CFG.view === 'full');
-    leg.position.set(sx * (deskW / 2 - u * 0.12), (deskY - thick) / 2, desk.position.z + sz * (deskD / 2 - u * 0.12));
+    const leg = addProp(new THREE.Mesh(new THREE.BoxGeometry(tu * 0.12, deskY - thick, tu * 0.12), legMat), 'full');
+    leg.position.set(sx * (deskW / 2 - tu * 0.12), (deskY - thick) / 2, desk.position.z + sz * (deskD / 2 - tu * 0.12));
   }
 
   const W = u * 2.0, D = u * 0.92, T = u * 0.2;
@@ -1045,7 +1109,7 @@ async function buildGamepadModel(left, right, reach) {
     const tp = makePart(trigs[side], trigMat.clone());
     triggers[side] = {
       apply: v => { tp.obj.rotation.x = -v * 0.35; tp.mat.emissiveIntensity = v * 0.35; },
-      grab: bctl.anchor,
+      grab: bctl.anchor, obj: tp.obj,
     };
   }
 
@@ -1408,7 +1472,7 @@ async function buildXboxModel(left, right, reach, anniversary, style = null) {
     const tp = makePart(parts[side + 'T'], (M.trigger || M.shell)(), V(tcx, 43, xboxSeamZ(tcx) - 1));
     triggers[side] = {
       apply: v => { tp.obj.rotation.x = -v * 0.3; tp.mat.emissiveIntensity = v * (anniversary || style ? 0.5 : 2); },
-      grab: bctl.anchor,
+      grab: bctl.anchor, obj: tp.obj,
     };
   }
 
@@ -1568,6 +1632,17 @@ function cloneSkinned(src) {
   return clone;
 }
 
+const _ray = new THREE.Raycaster();
+function rayHit(objs, from, dir, ok) {
+  _ray.set(from, dir);
+  _ray.far = Infinity;
+  return _ray.intersectObjects(objs, true).find(x => x.object.isMesh && (!ok || ok(x.point))) || null;
+}
+const ringAt = (ring, a) => {
+  const k = (((a / (Math.PI * 2)) % 1) + 1) % 1 * ring.length, i = Math.floor(k) % ring.length, f = k - Math.floor(k);
+  return ring[i] * (1 - f) + ring[(i + 1) % ring.length] * f;
+};
+
 function setupMinis() {
   const c = rig.gamepad;
   if (!c) return;
@@ -1581,6 +1656,13 @@ function setupMinis() {
   const P = o => o.getWorldPosition(V());
   const h = Math.max(0.05, P(c.ls.anchor).distanceTo(P(c.rs.anchor)) * 0.5);
   const restByName = new Map([...rig.rest].map(([bone, q]) => [bone.name, q]));
+  const n = c.normalLocal.clone().applyQuaternion(fr.quaternion).normalize();
+  const e1 = V(1, 0, 0).applyQuaternion(fr.quaternion);
+  e1.addScaledVector(n, -e1.dot(n)).normalize();
+  const e2 = V().crossVectors(n, e1);
+  const inv = fr.quaternion.clone().invert();
+  const toLocalDir = v => v.clone().applyQuaternion(inv);
+  const padCenter = new THREE.Box3().setFromObject(fr).getCenter(V());
   let phase = 0;
   const make = (role, extra) => {
     const model = cloneSkinned(rig.root);
@@ -1602,28 +1684,115 @@ function setupMinis() {
     const holder = new THREE.Group();
     holder.add(inner);
     scene.add(holder);
-    return { role, holder, bones, rest, pos: null, from: null, goal: null, hop: 1, phase: phase++ * 1.7, ...extra };
+    holder.updateMatrixWorld(true);
+    const headY = bones.Head ? worldPos(bones.Head).y : h * 0.6;
+    const arms = [['Arm_1_L', 'Arm_2_L', 'Wrist_L'], ['Arm_1_R', 'Arm_2_R', 'Wrist_R']]
+      .filter(k => k.every(b => bones[b]))
+      .map(([a, b, e]) => ({ upper: bones[a], lower: bones[b], end: bones[e], lenA: 0, lenB: 0, pole: V() }));
+    const legs = {};
+    for (const s of ['L', 'R']) if (bones['Leg_1_' + s] && bones['Leg_2_' + s] && bones['Ankle_' + s])
+      legs[s] = { upper: bones['Leg_1_' + s], lower: bones['Leg_2_' + s], end: bones['Ankle_' + s], lenA: 0, lenB: 0, pole: V() };
+    const stride = phase % 2 ? 'L' : 'R';
+    return {
+      role, holder, bones, rest, arms, legs, stride, bend: 0, look: 0, pos: null, from: null, goal: null, hop: 1, phase: phase++ * 1.7,
+      headR: THREE.MathUtils.clamp((h - headY) / 2, h * 0.05, h * 0.35), ready: false, ...extra,
+    };
   };
+
+  const stickSetup = s => {
+    s.tilt(0, 0);
+    fr.updateMatrixWorld(true);
+    const top = P(s.anchor), ex = V(), ey = V();
+    s.tilt(1, 0); fr.updateMatrixWorld(true); ex.copy(P(s.anchor)).sub(top);
+    s.tilt(0, 1); fr.updateMatrixWorld(true); ey.copy(P(s.anchor)).sub(top);
+    s.tilt(0, 0); fr.updateMatrixWorld(true);
+    for (const v of [ex, ey]) v.addScaledVector(n, -v.dot(n));
+    if (ex.lengthSq() < 1e-12) ex.copy(e1);
+    if (ey.lengthSq() < 1e-12) ey.copy(e2);
+    const dirAt = a => e1.clone().multiplyScalar(Math.cos(a)).addScaledVector(e2, Math.sin(a));
+    const objs = s.obj ? [s.obj] : [];
+    let capR = h * 0.12;
+    if (objs.length) {
+      const rs = [];
+      for (let i = 0; i < 12; i++) {
+        const dir = dirAt(i / 12 * Math.PI * 2);
+        const hit = rayHit(objs, top.clone().addScaledVector(n, -h * 0.03).addScaledVector(dir, h * 2), dir.clone().negate());
+        if (hit) rs.push(hit.point.clone().sub(top).dot(dir));
+      }
+      if (rs.length) capR = THREE.MathUtils.clamp(rs.reduce((a, b) => a + b) / rs.length, h * 0.04, h * 0.6);
+    }
+    const r0 = capR + h * 0.3;
+    const ring = [];
+    for (let i = 0; i < 16; i++) {
+      const hit = rayHit([fr], top.clone().addScaledVector(dirAt(i / 16 * Math.PI * 2), r0).addScaledVector(n, h), n.clone().negate());
+      ring.push(hit ? hit.point.clone().sub(top).dot(n) : null);
+    }
+    const known = ring.filter(x => x !== null);
+    const floor = known.length ? Math.min(...known) : -h * 0.4;
+    for (let i = 0; i < ring.length; i++) if (ring[i] === null) ring[i] = floor;
+    const toward = padCenter.clone().sub(top);
+    const ang = toward.dot(e1) >= 0 ? 0 : Math.PI;
+    return {
+      st: {
+        s, objs, capR, ring, top: fr.worldToLocal(top.clone()),
+        ex: toLocalDir(ex.normalize()), ey: toLocalDir(ey.normalize()), e1: toLocalDir(e1), e2: toLocalDir(e2),
+      },
+      ang, aim: ang, amt: 0, dist: capR + h * 0.25, walk: 0,
+    };
+  };
+
+  const motion = (obj, press) => {
+    press(0); fr.updateMatrixWorld(true);
+    const bb = new THREE.Box3().setFromObject(obj);
+    if (bb.isEmpty()) return null;
+    const mid = bb.getCenter(V()), size = bb.getSize(V()).length();
+    const pts = [mid.clone()];
+    for (const x of [bb.min.x, bb.max.x]) for (const y of [bb.min.y, bb.max.y]) for (const z of [bb.min.z, bb.max.z]) pts.push(V(x, y, z));
+    const loc = pts.map(p => obj.worldToLocal(p.clone()));
+    press(1); fr.updateMatrixWorld(true);
+    const moved = loc.map(l => obj.localToWorld(l.clone()));
+    press(0); fr.updateMatrixWorld(true);
+    let best = 0, dir = null, at = null;
+    pts.forEach((p, i) => {
+      const d = moved[i].clone().sub(p), score = d.dot(padCenter.clone().sub(p).normalize());
+      if (score > best) { best = score; dir = d; at = p; }
+    });
+    if (!dir) return null;
+    dir.normalize();
+    const side = at.clone().sub(mid).dot(e1);
+    const contacts = [-0.6, -0.2, 0.2, 0.5, 0.8].map(k => {
+      const probe = mid.clone().lerp(at, k).addScaledVector(e1, -side * k);
+      const hit = rayHit([obj], probe.clone().addScaledVector(dir, -size * 2), dir);
+      return obj.worldToLocal((hit ? hit.point : probe).clone());
+    });
+    return { obj, dir: toLocalDir(dir), contacts, contact: contacts[3] };
+  };
+
   const byMask = m => c.controls.find(x => x.mask === m);
   const pick = masks => masks.map(byMask).filter(Boolean);
   const minis = [
-    make('stick', { stick: c.ls, click: byMask(64), side: 'L' }),
-    make('stick', { stick: c.rs, click: byMask(128), side: 'R' }),
+    make('stick', { click: byMask(64), side: 'L', ...stickSetup(c.ls) }),
+    make('stick', { click: byMask(128), side: 'R', ...stickSetup(c.rs) }),
   ];
-  const groups = [
-    { ctls: pick([4096, 8192, 16384, 32768]) }, { ctls: pick([1, 2, 4, 8]) },
-    { ctls: pick([256]), trig: 'L' }, { ctls: pick([512]), trig: 'R' },
-  ].filter(g => g.ctls.length || (g.trig && c.triggers?.[g.trig]));
+  const used = new Set([64, 128]);
+  for (const side of ['L', 'R']) {
+    const bump = byMask(side === 'L' ? 256 : 512), tr = c.triggers?.[side];
+    const bt = bump?.obj ? motion(bump.obj, k => bump.apply(k)) : null;
+    const tt = tr?.obj ? motion(tr.obj, v => tr.apply(v)) : null;
+    if (!bt && !tt) continue;
+    if (bt) used.add(bump.mask);
+    minis.push(make('shoulder', { side, bump: bt ? bump : null, bt, tt, last: bt || tt, objs: [bt?.obj, tt?.obj].filter(Boolean), eff: 0, feet: null }));
+  }
+  const groups = [{ ctls: pick([4096, 8192, 16384, 32768]) }, { ctls: pick([1, 2, 4, 8]) }].filter(g => g.ctls.length);
   const btn = groups.map(g => make('buttons', { ...g, homeCtls: [...g.ctls] }));
   const home = m => {
-    const pts = (m.homeCtls || m.ctls).map(x => P(x.anchor));
-    if (!pts.length && m.trig) pts.push(P(c.triggers[m.trig].grab));
+    const pts = m.homeCtls.map(x => P(x.anchor));
     return pts.reduce((s, p) => s.add(p), V()).multiplyScalar(1 / Math.max(1, pts.length));
   };
-  const used = new Set([64, 128, ...btn.flatMap(m => m.ctls.map(x => x.mask))]);
+  for (const m of btn) for (const x of m.ctls) used.add(x.mask);
   for (const ctl of c.controls.filter(x => !used.has(x.mask))) {
     const p = P(ctl.anchor);
-    const near = btn.filter(m => m.ctls.length).sort((a, b2) => home(a).distanceTo(p) - home(b2).distanceTo(p))[0];
+    const near = btn.slice().sort((a, b2) => home(a).distanceTo(p) - home(b2).distanceTo(p))[0];
     near?.ctls.push(ctl);
   }
   minis.push(...btn);
@@ -1637,32 +1806,172 @@ function setupMinis() {
   rig.focusBottom = box.min.y;
 }
 
-const _mq = new THREE.Quaternion(), _mm = new THREE.Matrix4();
+const _mq = new THREE.Quaternion(), _up = V(0, 1, 0);
+function poseMini(m, feet, f, lean, squash = 0, look = 0, bow = 0) {
+  const ax = V().crossVectors(_up, f).normalize();
+  m.holder.position.copy(feet);
+  m.holder.quaternion.setFromAxisAngle(_up, Math.atan2(f.x, f.z)).premultiply(_mq.setFromAxisAngle(ax, lean));
+  m.holder.scale.set(1 + squash * 0.12, 1 - squash * 0.28, 1 + squash * 0.12);
+  for (const [b, q] of m.rest) b.quaternion.copy(q);
+  m.holder.updateMatrixWorld(true);
+  const b = m.bones, tilt = Math.min(0.75, lean * 0.8 + 0.12) + look * 0.8 + Math.min(1, bow) * 0.6;
+  const leg = m.legs[m.stride];
+  if (leg && lean > 0.02) {
+    const A = worldPos(leg.upper), B = worldPos(leg.lower), C = worldPos(leg.end);
+    leg.lenA = A.distanceTo(B); leg.lenB = B.distanceTo(C);
+    leg.pole.copy(f);
+    const drop = A.dot(_up) - feet.dot(_up);
+    solveIK(leg, A.clone().addScaledVector(_up, -drop).addScaledVector(f, -Math.min(drop, leg.lenA + leg.lenB) * 0.15));
+  }
+  if (bow > 0.01) for (const [k, a] of [['Spine_1', 0.45], ['Spine_2', 0.35]]) if (b[k]) rotateWorld(b[k], qAxisV(ax, bow * a));
+  if (b.Head) rotateWorld(b.Head, qAxisV(ax, -tilt));
+  const upB = _up.clone().applyQuaternion(m.holder.quaternion);
+  const head = b.Head ? worldPos(b.Head).addScaledVector(upB.clone().applyAxisAngle(ax, -tilt), m.headR) : m.holder.position.clone().addScaledVector(upB, rig.minis.h * 0.75);
+  const sh = m.arms.map(a => worldPos(a.upper));
+  const S = sh.length ? sh.reduce((s, p) => s.add(p), V()).multiplyScalar(1 / sh.length) : head.clone().addScaledVector(upB, -m.headR * 1.2);
+  for (const a of m.arms) {
+    const A = worldPos(a.upper), B = worldPos(a.lower), C = worldPos(a.end);
+    a.lenA = A.distanceTo(B); a.lenB = B.distanceTo(C);
+    a.s = Math.sign(A.clone().sub(S).dot(ax)) || 1;
+  }
+  const arm = m.arms.length ? m.arms[0].lenA + m.arms[0].lenB : rig.minis.h * 0.2;
+  const half = sh.length > 1 ? sh[0].distanceTo(sh[1]) / 2 : rig.minis.h * 0.06;
+  return { ax, upB, head, S, arm, half, palm: m.arms.length ? m.arms[0].lenB * 0.4 : 0 };
+}
+
+function reachError(m, pose, targets, f, objs, ok) {
+  const T = targets.reduce((s, p) => s.add(p), V()).multiplyScalar(1 / targets.length);
+  const D = T.clone().sub(pose.S), along = D.dot(f), side = D.addScaledVector(f, -along).length();
+  const want = Math.sqrt(Math.max((pose.arm * 0.3) ** 2, (pose.arm * 0.95) ** 2 - side * side));
+  const reach = along - want;
+  const r = m.headR, h = rig.minis.h;
+  const body = pose.half * 1.3, hip = pose.S.clone().lerp(m.holder.position, 0.5);
+  const gap = (o, rr) => {
+    const hit = rayHit(objs, o.clone().addScaledVector(f, -h), f, ok);
+    return hit ? hit.distance - h - rr - h * 0.01 : Infinity;
+  };
+  const head = Math.min(gap(pose.head, r * 0.85), gap(pose.head.clone().addScaledVector(pose.upB, -r * 0.7), r * 0.6));
+  const free = Math.min(reach, gap(pose.S, body), gap(hip, body));
+  return { e: Math.min(free, head), T, block: Math.max(0, free - head) };
+}
+
+function armsTo(m, pose, targets, f) {
+  for (const a of m.arms) {
+    a.pole.copy(pose.ax).multiplyScalar(a.s * 0.7).addScaledVector(pose.upB, -1).addScaledVector(f, -0.2).normalize();
+    solveIK(a, targets[a.s > 0 ? 1 : 0]);
+  }
+}
+
+function stickMini(m, t, dt, fr, n) {
+  const st = m.st, q = fr.quaternion, d = state.pad, h = rig.minis.h;
+  const x = (m.side === 'L' ? d.lx : d.rx) || 0, y = (m.side === 'L' ? d.ly : d.ry) || 0;
+  const e1 = st.e1.clone().applyQuaternion(q), e2 = st.e2.clone().applyQuaternion(q);
+  const push = st.ex.clone().applyQuaternion(q).multiplyScalar(x).addScaledVector(st.ey.clone().applyQuaternion(q), y);
+  const amt = Math.min(1, Math.hypot(x, y));
+  if (amt > 0.15) m.aim = Math.atan2(push.dot(e2), push.dot(e1));
+  const diff = wrapAngle(m.aim - m.ang), step = m.ready ? THREE.MathUtils.clamp(diff, -9 * dt, 9 * dt) : diff;
+  m.ang = wrapAngle(m.ang + step);
+  m.walk += Math.abs(step) * m.dist / (h * 0.05);
+  const turning = Math.min(1, Math.abs(diff) / 0.5);
+  m.amt = m.ready ? damp(m.amt, amt * (1 - turning), 12, dt) : amt;
+  const fin = e1.clone().multiplyScalar(Math.cos(m.ang)).addScaledVector(e2, Math.sin(m.ang));
+  const fh = fin.clone().setY(0);
+  if (fh.lengthSq() < 1e-4) fh.set(0, 0, 1);
+  fh.normalize();
+  const top = st.s.anchor.getWorldPosition(V()), topRest = fr.localToWorld(st.top.clone());
+  const lat = V().crossVectors(n, fin);
+  const axis = st.s.obj ? top.clone().sub(st.s.obj.getWorldPosition(V())) : n.clone();
+  if (axis.lengthSq() < 1e-10) axis.copy(n);
+  axis.normalize();
+  const ground = ringAt(st.ring, m.ang), tall = Math.max(h * 0.05, -ground * 0.85);
+  const above = p => p.clone().sub(topRest).dot(n) > ground + h * 0.02;
+  const bob = Math.abs(Math.sin(m.walk)) * h * 0.05 * turning;
+  let pose, targets;
+  for (let it = 0; it < (m.ready ? 1 : 8); it++) {
+    const lean = 0.04 + m.amt * 0.5 + Math.min(1, m.bend) * 0.45 + Math.sin(t * 2.1 + m.phase) * 0.012;
+    const feet = topRest.clone().addScaledVector(fin, -m.dist).addScaledVector(n, ground).addScaledVector(_up, bob);
+    pose = poseMini(m, feet, fh, lean, m.click?.k || 0, m.look, m.bend);
+    const back = st.capR + h;
+    let grip = null, rad = 0, best = Infinity;
+    for (let i = 0; i <= 5; i++) {
+      const g = top.clone().addScaledVector(axis, -THREE.MathUtils.lerp(h * 0.04, tall, i / 5));
+      const core = st.objs.length ? rayHit(st.objs, g.clone().addScaledVector(fin, -back), fin) : null;
+      const r = core ? Math.max(h * 0.02, back - core.distance) : st.capR * 0.8;
+      const dd = g.clone().addScaledVector(fin, -r).distanceTo(pose.S);
+      if (dd < best) { best = dd; grip = g; rad = r; }
+    }
+    const w = Math.min(rad * 0.7, pose.half * 1.4), side = pose.ax.dot(lat) >= 0 ? 1 : -1;
+    targets = [-1, 1].map(s => {
+      const at = grip.clone().addScaledVector(lat, s * side * w);
+      const hit = st.objs.length ? rayHit(st.objs, at.clone().addScaledVector(fin, -back), fin) : null;
+      return (hit ? hit.point : at.addScaledVector(fin, -Math.sqrt(Math.max(0, rad * rad - w * w)))).addScaledVector(fin, -pose.palm);
+    });
+    const { e, T, block } = reachError(m, pose, targets, fin, st.objs, above);
+    const k = m.ready ? 1 - Math.exp(-14 * dt) : 1;
+    m.look = THREE.MathUtils.clamp(m.look + k * (block / (h * 0.2) - m.look * 0.3), 0, 1);
+    m.bend = THREE.MathUtils.clamp(m.bend + k * (pose.S.dot(_up) - T.dot(_up) - pose.arm * 0.5) / (h * 0.6), 0, 1.6);
+    m.dist = THREE.MathUtils.clamp(m.dist - e * k, st.capR * 0.5, st.capR + h * 0.9);
+  }
+  armsTo(m, pose, targets, fin);
+  m.ready = true;
+}
+
+function shoulderMini(m, t, dt, fr) {
+  const d = state.pad, h = rig.minis.h, tv = (m.side === 'L' ? d.lt : d.rt) || 0;
+  let tg = m.last, p = 0;
+  if (m.bt && m.bump.k > 0.02) { tg = m.bt; p = m.bump.k; }
+  else if (m.tt && tv > 0.02) { tg = m.tt; p = tv; }
+  m.idle = p ? 0 : (m.idle || 0) + dt;
+  if (m.idle > 0.6) tg = m.bt || m.tt;
+  if (tg !== m.last) m.hop = 0;
+  m.last = tg;
+  m.hop = Math.min(1, m.hop + dt / 0.2);
+  m.eff = m.ready ? damp(m.eff, p, 16, dt) : p;
+  let C = tg.obj.localToWorld(tg.contact.clone());
+  const dir = tg.dir.clone().applyQuaternion(fr.quaternion);
+  const fh = dir.clone().setY(0);
+  if (fh.lengthSq() < 0.04) fh.set(0, 0, 1);
+  fh.normalize();
+  const lean = 0.05 + m.eff * 0.45 + Math.sin(t * 2.1 + m.phase) * 0.012;
+  if (!m.feet) m.feet = C.clone().addScaledVector(fh, -h * 0.3).addScaledVector(_up, -h * 0.4);
+  let pose, targets;
+  for (let it = 0; it < (m.ready ? 1 : 8); it++) {
+    const feet = m.feet.clone().addScaledVector(_up, Math.sin(Math.PI * m.hop) * h * 0.15);
+    pose = poseMini(m, feet, fh, lean, 0, m.look);
+    if (m.ready) {
+      const pts = tg.contacts.map(c => tg.obj.localToWorld(c.clone()));
+      C = pts.reduce((a, b) => (b.distanceTo(pose.S) < a.distanceTo(pose.S) ? b : a));
+    }
+    const w = pose.half * 1.3;
+    targets = [-1, 1].map(s => {
+      const side = C.clone().addScaledVector(pose.ax, s * w);
+      const hit = rayHit([tg.obj], side.clone().addScaledVector(dir, -h * 0.5), dir);
+      return (hit && hit.distance < h ? hit.point : side).addScaledVector(dir, -pose.palm);
+    });
+    const { e, T, block } = reachError(m, pose, targets, fh, m.objs);
+    const ev = T.dot(_up) + pose.arm * 0.25 - pose.S.dot(_up), el = T.clone().sub(pose.S).dot(pose.ax);
+    const k = m.ready ? 1 - Math.exp(-14 * dt) : 1;
+    m.look = THREE.MathUtils.clamp(m.look + k * (block / (h * 0.2) - m.look * 0.3), 0, 1);
+    m.feet.addScaledVector(fh, e * k).addScaledVector(_up, ev * k).addScaledVector(pose.ax, el * k);
+  }
+  armsTo(m, pose, targets, dir);
+  m.ready = true;
+}
+
 function updateMinis(t, dt) {
-  const c = rig.gamepad, d = state.pad, { list, h, home } = rig.minis;
+  const c = rig.gamepad, { list, h, home } = rig.minis;
   c.frame.updateMatrixWorld(true);
   const n = c.normalLocal.clone().applyQuaternion(c.frame.quaternion).normalize();
-  const right = V(1, 0, 0).applyQuaternion(c.frame.quaternion);
-  const top = V(0, 1, 0).applyQuaternion(c.frame.quaternion);
   const up = V(0, 1, 0), fwd = V(0, 0, 1);
-  const base = new THREE.Quaternion();
   for (const m of list) {
+    if (m.role === 'stick') { stickMini(m, t, dt, c.frame, n); continue; }
+    if (m.role === 'shoulder') { shoulderMini(m, t, dt, c.frame); continue; }
     for (const [b, q] of m.rest) b.quaternion.copy(q);
-    let target, squash = 0, arms = 0.18 + Math.sin(t * 2.1 + m.phase) * 0.04, lean = null;
-    if (m.role === 'stick') {
-      target = m.stick.anchor.getWorldPosition(V());
-      const x = (m.side === 'L' ? d.lx : d.rx) || 0, y = (m.side === 'L' ? d.ly : d.ry) || 0;
-      lean = right.clone().multiplyScalar(x).addScaledVector(top, y);
-      squash = m.click?.k || 0;
-      arms = 0.3 + Math.min(1, Math.hypot(x, y)) * 0.9;
-    } else {
-      const held = m.ctls.filter(x => x.down).sort((a, b) => b.at - a.at)[0];
-      const trigV = m.trig ? ((m.trig === 'L' ? d.lt : d.rt) || 0) : 0;
-      if (held) { target = held.anchor.getWorldPosition(V()); squash = held.k; }
-      else if (trigV > 0.15) { target = c.triggers[m.trig].grab.getWorldPosition(V()); squash = trigV; }
-      else target = home(m);
-      arms = 0.18 + squash * 0.9 + Math.sin(t * 2.1 + m.phase) * 0.04;
-    }
+    let target, squash = 0;
+    const held = m.ctls.filter(x => x.down).sort((a, b) => b.at - a.at)[0];
+    if (held) { target = held.anchor.getWorldPosition(V()); squash = held.k; }
+    else target = home(m);
+    const arms = 0.18 + squash * 0.9 + Math.sin(t * 2.1 + m.phase) * 0.04;
     target.addScaledVector(n, h * 0.03);
     if (!m.pos) { m.pos = target.clone(); m.from = target.clone(); m.goal = target.clone(); }
     if (m.goal.distanceTo(target) > h * 0.2) { m.from.copy(m.pos); m.hop = 0; }
@@ -1671,17 +1980,11 @@ function updateMinis(t, dt) {
     const e = m.hop * m.hop * (3 - 2 * m.hop);
     m.pos.lerpVectors(m.from, m.goal, e).addScaledVector(up, Math.sin(Math.PI * m.hop) * h * 0.4 + Math.sin(t * 3 + m.phase) * h * 0.008);
     m.holder.position.copy(m.pos);
-    m.holder.quaternion.copy(base);
-    if (lean && lean.lengthSq() > 1e-4) {
-      lean.addScaledVector(up, -lean.dot(up));
-      const ax = V().crossVectors(up, lean).normalize();
-      m.holder.quaternion.premultiply(_mq.setFromAxisAngle(ax, Math.min(1, lean.length()) * 0.42));
-    }
+    m.holder.quaternion.identity();
     m.holder.scale.set(1 + squash * 0.12, 1 - squash * 0.28, 1 + squash * 0.12);
     m.holder.updateMatrixWorld(true);
-    const f = fwd.clone().applyQuaternion(_mq.copy(m.holder.quaternion).multiply(base.clone().invert()));
-    if (m.bones.Arm_1_L) rotateWorld(m.bones.Arm_1_L, qAxisV(f, arms));
-    if (m.bones.Arm_1_R) rotateWorld(m.bones.Arm_1_R, qAxisV(f, -arms));
+    if (m.bones.Arm_1_L) rotateWorld(m.bones.Arm_1_L, qAxisV(fwd, arms));
+    if (m.bones.Arm_1_R) rotateWorld(m.bones.Arm_1_R, qAxisV(fwd, -arms));
   }
 }
 const qAxisV = (axis, a) => new THREE.Quaternion().setFromAxisAngle(axis.clone().normalize(), a);
@@ -1727,7 +2030,7 @@ function buildCockpit(left, right, reach) {
   const rail = new THREE.Mesh(new THREE.BoxGeometry(u * 0.9, seatTop - u * 0.14, u * 0.7), mat(0x2b2b30, { metalness: 0.5, roughness: 0.4 }));
   rail.position.set(0, (seatTop - u * 0.14) / 2, hipZ + thigh * 0.2);
   seat.add(rail);
-  addProp(seat, CFG.view === 'full');
+  addProp(seat, 'full');
 
   const R = u * 0.58;
   const mount = new THREE.Group();
@@ -1769,11 +2072,11 @@ function buildCockpit(left, right, reach) {
   const standMat = mat(0x2b2b30, { metalness: 0.4, roughness: 0.5 });
   const deck = new THREE.Mesh(new THREE.BoxGeometry(u * 1.7, u * 0.08, u * 0.45), standMat);
   deck.position.set(0, baseWorld.y - u * 0.17, baseWorld.z + u * 0.05);
-  addProp(deck, CFG.view === 'full');
+  addProp(deck, 'full');
   for (const sx of [-1, 1]) {
     const post = new THREE.Mesh(new THREE.BoxGeometry(u * 0.12, deck.position.y, u * 0.12), standMat);
     post.position.set(sx * u * 0.8, deck.position.y / 2, deck.position.z);
-    addProp(post, CFG.view === 'full');
+    addProp(post, 'full');
   }
   rig.props.push(mount);
 
@@ -1796,13 +2099,13 @@ function buildCockpit(left, right, reach) {
   shifter.add(lever);
   const stand = new THREE.Mesh(new THREE.BoxGeometry(u * 0.15, shifter.position.y - u * 0.1, u * 0.15), mat(0x2b2b30, { metalness: 0.4 }));
   stand.position.set(shifter.position.x, (shifter.position.y - u * 0.1) / 2, shifter.position.z);
-  addProp(stand, CFG.view === 'full');
+  addProp(stand, 'full');
   addProp(shifter);
 
   const pedalY = hipY - shin * 1.05, pedalZ = hipZ + thigh + shin * 0.35;
   const plateMesh = new THREE.Mesh(new THREE.BoxGeometry(u * 0.9, u * 0.05, u * 0.75), mat(0x2b2b30, { metalness: 0.4, roughness: 0.5 }));
   plateMesh.position.set((legL.hip.x + legR.hip.x) / 2, pedalY - u * 0.3, pedalZ + u * 0.05);
-  addProp(plateMesh, CFG.view === 'full');
+  addProp(plateMesh, 'full');
   const pedals = {};
   const mkPedal = (x, key, tall) => {
     const g = new THREE.Group();
@@ -1818,7 +2121,7 @@ function buildCockpit(left, right, reach) {
     grip.position.set(0, u * 0.3, -u * 0.03);
     g.add(grip);
     g.rotation.x = -0.45;
-    addProp(g, CFG.view === 'full');
+    addProp(g, 'full');
     pedals[key] = { g, pad, rest: -0.45 };
   };
   const midX = (legL.hip.x + legR.hip.x) / 2, gap = u * 0.36;
@@ -1881,7 +2184,7 @@ function solveWheel(t, dt) {
 
 function buildVR(left, right, reach) {
   const box = name => { let b = null; rig.root.traverse(o => { if (o.isMesh && (o.name === name || o.parent?.name === name)) b = new THREE.Box3().setFromObject(o); }); return b; };
-  const faceBox = box('Faceline') || rig.modelBox;
+  const faceBox = box('Faceline') || rig.headBox || rig.modelBox;
   const hair = box('Hair') || faceBox;
   const faceH = faceBox.max.y - faceBox.min.y;
   const face = {
@@ -2080,7 +2383,7 @@ async function setupFace() {
     if (!o.isMesh) return;
     for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (m?.name === matName) target = m;
   });
-  if (!target) rig.root.traverse(o => {
+  if (!target && !rig.custom) rig.root.traverse(o => {
     if (!o.isMesh || target) return;
     for (const m of Array.isArray(o.material) ? o.material : [o.material]) if (/mask|face|visage/i.test(m?.name || '') && m.map) target = m;
   });
@@ -2133,10 +2436,68 @@ function faceTexture(key, eyes, mouth) {
   return t;
 }
 
+const JAW_MAX = 0.55;
+function setupJaw() {
+  const bone = findBone('Jaw');
+  if (!bone) return null;
+  if (!rig.rest.has(bone)) rig.rest.set(bone, bone.quaternion.clone());
+  rig.root.updateMatrixWorld(true);
+  const pivot = worldPos(bone);
+  const child = bone.children.find(c => worldPos(c).distanceTo(pivot) > 1e-5);
+  let dir = child ? worldPos(child).sub(pivot) : V(0, 0, 1);
+  let axis = dir.clone().cross(V(0, -1, 0));
+  if (axis.length() < dir.length() * 0.2) axis = V(0, 0, 1).cross(V(0, -1, 0));
+  axis.normalize().applyQuaternion(bone.getWorldQuaternion(new THREE.Quaternion()).invert());
+  return { bone, axis, q: new THREE.Quaternion() };
+}
+
+function setupMouth(name, sign, angle, shift) {
+  const bone = findBone(name);
+  if (!bone) return null;
+  if (!rig.rest.has(bone)) rig.rest.set(bone, bone.quaternion.clone());
+  rig.root.updateMatrixWorld(true);
+  const headH = rig.headBox ? rig.headBox.max.y - rig.headBox.min.y : (rig.modelBox.max.y - rig.modelBox.min.y) * 0.15;
+  const pivot = worldPos(bone), toward = V(0, sign, 0);
+  const child = bone.children.find(c => worldPos(c).distanceTo(pivot) > headH * 0.05);
+  if (child) {
+    const dir = worldPos(child).sub(pivot);
+    let axis = dir.clone().cross(toward);
+    if (axis.length() < dir.length() * 0.2) axis = V(0, 0, 1).cross(toward);
+    axis.normalize().applyQuaternion(bone.getWorldQuaternion(new THREE.Quaternion()).invert());
+    return { bone, axis, angle, q: new THREE.Quaternion() };
+  }
+  const p = bone.parent;
+  const delta = p.worldToLocal(pivot.clone().addScaledVector(toward, headH * shift)).sub(p.worldToLocal(pivot.clone()));
+  return { bone, rest: bone.position.clone(), delta };
+}
+
+function setupMouths() {
+  let upper = setupMouth('MouthUpper', 1, 0.16, 0.025);
+  let lower = setupMouth('MouthLower', -1, JAW_MAX, 0.08);
+  const isUnder = (a, b) => { for (let o = b?.parent; o; o = o.parent) if (o === a) return true; return false; };
+  if (rig.jaw && lower && isUnder(rig.jaw.bone, lower.bone)) lower = null;
+  if (rig.jaw && lower && isUnder(lower.bone, rig.jaw.bone)) rig.jaw = null;
+  if (rig.jaw && upper && isUnder(rig.jaw.bone, upper.bone)) upper = null;
+  const list = [upper, lower].filter(Boolean);
+  return list.length ? list : null;
+}
+
+function updateJaw() {
+  const j = rig.jaw, m = rig.mouths;
+  if (!j && !m) return;
+  const k = THREE.MathUtils.smoothstep(face.talk, 0.04, 0.55);
+  if (j && k > 2e-3) j.bone.quaternion.multiply(j.q.setFromAxisAngle(j.axis, k * JAW_MAX));
+  if (m) for (const b of m) {
+    if (b.axis) { if (k > 2e-3) b.bone.quaternion.multiply(b.q.setFromAxisAngle(b.axis, k * b.angle)); }
+    else b.bone.position.copy(b.rest).addScaledVector(b.delta, k);
+  }
+}
+
 function updateFace(t, dt) {
-  if (!face.ready) return;
   if (performance.now() - state.micAt > 250) state.mic = 0;
   face.talk = damp(face.talk, state.mic, state.mic > face.talk ? 30 : 12, dt);
+  updateJaw();
+  if (!face.ready) return;
 
   let mouth = 0;
   if (face.levels > 1 && face.talk > 0.06) {
@@ -2188,7 +2549,7 @@ const jiggle = new Jiggle(def => {
   return o ? findMesh(meshesOf(o.group), def.mesh, def.meshNom) : null;
 });
 jiggle.resolve.isMii = m => !!miiMeshes?.includes(m);
-const sceneH = () => rig.sceneUnit || rig.modelBox?.getSize(V()).y || 1;
+const sceneH = () => rig.charUnit || 1;
 const charGlb = new Map();
 
 async function loadCharacter() {
@@ -2288,7 +2649,7 @@ function updateAttachments() {
   }
   if (!any) return;
   rig.root.updateMatrixWorld(true);
-  const H = rig.sceneUnit || rig.modelBox?.getSize(V()).y || 1;
+  const H = sceneH();
   for (const o of char.objs.values()) {
     if (!o.group.visible) continue;
     const it = o.item, a = rig.anchors[it.point] || rig.anchors.tete;
@@ -2454,16 +2815,16 @@ rig.decor = [];
 rig.screens = [];
 
 function buildDecor(left, right, reach) {
-  const u = reach;
+  const u = sceneReach(reach);
   const scene0 = rig.modelBox.clone();
-  for (const p of rig.props) scene0.expandByObject(p);
+  for (const p of rig.props) if (!p.userData.fullOnly) scene0.expandByObject(p);
 
   if (CINEMA) {
     buildCinemaScreen(u, Math.max(scene0.max.z + u * 2.2, left.shoulder.z + u * 5.5));
-    if (rig.cinema) buildCinemaSeat(u);
+    if (rig.cinema) buildCinemaSeat(reach);
   } else {
     if (CFG.decos.has('screens')) buildScreens(u, Math.max(scene0.max.z + u * 1.4, left.shoulder.z + u * 3.0));
-    if (rig.seated) buildChair(u, left.shoulder.y);
+    if (rig.seated) buildChair(reach, left.shoulder.y);
   }
 
   const all = scene0.clone();
@@ -2602,7 +2963,7 @@ function drawScreenOff(g, w, h) {
 
 function buildCinemaScreen(u, zFront) {
   const sw = u * 6.2, sh = sw * 9 / 16, border = u * 0.15;
-  const centerY = rig.modelBox.max.y * 0.85 + sh * 0.1;
+  const centerY = sceneTop() * 0.85 + sh * 0.1;
   const c = document.createElement('canvas');
   c.width = 854; c.height = 480;
   const g = c.getContext('2d');
@@ -2791,7 +3152,7 @@ function buildChair(u, shoulderY) {
 const screenTex = [], screenBusy = [];
 function buildScreens(u, zFront) {
   const sw = u * 2.7, sh = sw * 9 / 16, bezel = u * 0.06, depth = u * 0.1;
-  const centerY = rig.modelBox.max.y * 0.62;
+  const centerY = sceneTop() * 0.62;
   const standMat = mat(0x2a2a30, { roughness: 0.4, metalness: 0.4 });
   rig.baseScreens = [];
   const lay = screenLayout;
@@ -2830,7 +3191,7 @@ function buildScreens(u, zFront) {
 }
 
 function applyBaseScreens(list) {
-  const us = rig.sceneUnit ||= rig.modelBox.getSize(V()).y || 1;
+  const us = rig.sceneUnit;
   (rig.baseScreens || []).forEach((S, i) => {
     const e = list?.[i] || {};
     S.grp.visible = !e.hidden;
@@ -2858,7 +3219,7 @@ function applyBase(base) {
 
 function applyMiiOffset(m) {
   if (!rig.root || !rig.modelBox) return;
-  const us = rig.sceneUnit ||= rig.modelBox.getSize(V()).y || 1;
+  const us = rig.sceneUnit;
   const p = m?.pos || [0, 0, 0];
   const target = V((+p[0] || 0) * us, 0, (+p[2] || 0) * us);
   const delta = target.clone().sub(rig.miiShift || V());
@@ -2929,7 +3290,8 @@ const sceneScreenCtx = {
 function screenLookTarget() {
   const s = rig.screens[state.mouse.s];
   if (!s) return null;
-  const mx = state.game ? state.nudge.x : state.mouse.x - 0.5, my = state.game ? state.nudge.y : state.mouse.y - 0.5;
+  const [ox, oy] = mouseOffset();
+  const mx = state.game ? state.nudge.x : ox, my = state.game ? state.nudge.y : oy;
   const local = V(mx * s.w * 0.35, -my * s.h * 0.5, 0);
   return s.display.localToWorld(local);
 }
@@ -3102,7 +3464,18 @@ function typeKey(x, row) {
 }
 
 let lastActivity = 0;
-const PASSIVE_EVENTS = new Set(['cfg', 'pads', 'drvs', 'vrs', 'scene', 'perso', 'persoOn', 'vrc', 'game']);
+const PASSIVE_EVENTS = new Set(['cfg', 'pads', 'drvs', 'vrs', 'scene', 'perso', 'persoOn', 'vrc', 'game', 'cap']);
+const REL_GAIN = 0.5, REL_RETURN = 1.2;
+function mouseOffset() {
+  return state.rel.on ? [state.rel.x, state.rel.y]
+    : [THREE.MathUtils.clamp(state.mouse.x, 0, 1) - 0.5, THREE.MathUtils.clamp(state.mouse.y, 0, 1) - 0.5];
+}
+function startRel() {
+  if (state.rel.on) return;
+  const [x, y] = mouseOffset();
+  Object.assign(state.rel, { on: true, x, y });
+}
+function nudgePush(d, v) { return THREE.MathUtils.clamp(v + THREE.MathUtils.clamp(d * 0.3, -0.03, 0.03), -0.07, 0.07); }
 function onEvent(ev) {
   if (!PASSIVE_EVENTS.has(ev.t)) lastActivity = performance.now();
   switch (ev.t) {
@@ -3131,14 +3504,25 @@ function onEvent(ev) {
       else if (ev.b === 'M') { release('L'); release('R'); } else release(sideSwap(ev.b === 'L' ? 'R' : 'L'));
       break;
     case 'mm':
-      if (state.game && state.mouse.s === (ev.s ?? -1)) {
-        const push = (d, v) => THREE.MathUtils.clamp(v + THREE.MathUtils.clamp(d * 0.3, -0.03, 0.03), -0.07, 0.07);
-        state.nudge.x = push(ev.x - state.mouse.x, state.nudge.x);
-        state.nudge.y = push(ev.y - state.mouse.y, state.nudge.y);
+      if (state.game && !state.rel.on && state.mouse.s === (ev.s ?? -1)) {
+        state.nudge.x = nudgePush(ev.x - state.mouse.x, state.nudge.x);
+        state.nudge.y = nudgePush(ev.y - state.mouse.y, state.nudge.y);
       }
+      state.rel.on = false;
       state.mouse.x = ev.x; state.mouse.y = ev.y; state.mouse.s = ev.s ?? -1;
       state.mouse.at = performance.now();
       break;
+    case 'mr':
+      startRel();
+      state.rel.x = THREE.MathUtils.clamp(state.rel.x + ev.x * REL_GAIN, -0.5, 0.5);
+      state.rel.y = THREE.MathUtils.clamp(state.rel.y + ev.y * REL_GAIN, -0.5, 0.5);
+      if (state.game) {
+        state.nudge.x = nudgePush(ev.x, state.nudge.x);
+        state.nudge.y = nudgePush(ev.y, state.nudge.y);
+      }
+      state.mouse.at = performance.now();
+      break;
+    case 'cap': if (ev.on) startRel(); else state.rel.on = false; break;
     case 'game': state.game = !!ev.on; break;
     case 'wh':
       state.wheel = THREE.MathUtils.clamp(state.wheel + ev.d * 0.5, -1, 1);
@@ -3170,6 +3554,9 @@ function onEvent(ev) {
       if (!CFG.perso) { char.rev = Date.now(); loadCharacter(); }
       break;
     case 'persoOn': setCharacterOn(ev.ids || []); break;
+    case 'os':
+      if (!CFG.perso && !CFG.editor) location.reload();
+      break;
     case 'anim': playAnim(ev.id); break;
     case 'scene':
       if (!CFG.editor) loadUserScene();
@@ -3401,7 +3788,7 @@ function solveArms(t, now) {
   solveIK(PHYSICAL ? rig.arms.R : rig.arms.L, hover.lerp(onKey, hk).add(bob));
 
   const p = rig.pad;
-  const mx = THREE.MathUtils.clamp(state.mouse.x, 0, 1) - 0.5, my = THREE.MathUtils.clamp(state.mouse.y, 0, 1) - 0.5;
+  const [mx, my] = mouseOffset();
   const sx = PHYSICAL ? -1 : 1;
   const mpos = V(p.center.x + sx * mx * p.w * 0.72, p.y, p.center.z - my * p.d * 0.62);
   rig.mouse.position.lerp(mpos, 1 - Math.exp(-25 * clockDt));
@@ -3461,8 +3848,13 @@ function animate() {
 
     state.nudge.x = damp(state.nudge.x, 0, 2.5, dt);
     state.nudge.y = damp(state.nudge.y, 0, 2.5, dt);
-    const mxl = !CFG.look ? 0 : state.game ? state.nudge.x : state.mouse.x - 0.5;
-    const myl = !CFG.look ? 0 : state.game ? state.nudge.y : state.mouse.y - 0.5;
+    if (state.rel.on) {
+      state.rel.x = damp(state.rel.x, 0, REL_RETURN, dt);
+      state.rel.y = damp(state.rel.y, 0, REL_RETURN, dt);
+    }
+    const [mo, mp] = mouseOffset();
+    const mxl = !CFG.look ? 0 : state.game ? state.nudge.x : mo;
+    const myl = !CFG.look ? 0 : state.game ? state.nudge.y : mp;
     const lookSpeed = state.game ? 3 : 7;
     state.look.x = damp(state.look.x, mxl, lookSpeed, dt);
     state.look.y = damp(state.look.y, myl, lookSpeed, dt);
@@ -3540,7 +3932,6 @@ async function loadUserScene(data) {
   const seq = ++userSceneSeq;
   data ||= await fetchSceneData();
   if (seq !== userSceneSeq || !rig.modelBox) return;
-  rig.sceneUnit ||= rig.modelBox.getSize(V()).y || 1;
   const old = rig.userScene;
   const spare = new Map();
   if (old) for (const g of old.children) {
@@ -3590,7 +3981,7 @@ function updateOccluders(dt) {
   const active = CFG.occlude && !CFG.editor;
   if (active && (occFrame++ % 3 === 0)) {
     const pts = [rig.bones.Head, rig.bones.Spine_1, rig.arms.L?.end, rig.arms.R?.end].filter(Boolean).map(b => b.getWorldPosition(V()));
-    pts.push(pts[0].clone().add(V(0, rig.sceneUnit * 0.12 || 0.12, 0)));
+    pts.push(pts[0].clone().add(V(0, sceneH() * 0.12, 0)));
     const cam = viewCam;
     cam.updateMatrixWorld();
     const camDir = cam.getWorldDirection(V());
@@ -3613,6 +4004,7 @@ function updateOccluders(dt) {
 
 loadModel()
   .then(() => {
+    if (CFG.perso && rig.boneFail) return import('./os-editor.js').then(m => m.startBoneEditor(window.mii, { seul: true }));
     if (CFG.editor) return import('./editor.js').then(m => m.startEditor(window.mii));
     if (CFG.perso) return import('./perso-editor.js').then(m => m.startCharEditor(window.mii));
   })

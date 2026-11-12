@@ -120,6 +120,8 @@ sealed class SullysMiiBongoContext : ApplicationContext
 
     readonly string? _root;
     Point _lastCursor = new(int.MinValue, int.MinValue);
+    RawMouse? _rawMouse;
+    readonly CaptureDetector _capture = new();
     volatile string? _game;
     string? _lastGame;
 
@@ -152,6 +154,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
         _hooks.MouseUp += b => _server.Publish($"{{\"t\":\"mu\",\"b\":\"{b}\"}}");
         _hooks.Wheel += d => _server.Publish($"{{\"t\":\"wh\",\"d\":{d}}}");
         _hooks.RawKey += _hotkeys.OnKey;
+        try { _rawMouse = new RawMouse(); } catch { }
         _hotkeys.Pressed += (combo, vk) => { try { _overlay?.BeginInvoke(() => OnHotkey(combo, vk)); } catch { } };
         _hotkeys.Released += vk => { try { _overlay?.BeginInvoke(() => OnHotkeyUp(vk)); } catch { } };
         ReloadPersoItems();
@@ -191,7 +194,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
             mode = _settings.Mode, pages = _server.ClientCount,
             volant = _wheel?.Status, volantAxes = _wheel?.RawAxes, manette = _pad.Status, casque = _vr.Status, suivi = TrackState, cameras = _cam?.Cameras, ecrans = _screens.Status,
             fluidite = _server.Perf.Values.Select(v => System.Text.Json.JsonDocument.Parse(v).RootElement.Clone()).ToArray(),
-            ecartSourisMaxMs = Interlocked.Exchange(ref _maxMouseGap, 0), dureeEtatReglagesMs = _lastPushMs,
+            ecartSourisMaxMs = Interlocked.Exchange(ref _maxMouseGap, 0), sourisCapturee = _capture.Captured, dureeEtatReglagesMs = _lastPushMs,
         });
         _readersTimer.Tick += (_, _) => { UpdateVrTracker(); PushState(); };
         _readersTimer.Start();
@@ -227,7 +230,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
 
     void CheckGame(int tick)
     {
-        var g = _settings.TeteCalmeJeux && MiiDisplayed ? GameDetector.Detect(_settings.Jeux) : null;
+        var g = _settings.TeteCalmeJeux && MiiDisplayed ? GameDetector.Detect(_settings.Jeux, _capture.Captured) : null;
         if (g != _game)
         {
             _game = g;
@@ -242,12 +245,31 @@ sealed class SullysMiiBongoContext : ApplicationContext
 
     void PublishCursor()
     {
-        if (!MiiDisplayed) { _lastCursor = new(int.MinValue, int.MinValue); return; }
+        var (dx, dy) = _rawMouse?.Take() ?? (0, 0);
+        if (!MiiDisplayed)
+        {
+            _lastCursor = new(int.MinValue, int.MinValue);
+            if (_capture.Captured) { _capture.Reset(); _server.Publish("{\"t\":\"cap\",\"on\":false}"); }
+            return;
+        }
         var p = Cursor.Position;
-        if (p == _lastCursor) return;
-        _lastCursor = p;
+        if (_capture.Update(dx, dy, p))
+        {
+            _server.Publish(_capture.Captured ? "{\"t\":\"cap\",\"on\":true}" : "{\"t\":\"cap\",\"on\":false}");
+            if (!_capture.Captured) _lastCursor = new(int.MinValue, int.MinValue);
+            try { CheckGame(1); } catch { }
+        }
         var screen = Screen.FromPoint(p);
         var b = screen.Bounds;
+        if (_capture.Captured)
+        {
+            if (dx != 0 || dy != 0)
+                _server.Publish(string.Create(CultureInfo.InvariantCulture,
+                    $"{{\"t\":\"mr\",\"x\":{dx / (double)Math.Max(1, b.Width):0.00000},\"y\":{dy / (double)Math.Max(1, b.Height):0.00000}}}"));
+            return;
+        }
+        if (p == _lastCursor) return;
+        _lastCursor = p;
         double x = (p.X - b.Left) / (double)Math.Max(1, b.Width);
         double y = (p.Y - b.Top) / (double)Math.Max(1, b.Height);
         int s = Array.IndexOf(ScreenCapture.Ordered().Select(o => o.DeviceName).ToArray(), screen.DeviceName);
@@ -809,6 +831,16 @@ sealed class SullysMiiBongoContext : ApplicationContext
                 }
                 case "openPaint": OpenInPaint(Path.Combine(AppPaths.ExpressionsDir, Path.GetFileName(msg.GetProperty("file").GetString() ?? ""))); break;
                 case "action": DoAction(msg.GetProperty("name").GetString()!); break;
+                case "saveBones":
+                {
+                    var model = Path.GetFileName(msg.GetProperty("model").GetString() ?? "");
+                    var hasData = msg.TryGetProperty("data", out var bones) && bones.ValueKind == System.Text.Json.JsonValueKind.Object;
+                    if (!AppPaths.SaveBones(model, hasData ? bones : null)) { Reply(new { type = "error", message = "squelette non enregistré" }); break; }
+                    _overlay.Navigate();
+                    _server.Publish("{\"t\":\"os\"}");
+                    Reply(new { type = "bonesSaved" });
+                    break;
+                }
             }
         }
         catch (Exception ex) { Reply(new { type = "error", message = ex.Message }); }
@@ -1430,6 +1462,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
         _readersTimer.Stop();
         _deviceWatcher?.DestroyHandle();
         _hooks.Dispose();
+        _rawMouse?.Dispose();
         _mic.Dispose();
         _vr.Dispose();
         _cam?.Dispose();

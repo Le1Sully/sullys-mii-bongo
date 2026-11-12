@@ -348,6 +348,27 @@ static class AppPaths
             ? ModelPatterns.SelectMany(p => Directory.GetFiles(MiiDir, p)).Select(f => Path.GetFileName(f)!).Distinct().OrderBy(n => n).ToArray()
             : [];
 
+    public static bool SaveBones(string model, System.Text.Json.JsonElement? data)
+    {
+        if (!MiiModels().Contains(model, StringComparer.OrdinalIgnoreCase)) return false;
+        var path = Path.Combine(MiiDir, Path.GetFileNameWithoutExtension(model) + ".os.json");
+        try
+        {
+            if (data == null)
+            {
+                if (File.Exists(path))
+                    Microsoft.VisualBasic.FileIO.FileSystem.DeleteFile(path, Microsoft.VisualBasic.FileIO.UIOption.OnlyErrorDialogs, Microsoft.VisualBasic.FileIO.RecycleOption.SendToRecycleBin);
+                return true;
+            }
+            var text = System.Text.Json.JsonSerializer.Serialize(data.Value, new System.Text.Json.JsonSerializerOptions
+            { WriteIndented = true, Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping });
+            if (text.Length > 200_000) return false;
+            File.WriteAllText(path, text);
+            return true;
+        }
+        catch { return false; }
+    }
+
     public sealed record FaceSet(string Name, string? Blink, string[] Mouths, double Split, string Material);
 
     public static FaceSet[] FaceSets()

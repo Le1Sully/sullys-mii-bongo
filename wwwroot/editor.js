@@ -321,6 +321,7 @@ export async function startEditor(mii) {
   };
   const afterMove = id => {
     if (id === '@mii') { const p = data.base.mii.pos; p[1] = 0; applyBaseLive(); return; }
+    if (id === '@pad') { const B = rig.table?.padBase; if (B) padData().pos[1] = Math.round(B.pos.y / u * 1000) / 1000; }
     if (baseScreenIndex(id) >= 0 || id === '@pad') applyBaseLive(); else placeGroup(byId(id));
   };
 
@@ -744,13 +745,13 @@ export async function startEditor(mii) {
   function renderPad() {
     const p = padData();
     right.innerHTML = `<h3>🖱️ Tapis de souris</h3>
-      <div class="muted">Changez sa matière, sa taille et sa place librement : la souris du Mii garde sa zone de mouvement d'origine.</div>
+      <div class="muted">Changez sa matière, sa taille et sa place librement : il reste toujours posé sur la table, et la souris du Mii garde sa zone de mouvement d'origine.</div>
       <h3 style="margin-top:12px">Matière</h3>${texGrid(p.tex)}
       <div class="row"><label>Couleur</label><input type="color" data-pd="color" value="${p.color}"><button data-pdc="#ffffff" title="Sans teinte">⟲</button></div>
       <div class="row"><label>Motif</label><input type="range" min="0.2" max="4" step="0.05" data-pd="texScale" value="${p.texScale}"><span class="muted" style="width:38px;text-align:right">×${fmt(p.texScale)}</span></div>
       <div class="row"><label>Largeur</label><input type="range" min="0.2" max="4" step="0.05" data-pd="w" value="${p.w}"><span class="muted" style="width:38px;text-align:right">×${fmt(p.w)}</span></div>
       <div class="row"><label>Profondeur</label><input type="range" min="0.2" max="4" step="0.05" data-pd="d" value="${p.d}"><span class="muted" style="width:38px;text-align:right">×${fmt(p.d)}</span></div>
-      <div class="row"><label>Position</label><div class="trio">${num('pos', 0, 0.05, '← →', p.pos[0])}${num('pos', 1, 0.01, 'hauteur', p.pos[1])}${num('pos', 2, 0.05, 'avant / arr.', p.pos[2])}</div></div>
+      <div class="row"><label>Position</label><div class="trio">${num('pos', 0, 0.05, '← →', p.pos[0])}${num('pos', 2, 0.05, 'avant / arr.', p.pos[2])}<div></div></div></div>
       <div class="row"><label>Pivoter</label><input type="range" min="-180" max="180" step="${snap ? 15 : 1}" data-k="rot.1" value="${p.rot[1]}"><span class="muted" style="width:38px;text-align:right">${Math.round(p.rot[1])}°</span></div>
       <label class="chk"><input type="checkbox" data-pd="hidden" ${p.hidden ? 'checked' : ''}> Masquer le tapis</label>
       <div class="acts"><button data-do="resetPad" style="grid-column:1/-1">↺ Tapis d'origine</button></div>`;
