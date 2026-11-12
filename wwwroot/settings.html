@@ -248,6 +248,7 @@
       <h2 id="hintTitle"><span class="ico">✅</span>Rien à régler</h2>
       <div class="sub" id="hintText"></div>
       <label class="sw" id="kbSlideRow">Le clavier glisse devant le Mii quand il tape à deux mains<input type="checkbox" data-tog="kbSlide"><span class="t"></span></label>
+      <label class="sw" id="mouseLiftRow">Le Mii lève sa souris au bout du tapis et la repose au milieu (curseur bloqué au bord de l'écran, ou dans les jeux)<input type="checkbox" data-tog="mouseLift"><span class="t"></span></label>
       <div class="sliders" id="mouseSizeRow">
         <label>Taille de la souris <output id="mouseSizeOut"></output><input type="range" id="mouseSize" min="60" max="300" step="5"></label>
       </div>
@@ -970,7 +971,7 @@
     mark('size', sizes.reduce((a, b) => Math.abs(b - c.Size) < Math.abs(a - c.Size) ? b : a));
     const tog = { showWindow: s.windowVisible, topMost: c.TopMost, clickThrough: c.ClickThrough, decor: c.Decor,
                   micEnabled: c.MicEnabled, vrMirror: c.VrMirror, startup: s.startup, showObjects: c.ShowObjects, hideOccluders: c.HideOccluders,
-                  shortcutsEnabled: c.RaccourcisActifs, padMinis: c.PadMinis, calmGames: c.TeteCalmeJeux, themeSombre: c.ThemeSombre, kbSlide: c.ClavierGlisse,
+                  shortcutsEnabled: c.RaccourcisActifs, padMinis: c.PadMinis, calmGames: c.TeteCalmeJeux, themeSombre: c.ThemeSombre, kbSlide: c.ClavierGlisse, mouseLift: c.SourisLevee,
                   trackHead: c.SuiviTete, trackHands: c.SuiviMains };
     for (const [k, v] of Object.entries(tog)) document.querySelectorAll(`[data-tog="${k}"]`).forEach(cb => { cb.checked = !!v; });
     document.querySelectorAll('[data-deco]').forEach(b => b.classList.toggle('active', c.Decorations.includes(b.dataset.deco)));
@@ -1030,7 +1031,7 @@
     $('#hintText').textContent = c.Mode === 'bongo'
       ? 'Le Mii tape sur ses bongos quand vous tapez au clavier ou cliquez (gauche / droite).'
       : 'Le Mii tape sur son clavier quand vous tapez, et sa souris suit la vôtre. Rien à brancher.';
-    $('#kbSlideRow').hidden = $('#mouseSizeRow').hidden = c.Mode !== 'keyboard';
+    $('#kbSlideRow').hidden = $('#mouseLiftRow').hidden = $('#mouseSizeRow').hidden = c.Mode !== 'keyboard';
     const up = s.update || {};
     $('#updCurrent').textContent = up.current || '?';
     stateBox($('#updState'), up.status ? 'État : ' + up.status : 'Cliquez pour vérifier si une nouvelle version existe.', /^à jour|installée/.test(up.status || ''));

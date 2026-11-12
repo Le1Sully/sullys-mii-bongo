@@ -86,6 +86,11 @@ OBS ; dans l'éditeur elle est toujours montrée pour pouvoir la saisir). L'ombr
 en hauteur, un peu derrière ou sur le côté de ce qui doit avoir une ombre. Chaque lumière à ombres redessine la scène
 plusieurs fois : une ou deux suffisent.
 
+Sous *Projette des ombres*, choisissez ce qui fait de l'ombre pour cette lampe : *Ombre du personnage* (avec ses objets
+accrochés et les mini Mii), *Ombre de l'instrument* (clavier, souris, manette, bongos, volant, manettes VR) et *Ombre du
+décor et des objets*. Dans la fenêtre du Mii et OBS, l'ombre est calculée une fois puis figée pour ne pas ralentir vos
+jeux : décochez le personnage et l'instrument pour ne pas garder une ombre immobile de ce qui bouge.
+
 **🖱️ Tapis de souris** (élément de base, mode clavier + souris) : matière, couleur, motif, largeur, profondeur, position,
 rotation, ou masqué. Il reste toujours **posé sur la table**, même quand elle change de hauteur (autre personnage,
 chaise). La souris du Mii garde sa **zone de mouvement d'origine** : seul le tapis change.
@@ -254,8 +259,10 @@ reste immobile alors que la souris envoie des mouvements.
 
 Dans ce cas, le Mii suit les **mouvements de la souris** au lieu de la position du curseur :
 
-- sa souris 3D glisse sur le tapis dans le sens de vos mouvements, sans sortir du tapis, puis revient doucement au
-  centre quand vous arrêtez ;
+- sa souris 3D glisse sur le tapis dans le sens de vos mouvements et reste où vous l'avez laissée. Au bout du tapis,
+  le Mii la lève et la repose vers le milieu, comme sur le bureau (jamais pendant que vous tenez un bouton : il garde
+  la souris au bord tant que vous tirez). Si vous avez décoché *Le Mii lève sa souris au bout du tapis*, elle revient
+  plutôt doucement au centre quand vous arrêtez ;
 - avec *Tête calme* (réglage par défaut), ces jeux comptent comme des jeux : la tête bouge à peine et revient au
   centre. Sans *Tête calme*, la tête suit la souris du Mii ;
 - en mode clavier à deux mains, la main revient sur la souris dès que vous la bougez, comme sur le bureau.
@@ -369,6 +376,14 @@ Les jeux en plein écran « exclusif » peuvent apparaître noirs : utilisez le 
 - La souris 3D a une vraie forme : coque bombée, deux boutons séparés qui s'enfoncent au clic, molette qui tourne
   quand vous faites défiler. Sa taille se règle de 60 à 300 % (curseur **Taille de la souris** dans la même carte) ;
   la main du Mii reste posée dessus.
+- **Bout du tapis** : quand votre curseur est collé à un bord de l'écran (le bord extérieur du bureau, pas celui
+  entre deux écrans) et que vous continuez de pousser la souris dans ce sens, le Mii arrive au bout de son tapis :
+  il **lève sa souris**, la ramène vers le milieu du tapis et la repose, comme dans la vraie vie. Si vous continuez de
+  pousser, elle repart depuis le milieu, et il la relève au bout du tapis. Quand vous revenez vers l'intérieur de
+  l'écran, la souris retrouve peu à peu sa place normale sur le tapis. Il ne la lève jamais pendant que vous tenez un
+  bouton (glisser-déposer, sélection…). Activé par défaut ; pour l'enlever, décochez **Le Mii lève sa souris au bout
+  du tapis** dans Réglages → Instrument, carte **⌨️ Clavier + souris** : la souris reste alors au bord du tapis, et
+  dans les jeux elle revient doucement au centre.
 
 **Mode bongos**
 - Moitié gauche du clavier → bongo de gauche ; le reste → bongo de droite ; Espace alterne.

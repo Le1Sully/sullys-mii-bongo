@@ -40,6 +40,7 @@ sealed class Settings
     public bool PadMinis { get; set; } = false;
     public bool TeteCalmeJeux { get; set; } = true;
     public bool ClavierGlisse { get; set; } = true;
+    public bool SourisLevee { get; set; } = true;
     public double TailleSouris { get; set; } = 1;
     public List<string> Jeux { get; set; } = new();
     public string Theme { get; set; } = "classique";
@@ -66,6 +67,7 @@ sealed class Settings
         minis = PadMinis,
         track = TrackFlags,
         kbSlide = ClavierGlisse,
+        mouseLift = SourisLevee,
         mouseSize = Math.Round(TailleSouris, 2),
         theme = Theme,
         themeDark = ThemeSombre,
@@ -77,7 +79,7 @@ sealed class Settings
         + $"&pad={Uri.EscapeDataString(PadModel)}&face={Uri.EscapeDataString(Face)}" + (ShowObjects ? "" : "&objs=0") + (HideOccluders ? "" : "&occ=0")
         + $"&fps={Fluidite}" + (PadMinis ? "&minis=1" : "") + (TrackFlags.Length > 0 ? "&track=" + TrackFlags : "")
         + (Orbit ? FormattableString.Invariant($"&orbit=1&oaz={Math.Round(OrbitAz)}&oel={Math.Round(OrbitEl)}&oz={Math.Round(OrbitZoom, 2)}") : "")
-        + (ScreenFps > 0 ? "" : "&slive=0") + (ClavierGlisse ? "" : "&kbs=0")
+        + (ScreenFps > 0 ? "" : "&slive=0") + (ClavierGlisse ? "" : "&kbs=0") + (SourisLevee ? "" : "&lift=0")
         + (Math.Abs(TailleSouris - 1) < 0.005 ? "" : FormattableString.Invariant($"&ms={Math.Round(TailleSouris, 2)}"))
         + (Decor ? $"&decor=1&dview={DecorView}&deco={Uri.EscapeDataString(DecoList)}" + $"&floor={Floor}" : "");
 

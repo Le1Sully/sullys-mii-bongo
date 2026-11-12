@@ -29,6 +29,7 @@ if (FOLLOW) {
     params.set('minis', c.minis ? '1' : '0');
     params.set('track', c.track || '');
     params.set('kbs', c.kbSlide === false ? '0' : '1');
+    params.set('lift', c.mouseLift === false ? '0' : '1');
     if (c.mouseSize) params.set('ms', c.mouseSize);
     if (c.orbit) { params.set('orbit', c.orbit.on ? '1' : '0'); params.set('oaz', c.orbit.az); params.set('oel', c.orbit.el); params.set('oz', c.orbit.zoom); }
   } catch { }
@@ -57,6 +58,7 @@ const CFG = {
   trackHead: (params.get('track') || '').includes('t'),
   trackHands: (params.get('track') || '').includes('m'),
   kbSlide: params.get('kbs') !== '0',
+  mouseLift: params.get('lift') !== '0',
   mouseSize: THREE.MathUtils.clamp(+params.get('ms') || 1, 0.6, 3),
   editor: params.get('editor') === '1',
   perso: params.get('perso') === '1',
@@ -108,6 +110,7 @@ const shadowBurst = (ms = 3000) => { shadowUntil = Math.max(shadowUntil, perform
 const shadowTick = now => {
   const gap = shadowLive ? 50 : now < shadowUntil ? 250 : Infinity;
   if (now - shadowAt >= gap) { renderer.shadowMap.needsUpdate = true; shadowAt = now; }
+  if (renderer.shadowMap.needsUpdate) markShadowKinds();
 };
 document.body.appendChild(renderer.domElement);
 
@@ -352,7 +355,7 @@ const MII_REACH = 0.185, MII_DESK = 0.275, MII_SHOULDER_Z = 0.024, MII_DROP = 0.
 const rig = { root: null, bones: {}, rest: new Map(), arms: {}, drums: {}, unit: 1, sceneUnit: 1, charUnit: 1, deskDrop: MII_DROP, bodyBase: new THREE.Vector3(), props: [] };
 
 const state = {
-  mouse: { x: 0.5, y: 0.5 }, look: { x: 0, y: 0 }, game: false, nudge: { x: 0, y: 0 }, rel: { on: false, x: 0, y: 0 },
+  mouse: { x: 0.5, y: 0.5 }, look: { x: 0, y: 0 }, game: false, nudge: { x: 0, y: 0 }, rel: { on: false, x: 0, y: 0 }, padOff: { x: 0, y: 0 }, lift: null,
   hands: {
     L: { held: 0, downUntil: 0, h: 0, wasDown: false },
     R: { held: 0, downUntil: 0, h: 0, wasDown: false },
@@ -685,10 +688,42 @@ function applyPad(base) {
 }
 
 const SHADOW_SKIP = o => o.userData.noShadow || [].concat(o.material || []).some(m => m && m.depthTest === false);
+function markShadowKinds() {
+  const mark = (o, k) => { if (o?.isObject3D) o.userData.shadowKind = k; };
+  mark(rig.root, 'perso');
+  for (const m of rig.minis?.list || []) mark(m.holder, 'perso');
+  for (const o of char.objs.values()) mark(o.group, 'perso');
+  for (const o of char.animObjs?.values() || []) mark(o.group, 'perso');
+  mark(rig.mouse, 'instrument');
+  mark(rig.keyboard, 'instrument');
+  for (const d of Object.values(rig.drums || {})) mark(d, 'instrument');
+  mark(rig.gamepad?.frame, 'instrument');
+  for (const c of Object.values(rig.vr?.ctrl || {})) mark(c, 'instrument');
+  for (const v of Object.values(rig.cockpit || {})) for (const x of [].concat(v ?? [])) {
+    if (x?.isObject3D) mark(x, 'instrument');
+    else if (x && typeof x === 'object' && !Array.isArray(x)) for (const y of Object.values(x)) mark(y, 'instrument');
+  }
+}
+function shadowKind(o) {
+  for (let n = o; n; n = n.parent) if (n.userData.shadowKind) return n.userData.shadowKind;
+  return 'decor';
+}
+THREE.Mesh.prototype.onBeforeShadow = function (r, o, cam, shadowCam, geo) {
+  const f = shadowCam.userData.shadowOf;
+  if (!f || f[shadowKind(this)] !== false) return;
+  this.userData.shadowHidden = geo.drawRange.count;
+  geo.drawRange.count = 0;
+};
+THREE.Mesh.prototype.onAfterShadow = function (r, o, cam, shadowCam, geo) {
+  if (this.userData.shadowHidden === undefined) return;
+  geo.drawRange.count = this.userData.shadowHidden;
+  delete this.userData.shadowHidden;
+};
 function updateShadowFlags() {
   let lights = false;
   scene.traverse(o => { if (o.isPointLight && o.castShadow && o.visible) lights = true; });
   if (!lights) return;
+  markShadowKinds();
   let fresh = false;
   scene.traverse(o => {
     if (!o.isMesh || SHADOW_SKIP(o)) return;
@@ -3465,19 +3500,59 @@ function typeKey(x, row) {
 
 let lastActivity = 0;
 const PASSIVE_EVENTS = new Set(['cfg', 'pads', 'drvs', 'vrs', 'scene', 'perso', 'persoOn', 'vrc', 'game', 'cap']);
-const REL_GAIN = 0.5, REL_RETURN = 1.2;
+const REL_GAIN = 0.5, REL_RETURN = 1.2, EDGE_GAIN = 0.7, PAD_EASE = 0.5, LIFT_OVER = 0.04, LIFT_TO = 0.12, LIFT_MS = 420;
+const clampPad = v => THREE.MathUtils.clamp(v, -0.5, 0.5);
+function cursorOffset() {
+  return [THREE.MathUtils.clamp(state.mouse.x, 0, 1) - 0.5, THREE.MathUtils.clamp(state.mouse.y, 0, 1) - 0.5];
+}
 function mouseOffset() {
-  return state.rel.on ? [state.rel.x, state.rel.y]
-    : [THREE.MathUtils.clamp(state.mouse.x, 0, 1) - 0.5, THREE.MathUtils.clamp(state.mouse.y, 0, 1) - 0.5];
+  return state.rel.on ? [state.rel.x, state.rel.y] : cursorOffset();
+}
+function padPos() {
+  if (state.rel.on) return [state.rel.x, state.rel.y];
+  const [x, y] = cursorOffset();
+  return [x + state.padOff.x, y + state.padOff.y];
+}
+function mouseHeld() { return !!(state.click.L || state.click.R || state.click.M); }
+function padLimit() { return 0.5 + (mouseHeld() || !CFG.mouseLift ? 0 : LIFT_OVER); }
+function shownPadPos(now) {
+  const L = state.lift;
+  if (!L) { const [x, y] = padPos(); return [clampPad(x), clampPad(y), 0]; }
+  const s = Math.min(1, (now - L.t0) / LIFT_MS), m = THREE.MathUtils.smoothstep(s, 0.15, 0.85);
+  return [THREE.MathUtils.lerp(L.from[0], L.to[0], m), THREE.MathUtils.lerp(L.from[1], L.to[1], m), Math.sin(Math.PI * s)];
+}
+function checkLift() {
+  if (!KEYBOARD || !CFG.mouseLift || !rig.mouse || state.lift || mouseHeld()) return;
+  const [x, y] = padPos(), over = 0.5 + LIFT_OVER - 1e-6;
+  const ox = Math.abs(x) >= over ? Math.sign(x) : 0, oy = Math.abs(y) >= over ? Math.sign(y) : 0;
+  if (!ox && !oy) return;
+  const from = [clampPad(x), clampPad(y)];
+  state.lift = { t0: performance.now(), from, to: [ox ? -ox * LIFT_TO : from[0], oy ? -oy * LIFT_TO : from[1]] };
+}
+function finishLift() {
+  const L = state.lift;
+  if (!L) return;
+  state.lift = null;
+  if (state.rel.on) { state.rel.x = L.to[0]; state.rel.y = L.to[1]; return; }
+  const [bx, by] = cursorOffset();
+  state.padOff.x = L.to[0] - bx; state.padOff.y = L.to[1] - by;
+}
+function limitPadOff() {
+  const [bx, by] = cursorOffset(), lim = padLimit();
+  state.padOff.x = THREE.MathUtils.clamp(state.padOff.x, -lim - bx, lim - bx);
+  state.padOff.y = THREE.MathUtils.clamp(state.padOff.y, -lim - by, lim - by);
 }
 function startRel() {
   if (state.rel.on) return;
-  const [x, y] = mouseOffset();
-  Object.assign(state.rel, { on: true, x, y });
+  finishLift();
+  const [x, y] = padPos();
+  Object.assign(state.rel, { on: true, x: clampPad(x), y: clampPad(y) });
+  state.padOff.x = state.padOff.y = 0;
 }
 function nudgePush(d, v) { return THREE.MathUtils.clamp(v + THREE.MathUtils.clamp(d * 0.3, -0.03, 0.03), -0.07, 0.07); }
 function onEvent(ev) {
   if (!PASSIVE_EVENTS.has(ev.t)) lastActivity = performance.now();
+  if (state.lift && performance.now() - state.lift.t0 >= LIFT_MS) finishLift();
   switch (ev.t) {
     case 'kd':
       if (KEYBOARD) typeKey(ev.x ?? (ev.s === 'L' ? 4 : 11), ev.r ?? 3);
@@ -3503,26 +3578,51 @@ function onEvent(ev) {
       if (KEYBOARD) { state.click[ev.b] = 0; release('R'); }
       else if (ev.b === 'M') { release('L'); release('R'); } else release(sideSwap(ev.b === 'L' ? 'R' : 'L'));
       break;
-    case 'mm':
-      if (state.game && !state.rel.on && state.mouse.s === (ev.s ?? -1)) {
+    case 'mm': {
+      const sameScreen = state.mouse.s === (ev.s ?? -1);
+      if (state.game && !state.rel.on && sameScreen) {
         state.nudge.x = nudgePush(ev.x - state.mouse.x, state.nudge.x);
         state.nudge.y = nudgePush(ev.y - state.mouse.y, state.nudge.y);
       }
+      const [ox, oy] = cursorOffset();
+      const wasRel = state.rel.on, [px, py] = padPos();
       state.rel.on = false;
       state.mouse.x = ev.x; state.mouse.y = ev.y; state.mouse.s = ev.s ?? -1;
       state.mouse.at = performance.now();
+      const [nx, ny] = cursorOffset();
+      if (wasRel) {
+        state.padOff.x = clampPad(px) - nx; state.padOff.y = clampPad(py) - ny;
+      } else if (sameScreen) {
+        const ease = (v, d) => Math.sign(v) * Math.max(0, Math.abs(v) - Math.abs(d) * PAD_EASE);
+        state.padOff.x = ease(state.padOff.x, nx - ox);
+        state.padOff.y = ease(state.padOff.y, ny - oy);
+      }
+      checkLift();
+      limitPadOff();
+      break;
+    }
+    case 'me':
+      state.mouse.at = performance.now();
+      if (state.rel.on || state.lift) break;
+      state.padOff.x += ev.x * EDGE_GAIN; state.padOff.y += ev.y * EDGE_GAIN;
+      limitPadOff();
+      checkLift();
       break;
     case 'mr':
       startRel();
-      state.rel.x = THREE.MathUtils.clamp(state.rel.x + ev.x * REL_GAIN, -0.5, 0.5);
-      state.rel.y = THREE.MathUtils.clamp(state.rel.y + ev.y * REL_GAIN, -0.5, 0.5);
+      if (!state.lift) {
+        const lim = padLimit();
+        state.rel.x = THREE.MathUtils.clamp(state.rel.x + ev.x * REL_GAIN, -lim, lim);
+        state.rel.y = THREE.MathUtils.clamp(state.rel.y + ev.y * REL_GAIN, -lim, lim);
+        checkLift();
+      }
       if (state.game) {
         state.nudge.x = nudgePush(ev.x, state.nudge.x);
         state.nudge.y = nudgePush(ev.y, state.nudge.y);
       }
       state.mouse.at = performance.now();
       break;
-    case 'cap': if (ev.on) startRel(); else state.rel.on = false; break;
+    case 'cap': if (ev.on) startRel(); break;
     case 'game': state.game = !!ev.on; break;
     case 'wh':
       state.wheel = THREE.MathUtils.clamp(state.wheel + ev.d * 0.5, -1, 1);
@@ -3540,9 +3640,10 @@ function onEvent(ev) {
       }
       if (ev.c?.theme && (CFG.editor || CFG.perso)) window.setUiTheme?.(ev.c.theme, !!ev.c.themeDark);
       if (ev.c && 'kbSlide' in ev.c) CFG.kbSlide = ev.c.kbSlide !== false;
+      if (ev.c && 'mouseLift' in ev.c) CFG.mouseLift = ev.c.mouseLift !== false;
       if (ev.c && 'mouseSize' in ev.c) CFG.mouseSize = THREE.MathUtils.clamp(+ev.c.mouseSize || 1, 0.6, 3);
       if (FOLLOW && ev.c) {
-        const strip = c => { const { orbit: _o, fps: _f, theme: _t, themeDark: _d, kbSlide: _k, mouseSize: _m, ...rest } = c; return JSON.stringify(rest); };
+        const strip = c => { const { orbit: _o, fps: _f, theme: _t, themeDark: _d, kbSlide: _k, mouseLift: _l, mouseSize: _m, ...rest } = c; return JSON.stringify(rest); };
         let before = null;
         try { before = followedCfg && strip(JSON.parse(followedCfg)); } catch { }
         if (strip(ev.c) !== before) location.reload();
@@ -3788,14 +3889,15 @@ function solveArms(t, now) {
   solveIK(PHYSICAL ? rig.arms.R : rig.arms.L, hover.lerp(onKey, hk).add(bob));
 
   const p = rig.pad;
-  const [mx, my] = mouseOffset();
+  const [mx, my, lh] = shownPadPos(now);
   const sx = PHYSICAL ? -1 : 1;
-  const mpos = V(p.center.x + sx * mx * p.w * 0.72, p.y, p.center.z - my * p.d * 0.62);
+  const msz = rig.mouse.userData.size, grow = CFG.mouseSize - 1;
+  const mpos = V(p.center.x + sx * mx * p.w * 0.72, p.y + lh * msz * CFG.mouseSize * 0.5, p.center.z - my * p.d * 0.62);
   rig.mouse.position.lerp(mpos, 1 - Math.exp(-25 * clockDt));
-  rig.mouse.rotation.y = -sx * mx * 0.25;
+  const L = state.lift, dir = L ? [Math.sign(L.to[0] - L.from[0]), Math.sign(L.to[1] - L.from[1])] : [0, 0];
+  rig.mouse.rotation.set(dir[1] * lh * 0.22, -sx * mx * 0.25, -sx * dir[0] * lh * 0.18);
   rig.mouse.scale.setScalar(CFG.mouseSize);
   const hm = state.hands.R.h;
-  const msz = rig.mouse.userData.size, grow = CFG.mouseSize - 1;
   let mouseHand = rig.mouse.position.clone().add(V(0, u * (0.17 - 0.035 * hm * (ty.both ? 0 : 1)) + msz * 0.26 * grow, -u * 0.02 - msz * 0.15 * grow));
   if (ty.two > 0.003) {
     const ridle = now - ty.rlast > 1500;
@@ -3848,9 +3950,17 @@ function animate() {
 
     state.nudge.x = damp(state.nudge.x, 0, 2.5, dt);
     state.nudge.y = damp(state.nudge.y, 0, 2.5, dt);
-    if (state.rel.on) {
-      state.rel.x = damp(state.rel.x, 0, REL_RETURN, dt);
-      state.rel.y = damp(state.rel.y, 0, REL_RETURN, dt);
+    if (state.lift) {
+      state.mouse.at = now;
+      if (now - state.lift.t0 >= LIFT_MS) finishLift();
+    }
+    if (!CFG.mouseLift) {
+      state.padOff.x = damp(state.padOff.x, 0, 3, dt);
+      state.padOff.y = damp(state.padOff.y, 0, 3, dt);
+      if (state.rel.on) {
+        state.rel.x = damp(state.rel.x, 0, REL_RETURN, dt);
+        state.rel.y = damp(state.rel.y, 0, REL_RETURN, dt);
+      }
     }
     const [mo, mp] = mouseOffset();
     const mxl = !CFG.look ? 0 : state.game ? state.nudge.x : mo;

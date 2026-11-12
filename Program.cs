@@ -132,6 +132,13 @@ sealed class SullysMiiBongoContext : ApplicationContext
     readonly string? _root;
     Point _lastCursor = new(int.MinValue, int.MinValue);
     RawMouse? _rawMouse;
+    Point _edgeCursor = new(int.MinValue, int.MinValue);
+
+    static bool OnDesktop(int x, int y)
+    {
+        foreach (var s in Screen.AllScreens) if (s.Bounds.Contains(x, y)) return true;
+        return false;
+    }
     readonly CaptureDetector _capture = new();
     volatile string? _game;
     string? _lastGame;
@@ -279,6 +286,12 @@ sealed class SullysMiiBongoContext : ApplicationContext
                     $"{{\"t\":\"mr\",\"x\":{dx / (double)Math.Max(1, b.Width):0.00000},\"y\":{dy / (double)Math.Max(1, b.Height):0.00000}}}"));
             return;
         }
+        int ex = dx != 0 && p.X == _edgeCursor.X && !OnDesktop(p.X + Math.Sign(dx), p.Y) ? dx : 0;
+        int ey = dy != 0 && p.Y == _edgeCursor.Y && !OnDesktop(p.X, p.Y + Math.Sign(dy)) ? dy : 0;
+        _edgeCursor = p;
+        if (ex != 0 || ey != 0)
+            _server.Publish(string.Create(CultureInfo.InvariantCulture,
+                $"{{\"t\":\"me\",\"x\":{ex / (double)Math.Max(1, b.Width):0.00000},\"y\":{ey / (double)Math.Max(1, b.Height):0.00000}}}"));
         if (p == _lastCursor) return;
         _lastCursor = p;
         double x = (p.X - b.Left) / (double)Math.Max(1, b.Width);
@@ -1156,6 +1169,7 @@ sealed class SullysMiiBongoContext : ApplicationContext
             case "padMinis": _settings.PadMinis = B(); PageSettingsChanged(); break;
             case "calmGames": _settings.TeteCalmeJeux = B(); break;
             case "kbSlide": _settings.ClavierGlisse = B(); _settings.Save(); _server.Publish(_server.ConfigMessage()); break;
+            case "mouseLift": _settings.SourisLevee = B(); _settings.Save(); _server.Publish(_server.ConfigMessage()); break;
             case "mouseSize":
                 if (double.IsFinite(D())) { _settings.TailleSouris = Math.Round(Math.Clamp(D(), 0.6, 3), 2); _settings.Save(); _server.Publish(_server.ConfigMessage()); }
                 break;

@@ -257,6 +257,8 @@ export function makeObject(o, u, ctx = {}) {
     light.shadow.normalBias = 0.02 * u;
     light.shadow.camera.near = 0.02 * u;
     light.shadow.camera.far = (range || 30) * u;
+    const so = o.shadowOf;
+    if (so && (so.perso === false || so.instrument === false || so.decor === false)) light.shadow.camera.userData.shadowOf = { ...so };
     group.add(light);
     const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.05, 16, 12), new THREE.MeshBasicMaterial({ color }));
     bulb.userData.noShadow = true;
@@ -429,6 +431,11 @@ export function normalizeScene(raw) {
       obj.intensity = clamp(num(o.intensity ?? o.intensite ?? o.puissance, 3), 0, 50);
       obj.range = clamp(num(o.range ?? o.portee ?? o.distance, 0), 0, 100);
       obj.shadow = (o.shadow ?? o.ombres ?? o.ombre) !== false;
+      const so = o.shadowOf ?? o.ombresDe;
+      if (so && typeof so === 'object') {
+        const v = { perso: (so.perso ?? so.personnage) !== false, instrument: so.instrument !== false, decor: (so.decor ?? so.objets) !== false };
+        if (!v.perso || !v.instrument || !v.decor) obj.shadowOf = v;
+      }
       obj.bulb = !!(o.bulb ?? o.ampoule);
     } else if (type === 'screen') {
       obj.source = screenSource(o.source ?? o.affiche ?? o.ecran);

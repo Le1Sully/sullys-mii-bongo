@@ -764,6 +764,12 @@ export async function startEditor(mii) {
       <div class="row"><label>Intensité</label><input type="range" min="0" max="20" step="0.1" data-lf="intensity" value="${o.intensity ?? 3}"><span class="muted" style="width:38px;text-align:right">${fmt(o.intensity ?? 3)}</span></div>
       <div class="row"><label>Portée</label><input type="range" min="0" max="10" step="0.1" data-lf="range" value="${o.range ?? 0}"><span class="muted" style="width:52px;text-align:right">${o.range ? fmt(o.range) : 'infinie'}</span></div>
       <label class="chk"><input type="checkbox" data-lf="shadow" ${o.shadow !== false ? 'checked' : ''}> Projette des ombres</label>
+      <div style="margin-left:22px">
+        <label class="chk"><input type="checkbox" data-ls="perso" ${o.shadowOf?.perso !== false ? 'checked' : ''}> Ombre du personnage</label>
+        <label class="chk"><input type="checkbox" data-ls="instrument" ${o.shadowOf?.instrument !== false ? 'checked' : ''}> Ombre de l'instrument (clavier, souris, manette…)</label>
+        <label class="chk"><input type="checkbox" data-ls="decor" ${o.shadowOf?.decor !== false ? 'checked' : ''}> Ombre du décor et des objets</label>
+        <div class="muted">Dans la fenêtre du Mii et OBS, l'ombre est figée pour ne pas ralentir vos jeux : décochez ce qui bouge (personnage, instrument) pour ne pas garder une ombre immobile.</div>
+      </div>
       <label class="chk"><input type="checkbox" data-lf="bulb" ${o.bulb ? 'checked' : ''}> Ampoule visible (fenêtre du Mii et OBS)</label>
       <div class="muted">L'ombre tombe à l'opposé de la lumière : pour la voir, placez la lumière en hauteur, un peu derrière ou sur le côté de ce qui doit avoir une ombre. Les ombres demandent un peu plus au PC (chaque lumière à ombres redessine la scène) : une ou deux suffisent.</div>
       <div class="acts"><button data-do="dup" title="Dupliquer (Ctrl+D)">⧉ Dupliquer</button><button data-do="del" class="danger" title="Supprimer (Suppr)">🗑 Suppr.</button><div></div></div>`;
@@ -807,6 +813,11 @@ export async function startEditor(mii) {
       p[k] = t.type === 'checkbox' ? t.checked : t.type === 'range' ? parseFloat(t.value) : t.value;
       if (t.type === 'range') label('×' + fmt(p[k]));
       applyBaseLive(); updateHelper();
+    } else if (t.dataset.ls && o) {
+      const so = { perso: true, instrument: true, decor: true, ...(o.shadowOf || {}) };
+      so[t.dataset.ls] = t.checked;
+      if (so.perso && so.instrument && so.decor) delete o.shadowOf; else o.shadowOf = so;
+      rebuild(o);
     } else if (t.dataset.lf && o) {
       const k = t.dataset.lf;
       o[k] = t.type === 'checkbox' ? t.checked : t.type === 'range' ? parseFloat(t.value) : t.value;
