@@ -13,13 +13,24 @@ static class Program
     [STAThread]
     static void Main(string[] args)
     {
-        int after = Array.IndexOf(args, "--after-update");
-        if (after >= 0 && after + 1 < args.Length && int.TryParse(args[after + 1], out var oldPid))
+        if (args.Length >= 2 && args[0] == "--finish-update" && int.TryParse(args[1], out var stagedFor))
         {
-            Updater.WaitForExit(oldPid);
+            Updater.FinishUpdate(stagedFor);
+            return;
+        }
+        int after = Array.IndexOf(args, "--after-update");
+        if (after >= 0)
+        {
             JustUpdated = true;
+            if (after + 1 < args.Length && int.TryParse(args[after + 1], out var oldPid))
+                Updater.StopOld(oldPid, Environment.ProcessPath!, TimeSpan.FromSeconds(20));
         }
         using var mutex = new Mutex(true, "SullysMiiBongo_SingleInstance", out bool first);
+        if (!first && JustUpdated)
+        {
+            try { first = mutex.WaitOne(TimeSpan.FromSeconds(15)); }
+            catch (AbandonedMutexException) { first = true; }
+        }
         if (!first)
         {
             var wanted = args.Contains("--editor") ? OpenEditorSignal : OpenSettingsSignal;
@@ -1354,21 +1365,24 @@ sealed class SullysMiiBongoContext : ApplicationContext
 
     async Task InstallUpdate()
     {
-        if (!await _updater.InstallAsync()) return;
+        if (!await _updater.InstallAsync() || _updater.StagedExe is not { } staged) return;
         try
         {
-            Process.Start(new ProcessStartInfo(Environment.ProcessPath!, $"--after-update {Environment.ProcessId}")
+            Process.Start(new ProcessStartInfo(staged, $"--finish-update {Environment.ProcessId}")
             {
                 UseShellExecute = false,
-                WorkingDirectory = Path.GetDirectoryName(Environment.ProcessPath!)!,
+                WorkingDirectory = Path.GetDirectoryName(staged)!,
             });
         }
         catch (Exception ex)
         {
-            _tray.ShowBalloonTip(5000, AppPaths.Name, "Mise à jour installée, mais le redémarrage a échoué : relancez l'appli. (" + ex.Message + ")", ToolTipIcon.Warning);
+            Updater.Log("lancement de la nouvelle version impossible : " + ex.Message);
+            _tray.ShowBalloonTip(5000, AppPaths.Name, "Mise à jour téléchargée, mais son installation n'a pas pu démarrer : réessayez. (" + ex.Message + ")", ToolTipIcon.Warning);
             return;
         }
-        ExitThread();
+        new Thread(() => { Thread.Sleep(8000); Environment.Exit(0); }) { IsBackground = true, Name = "UpdateExit" }.Start();
+        try { ExitThread(); }
+        catch (Exception ex) { Updater.Log("fermeture : " + ex.Message); Environment.Exit(0); }
     }
 
     void PageSettingsChanged()

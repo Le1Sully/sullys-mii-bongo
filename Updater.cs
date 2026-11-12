@@ -113,8 +113,7 @@ sealed class Updater
         Busy = true;
         var exe = Environment.ProcessPath!;
         var dir = Path.GetDirectoryName(exe)!;
-        var newExe = exe + ".new";
-        var oldExe = exe + ".old";
+        var newExe = Path.Combine(dir, StagedName);
         var tmpZip = Path.Combine(Path.GetTempPath(), $"SullysMiiBongo-{Latest}-{Environment.ProcessId}.zip");
         Set($"téléchargement de la version {Latest}…");
         try
@@ -159,16 +158,16 @@ sealed class Updater
                     e.ExtractToFile(target, true);
                 }
             }
-            if (File.Exists(oldExe)) File.Delete(oldExe);
-            File.Move(exe, oldExe);
-            try { File.Move(newExe, exe); }
-            catch { File.Move(oldExe, exe); throw; }
-            Status = $"version {Latest} installée, redémarrage…";
+            Available = false;
+            Status = $"version {Latest} téléchargée, redémarrage…";
+            Log($"version {Latest} prête : {newExe}");
+            StagedExe = newExe;
             return true;
         }
         catch (Exception ex)
         {
             Status = "mise à jour impossible : " + ex.Message;
+            Log("échec du téléchargement : " + ex.Message);
             try { File.Delete(newExe); } catch { }
             return false;
         }
@@ -180,22 +179,72 @@ sealed class Updater
         }
     }
 
-    public static void WaitForExit(int pid)
+    public const string StagedName = "Sully's Mii-Bongo.update.exe";
+    public string? StagedExe { get; private set; }
+
+    static string LogPath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Sully's Mii-Bongo", "mise-a-jour.log");
+
+    public static void Log(string line)
     {
         try
         {
-            using var p = Process.GetProcessById(pid);
-            p.WaitForExit(20000);
+            Directory.CreateDirectory(Path.GetDirectoryName(LogPath)!);
+            File.AppendAllText(LogPath, $"{DateTime.Now:yyyy-MM-dd HH:mm:ss} [{Environment.ProcessId}] {line}{Environment.NewLine}");
         }
         catch { }
     }
 
-    public static void CleanupOld()
+    public static void StopOld(int pid, string appExe, TimeSpan wait)
     {
         try
         {
-            if (Environment.ProcessPath is { } p && File.Exists(p + ".old")) File.Delete(p + ".old");
+            using var p = Process.GetProcessById(pid);
+            string? path = null;
+            try { path = p.MainModule?.FileName; } catch { }
+            if (path != null && !path.StartsWith(appExe, StringComparison.OrdinalIgnoreCase)) { Log($"processus {pid} ignoré : {path}"); return; }
+            if (p.WaitForExit((int)wait.TotalMilliseconds)) return;
+            Log($"l'ancienne appli ({pid}) ne se ferme pas : arrêt forcé");
+            p.Kill();
+            p.WaitForExit(5000);
         }
         catch { }
+    }
+
+    public static void FinishUpdate(int oldPid)
+    {
+        var self = Environment.ProcessPath!;
+        var dir = Path.GetDirectoryName(self)!;
+        var target = Path.Combine(dir, ExeName);
+        Log($"fin de mise à jour vers {CurrentText}, attente de l'ancienne appli ({oldPid})");
+        StopOld(oldPid, target, TimeSpan.FromSeconds(20));
+        bool copied = false;
+        for (int i = 0; i < 50 && !copied; i++)
+        {
+            try { File.Copy(self, target, true); copied = true; }
+            catch (Exception ex) { if (i == 49) Log("copie impossible : " + ex.Message); else Thread.Sleep(200); }
+        }
+        Log(copied ? $"version {CurrentText} installée" : "l'ancienne version est gardée");
+        try { Process.Start(new ProcessStartInfo(target, copied ? "--after-update" : "") { UseShellExecute = false, WorkingDirectory = dir }); }
+        catch (Exception ex) { Log("redémarrage impossible : " + ex.Message); }
+    }
+
+    public static void CleanupOld()
+    {
+        if (Environment.ProcessPath is not { } p) return;
+        var dir = Path.GetDirectoryName(p)!;
+        new Thread(() =>
+        {
+            for (int i = 0; i < 40; i++)
+            {
+                bool left = false;
+                foreach (var f in Directory.GetFiles(dir, ExeName + ".old*").Append(Path.Combine(dir, StagedName)))
+                {
+                    if (!File.Exists(f)) continue;
+                    try { File.Delete(f); } catch { left = true; }
+                }
+                if (!left) return;
+                Thread.Sleep(250);
+            }
+        }) { IsBackground = true, Name = "UpdateCleanup" }.Start();
     }
 }
